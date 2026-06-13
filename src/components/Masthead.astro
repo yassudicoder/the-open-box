@@ -1,0 +1,183 @@
+---
+import BoxMark from "./BoxMark.astro";
+import { site } from "../data/site.ts";
+
+const nav = [
+  { id: "index", label: "INDEX", n: "02" },
+  { id: "ledger", label: "LEDGER", n: "03" },
+  { id: "doctrine", label: "DOCTRINE", n: "04" },
+  { id: "lab", label: "LAB", n: "05" },
+  { id: "dispatches", label: "DISPATCHES", n: "06" },
+  { id: "colophon", label: "COLOPHON", n: "07" },
+];
+---
+
+<header class="mast">
+  <div class="wrap mast__inner">
+    <a class="mast__brand" href="/#top" aria-label={`${site.name} — home`}>
+      <BoxMark size={24} class="mast__mark" title={site.name} />
+      <span class="mast__name mono">{site.name}</span>
+    </a>
+
+    <nav class="mast__nav" aria-label="Sections">
+      {
+        nav.map((item) => (
+          <a class="mast__link mono" href={`/#${item.id}`}>
+            <span class="mast__link-n" aria-hidden="true">{item.n}</span>
+            {item.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="mast__tools">
+      <button
+        class="mast__cmd mono"
+        data-palette-open
+        aria-haspopup="dialog"
+        aria-label="Open command palette"
+      >
+        <span class="mast__cmd-glyph" aria-hidden="true">⌘</span>K
+      </button>
+      <button
+        class="mast__theme"
+        data-theme-toggle
+        aria-label="Toggle color theme"
+        title="Toggle theme"
+      >
+        <svg class="mast__sun" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.6"></circle>
+          <g stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.2 5.2l1.7 1.7M17.1 17.1l1.7 1.7M18.8 5.2l-1.7 1.7M6.9 17.1l-1.7 1.7"></path>
+          </g>
+        </svg>
+        <svg class="mast__moon" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 14.5A8 8 0 1 1 9.5 4a6.3 6.3 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<style>
+  .mast {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    background: color-mix(in oklab, var(--paper) 86%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: var(--hair) solid var(--line);
+  }
+  .mast__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    height: 54px;
+  }
+  .mast__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+    flex: none;
+  }
+  .mast__mark {
+    color: var(--ink);
+  }
+  .mast__name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+  .mast__nav {
+    display: none;
+    gap: 0.3rem;
+    margin-inline: auto;
+  }
+  .mast__link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    padding: 0.4em 0.6em;
+    font-size: 0.68rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+    border-radius: 2px;
+    transition: color 0.15s var(--ease), background 0.15s var(--ease);
+  }
+  .mast__link:hover {
+    color: var(--ink);
+    background: var(--shade);
+  }
+  .mast__link-n {
+    color: var(--ink-3);
+    font-size: 0.85em;
+  }
+  .mast__tools {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: none;
+  }
+  .mast__cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2em;
+    padding: 0.4em 0.6em;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 3px;
+    color: var(--ink-2);
+    transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .mast__cmd:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  .mast__cmd-glyph {
+    font-size: 0.92em;
+  }
+  .mast__theme {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 30px;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 3px;
+    color: var(--ink-2);
+    transition: border-color 0.15s var(--ease), color 0.15s var(--ease);
+  }
+  .mast__theme:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  /* show sun in dark mode (click to go light), moon in light mode */
+  .mast__moon {
+    display: block;
+  }
+  .mast__sun {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .mast__moon {
+    display: none;
+  }
+  :global(:root[data-theme="dark"]) .mast__sun {
+    display: block;
+  }
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme="light"])) .mast__moon {
+      display: none;
+    }
+    :global(:root:not([data-theme="light"])) .mast__sun {
+      display: block;
+    }
+  }
+  @media (min-width: 880px) {
+    .mast__nav {
+      display: flex;
+    }
+  }
+</style>

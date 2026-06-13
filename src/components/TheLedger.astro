@@ -1,0 +1,231 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { ledger } from "../data/ledger.ts";
+import { site } from "../data/site.ts";
+
+const rows = ledger.manifest();
+// index of the last hardcoded "0 by design" constant row → caption goes after it
+const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
+---
+
+<section class="section" id="ledger" aria-labelledby="ledger-h">
+  <div class="wrap">
+    <SectionHeader
+      index="03"
+      glyph="§"
+      title="The Ledger"
+      sublabel="PACKING MANIFEST"
+      kicker="0 SERVERS · 0 BYTES UPLOADED"
+      id="ledger-h"
+    />
+
+    <div class="slip" role="table" aria-label="Shipping manifest">
+      <div class="slip__head">
+        <div class="slip__brand">
+          <span class="slip__from label">FROM</span>
+          <span class="slip__studio mono">{site.name.toUpperCase()}</span>
+          <span class="slip__sub mono">SOLO STUDIO · {site.maker.toUpperCase()}</span>
+        </div>
+        <div class="slip__barcode" aria-hidden="true">
+          {Array.from({ length: 42 }).map((_, i) => (
+            <span style={`--w:${(i * 7) % 3 === 0 ? 3 : 1}px`}></span>
+          ))}
+          <span class="slip__barcode-n mono">OPEN-BOX · {site.taglineAlt ? "LOCAL-FIRST" : ""}</span>
+        </div>
+      </div>
+
+      <div class="slip__rows" role="rowgroup">
+        {
+          rows.map((r, i) => (
+            <>
+              <div
+                class:list={[
+                  "slip__row",
+                  { "slip__row--fixed": r.fixed, "slip__row--real": r.label === "TOTAL INSTALLS" },
+                ]}
+                role="row"
+              >
+                <span class="slip__rn mono" aria-hidden="true">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span class="slip__label mono" role="cell">
+                  {r.label}
+                </span>
+                <span class="slip__dots" aria-hidden="true" />
+                <span class="slip__value mono" role="cell">
+                  {r.value}
+                </span>
+              </div>
+              {i === lastFixed && (
+                <p class="slip__caption mono" role="presentation">
+                  <span class="glyph">⌀</span> SERVERS · BYTES · ACCOUNTS ARE FIXED 0 —
+                  <strong> BY DESIGN, LOCAL-FIRST</strong>. NEVER MEASURED, NEVER UPLOADED.
+                </p>
+              )}
+            </>
+          ))
+        }
+      </div>
+
+      <div class="slip__foot">
+        <span class="slip__stamp mono">NOTHING UPLOADED</span>
+        <span class="slip__foot-note mono">
+          EVERY ROW COMPUTED ON-DEVICE · THIS SLIP IS THE RECEIPT
+        </span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .slip {
+    border: var(--hair-strong) solid var(--ink);
+    background: var(--field);
+    max-width: 760px;
+  }
+  .slip__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1.1rem 1.2rem;
+    border-bottom: var(--hair) dashed var(--line-2);
+  }
+  .slip__brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .slip__from {
+    font-size: 0.58rem;
+  }
+  .slip__studio {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .slip__sub {
+    font-size: 0.62rem;
+    color: var(--ink-2);
+    letter-spacing: 0.08em;
+  }
+  .slip__barcode {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.5px;
+    height: 38px;
+    flex-wrap: wrap;
+    max-width: 200px;
+    justify-content: flex-end;
+    position: relative;
+  }
+  .slip__barcode > span:not(.slip__barcode-n) {
+    width: var(--w, 1px);
+    height: 28px;
+    background: var(--ink);
+  }
+  .slip__barcode-n {
+    flex-basis: 100%;
+    text-align: right;
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+    margin-top: 0.3rem;
+  }
+  .slip__rows {
+    padding: 0.4rem 0;
+  }
+  .slip__row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 1.2rem;
+  }
+  .slip__row:nth-child(odd) {
+    background: var(--shade);
+  }
+  .slip__rn {
+    font-size: 0.62rem;
+    color: var(--ink-3);
+    flex: none;
+  }
+  .slip__label {
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-2);
+    flex: none;
+  }
+  .slip__dots {
+    flex: 1;
+    border-bottom: var(--hair) dotted var(--line-2);
+    transform: translateY(-2px);
+    min-width: 1.5rem;
+  }
+  .slip__value {
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    flex: none;
+    text-align: right;
+  }
+  /* the only real, fetched metric */
+  .slip__row--real .slip__value {
+    color: var(--accent);
+  }
+  /* the local-first constants: visibly fixed, never measured */
+  .slip__row--fixed .slip__label,
+  .slip__row--fixed .slip__value {
+    color: var(--ink-2);
+  }
+  .slip__row--fixed .slip__value {
+    font-weight: 600;
+  }
+  .slip__caption {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em;
+    align-items: baseline;
+    padding: 0.55rem 1.2rem 0.65rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    line-height: 1.55;
+    color: var(--ink-3);
+    border-top: var(--hair) dashed var(--line-2);
+    margin-top: 0.25rem;
+  }
+  .slip__caption .glyph {
+    color: var(--accent);
+  }
+  .slip__caption strong {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .slip__foot {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 1rem 1.2rem;
+    border-top: var(--hair) dashed var(--line-2);
+  }
+  .slip__stamp {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    border: var(--hair-strong) solid var(--accent);
+    border-radius: 2px;
+    padding: 0.35em 0.7em;
+    transform: rotate(-3deg);
+  }
+  .slip__foot-note {
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-align: right;
+    flex: 1;
+    min-width: 14ch;
+  }
+</style>

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" font-family="'Space Grotesk','Segoe UI',Helvetica,Arial,sans-serif">
+  <defs>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.05"/></feComponentTransfer>
+      <feComposite operator="over" in2="SourceGraphic"/>
+    </filter>
+    <style>
+      .ink { fill: #14130f; }
+      .mut { fill: #514d44; }
+      .fai { fill: #8a8478; }
+      .acc { fill: #ff5a1f; }
+      .mono { font-family: 'JetBrains Mono','Consolas',ui-monospace,monospace; }
+      .edge { fill: none; stroke: #14130f; stroke-width: 2; stroke-linejoin: round; }
+      .edgef { fill: rgba(20,19,15,0.04); stroke: #14130f; stroke-width: 2; stroke-linejoin: round; }
+      .flap { fill: rgba(20,19,15,0.03); stroke: #514d44; stroke-width: 1.6; stroke-linejoin: round; }
+      .hair { stroke: rgba(20,19,15,0.34); stroke-width: 1; }
+    </style>
+  </defs>
+
+  <!-- paper -->
+  <rect width="1200" height="630" fill="#f2f1ea"/>
+  <rect width="1200" height="630" filter="url(#grain)" opacity="0.6"/>
+
+  <!-- frame -->
+  <rect x="32" y="32" width="1136" height="566" fill="none" class="hair"/>
+
+  <!-- masthead -->
+  <text x="56" y="76" class="mono" font-size="17" letter-spacing="3" fill="#514d44">FIELD NOTES — VOL.∞</text>
+  <text x="1144" y="76" text-anchor="end" class="mono" font-size="17" letter-spacing="3" fill="#514d44">⌀ SCALE 1:1</text>
+  <line x1="56" y1="92" x2="1144" y2="92" class="hair"/>
+
+  <!-- wordmark -->
+  <text x="54" y="246" font-size="132" font-weight="600" letter-spacing="-6" fill="#14130f">The</text>
+  <text x="54" y="368" font-size="132" font-weight="600" letter-spacing="-6" fill="#14130f">Open</text>
+  <text x="54" y="490" font-size="132" font-weight="600" letter-spacing="-6" fill="#14130f">Box<tspan fill="#ff5a1f">.</tspan></text>
+
+  <!-- tagline + claims -->
+  <text x="58" y="540" class="mono" font-size="19" letter-spacing="1.5" fill="#14130f">SMALL TOOLS. OUT OF THE BOX. NOTHING HIDDEN.</text>
+  <g class="mono" font-size="15" letter-spacing="2" fill="#514d44">
+    <text x="58" y="572">LOCAL-FIRST</text>
+    <text x="240" y="572" fill="#8a8478">·</text>
+    <text x="262" y="572">0 BYTES UPLOADED</text>
+    <text x="500" y="572" fill="#8a8478">·</text>
+    <text x="522" y="572">NO ACCOUNTS</text>
+  </g>
+
+  <!-- ===== isometric open box, right side ===== -->
+  <g transform="translate(20,-6)">
+    <!-- back walls (faint) -->
+    <path class="edge" stroke="rgba(20,19,15,0.28)" d="M860 250 L980 315 L980 425 L860 360 Z"/>
+    <path class="edge" stroke="rgba(20,19,15,0.28)" d="M860 250 L740 315 L740 425 L860 360 Z"/>
+    <!-- floor -->
+    <path class="edge" stroke="rgba(20,19,15,0.4)" d="M860 360 L980 425 L860 490 L740 425 Z"/>
+    <!-- front walls -->
+    <path class="edgef" d="M740 315 L860 380 L860 490 L740 425 Z"/>
+    <path class="edgef" d="M860 380 L980 315 L980 425 L860 490 Z"/>
+    <!-- top rim -->
+    <path class="edge" d="M860 250 L980 315 L860 380 L740 315 Z"/>
+
+    <!-- splayed flaps -->
+    <path class="flap" d="M860 250 L820 190 L700 255 L740 315 Z"/>
+    <path class="flap" d="M860 250 L900 190 L1020 255 L980 315 Z"/>
+    <path class="flap" d="M740 315 L700 375 L820 440 L860 380 Z"/>
+    <path class="flap" d="M860 380 L900 440 L1020 375 L980 315 Z"/>
+
+    <!-- floating modules -->
+    <g>
+      <rect x="724" y="92" width="104" height="62" rx="2" fill="#f2f1ea" stroke="#14130f" stroke-width="2"/>
+      <text x="736" y="116" class="mono" font-size="13" letter-spacing="1" fill="#514d44">VOL.01</text>
+      <text x="736" y="140" font-size="20" font-weight="600" fill="#14130f">CANNED</text>
+      <circle cx="812" cy="106" r="4" fill="#ff5a1f"/>
+    </g>
+    <g>
+      <rect x="884" y="64" width="116" height="62" rx="2" fill="#f2f1ea" stroke="#14130f" stroke-width="2"/>
+      <text x="896" y="88" class="mono" font-size="13" letter-spacing="1" fill="#514d44">VOL.02</text>
+      <text x="896" y="112" font-size="20" font-weight="600" fill="#14130f">CONTINUE</text>
+    </g>
+    <g opacity="0.5">
+      <rect x="820" y="168" width="92" height="48" rx="2" fill="none" stroke="#8a8478" stroke-width="1.6" stroke-dasharray="5 4"/>
+      <text x="832" y="188" class="mono" font-size="12" letter-spacing="1" fill="#8a8478">VOL.03</text>
+      <text x="832" y="206" font-size="11" class="mono" fill="#8a8478">IN RESEARCH</text>
+    </g>
+  </g>
+
+  <!-- footer -->
+  <line x1="56" y1="560" x2="56" y2="560" class="hair"/>
+  <text x="1144" y="540" text-anchor="end" class="mono" font-size="16" letter-spacing="2" fill="#14130f">theopenbox.xyz</text>
+  <text x="1144" y="566" text-anchor="end" class="mono" font-size="13" letter-spacing="2" fill="#8a8478">© 2026 · BUILT BY YASH · SOLO</text>
+</svg>

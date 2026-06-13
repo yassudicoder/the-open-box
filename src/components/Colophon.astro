@@ -1,0 +1,149 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { site } from "../data/site.ts";
+import { tools } from "../data/tools.ts";
+---
+
+<section class="section" id="colophon" aria-labelledby="colophon-h">
+  <div class="wrap">
+    <SectionHeader
+      index="07"
+      glyph="✺"
+      title="Colophon"
+      sublabel="WHO · STACK · CONTACT"
+      kicker="MADE BY ONE PERSON"
+      id="colophon-h"
+    />
+
+    <div class="colo">
+      <div class="colo__block">
+        <h3 class="colo__h label">⌀ WHO</h3>
+        <p class="colo__lead">
+          Built by
+          <a class="colo__who-link" href={site.linkedin} target="_blank" rel="noopener">
+            {site.maker}</a>. {site.name} is a solo studio — designed, built and
+          shipped by one person.
+        </p>
+        <p class="colo__note">{site.makerNote}</p>
+        <a class="colo__toollink mono colo__who-li" href={site.linkedin} target="_blank" rel="noopener">
+          IN · YASH DESAI ▸
+        </a>
+      </div>
+
+      <div class="colo__block">
+        <h3 class="colo__h label">§ STACK · USES</h3>
+        <ul class="colo__uses">
+          {site.stack.map((s) => <li class="mono">{s}</li>)}
+        </ul>
+        <p class="colo__note">
+          No analytics. No cookies. No third-party fonts at runtime — everything
+          self-hosted. This page itself uploads 0 bytes.
+        </p>
+      </div>
+
+      <div class="colo__block">
+        <h3 class="colo__h label">✺ CONTACT</h3>
+        <a class="colo__email mono" href={`mailto:${site.email}`}>{site.email}</a>
+        <ul class="colo__links">
+          {
+            tools
+              .filter((t) => t.site)
+              .map((t) => (
+                <li>
+                  <a class="colo__toollink mono" href={t.site} target="_blank" rel="noopener">
+                    {t.vol} {t.codename} ▸
+                  </a>
+                </li>
+              ))
+          }
+          <li>
+            <a class="colo__toollink mono" href={site.linkedin} target="_blank" rel="noopener">LINKEDIN · YASH DESAI ▸</a>
+          </li>
+          <li>
+            <a class="colo__toollink mono" href={site.links.rss}>DISPATCHES RSS ▸</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .colo {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1.6rem, 4vw, 2.6rem);
+    border-top: var(--hair) solid var(--line);
+    padding-top: clamp(1.6rem, 4vw, 2.6rem);
+  }
+  .colo__h {
+    margin-bottom: 0.9rem;
+    color: var(--ink);
+  }
+  .colo__who-link {
+    font-weight: 600;
+    border-bottom: var(--hair-strong) solid var(--accent);
+    padding-bottom: 0.05em;
+    transition: color 0.15s var(--ease);
+  }
+  .colo__who-link:hover {
+    color: var(--accent);
+  }
+  .colo__who-li {
+    display: inline-block;
+    margin-top: 0.9rem;
+  }
+  .colo__lead {
+    font-size: 1.05rem;
+    margin-bottom: 0.6rem;
+  }
+  .colo__note {
+    color: var(--ink-2);
+    font-size: 0.88rem;
+    max-width: 46ch;
+  }
+  .colo__uses {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 0.9rem;
+  }
+  .colo__uses li {
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    padding: 0.3em 0.6em;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+  .colo__email {
+    display: inline-block;
+    font-size: 0.92rem;
+    font-weight: 600;
+    border-bottom: var(--hair-strong) solid var(--accent);
+    padding-bottom: 0.15em;
+    margin-bottom: 1rem;
+    transition: color 0.15s var(--ease);
+  }
+  .colo__email:hover {
+    color: var(--accent);
+  }
+  .colo__links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .colo__toollink {
+    font-size: 0.74rem;
+    color: var(--ink-2);
+    transition: color 0.15s var(--ease);
+  }
+  .colo__toollink:hover {
+    color: var(--accent);
+  }
+  @media (min-width: 760px) {
+    .colo {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

@@ -1,0 +1,55 @@
+---
+/* Section divider drawn as box-fold crease lines — a flattened-carton score net.
+   Solid edge lines + dashed score lines + small fold ticks. Decorative. */
+interface Props {
+  variant?: "fold" | "flap";
+}
+const { variant = "fold" } = Astro.props;
+const id = "crease-" + Math.random().toString(36).slice(2, 8);
+---
+
+<div class="crease" role="presentation" aria-hidden="true" data-variant={variant}>
+  <svg viewBox="0 0 1200 40" preserveAspectRatio="none">
+    <!-- top + bottom carton edges -->
+    <line x1="0" y1="2" x2="1200" y2="2" class="edge"></line>
+    <line x1="0" y1="38" x2="1200" y2="38" class="edge"></line>
+    <!-- center score line (the fold) -->
+    <line x1="0" y1="20" x2="1200" y2="20" class="score"></line>
+    {
+      variant === "fold" ? (
+        <>
+          <line x1="300" y1="2" x2="300" y2="38" class="score" />
+          <line x1="600" y1="2" x2="600" y2="38" class="score" />
+          <line x1="900" y1="2" x2="900" y2="38" class="score" />
+          {/* fold ticks at the center seam */}
+          <line x1="600" y1="14" x2="600" y2="26" class="edge" />
+        </>
+      ) : (
+        <>
+          <path d="M 540 2 L 600 20 L 660 2" class="edge" />
+          <path d="M 540 38 L 600 20 L 660 38" class="edge" />
+        </>
+      )
+    }
+  </svg>
+</div>
+
+<style>
+  .crease {
+    height: calc(var(--grid) * 5);
+  }
+  .crease .edge {
+    stroke: var(--line-2);
+    stroke-width: 1;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .crease .score {
+    stroke: var(--line-2);
+    stroke-width: 1;
+    stroke-dasharray: 6 5;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.75;
+  }
+</style>

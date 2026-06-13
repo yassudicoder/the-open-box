@@ -1,0 +1,62 @@
+---
+/* FIELD NOTES marquee ticker — matches the existing studio sites.
+   Content is duplicated once so the -50% translate loops seamlessly.
+   Pauses on hover; frozen under prefers-reduced-motion (handled in global.css). */
+interface Props {
+  lead: string; // "FIELD NOTES — VOL.∞"
+  items: readonly string[];
+  speed?: string; // e.g. "42s"
+  glyph?: string;
+}
+const { lead, items, speed = "42s", glyph = "✺" } = Astro.props;
+
+const sequence = [lead, ...items];
+---
+
+<div class="ticker" style={`--speed:${speed}`} role="marquee" aria-label={lead}>
+  <div class="ticker__track">
+    {
+      [0, 1].map((dup) => (
+        <div class="ticker__group" aria-hidden={dup === 1 ? "true" : undefined}>
+          {sequence.map((item, i) => (
+            <span class="ticker__item">
+              <span class="ticker__glyph glyph">{i === 0 ? glyph : "·"}</span>
+              <span class={i === 0 ? "ticker__lead" : "ticker__claim"}>{item}</span>
+            </span>
+          ))}
+        </div>
+      ))
+    }
+  </div>
+</div>
+
+<style>
+  .ticker__group {
+    display: inline-flex;
+    align-items: center;
+  }
+  .ticker__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85em;
+    padding-block: 0.55em;
+    padding-inline: 0.85em;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .ticker__glyph {
+    color: var(--accent);
+    font-size: 0.85em;
+  }
+  .ticker__lead {
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: 0.18em;
+  }
+  .ticker__claim {
+    color: var(--ink-2);
+  }
+</style>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <style>
+    :root { color-scheme: light dark; }
+    .e { fill: none; stroke: #14130f; stroke-width: 2.1; stroke-linejoin: round; stroke-linecap: round; }
+    .m { fill: none; stroke: #ff5a1f; stroke-width: 2.1; }
+    .lid { transform-box: fill-box; transform-origin: bottom; animation: open 4.5s ease-in-out infinite; }
+    @keyframes open {
+      0%, 18%   { transform: rotate(0deg) scaleY(0.18); }
+      40%, 100% { transform: rotate(0deg) scaleY(1); }
+    }
+    @media (prefers-color-scheme: dark) {
+      .e { stroke: #e9e7df; }
+      .m { stroke: #ff6a33; }
+    }
+  </style>
+  <!-- box body -->
+  <path class="e" d="M6 14 L16 18 L26 14 L26 25 L16 29 L6 25 Z"/>
+  <path class="e" d="M16 18 L16 29"/>
+  <!-- open lid flaps -->
+  <g class="lid">
+    <path class="e" d="M6 14 L11 9 L16 11 L16 18 Z"/>
+    <path class="e" d="M26 14 L21 9 L16 11 L16 18 Z"/>
+  </g>
+  <!-- module rising out -->
+  <rect class="m" x="13" y="12" width="6" height="4.5" rx="0.5"/>
+</svg>

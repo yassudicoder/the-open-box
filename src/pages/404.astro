@@ -1,0 +1,57 @@
+---
+import Base from "../layouts/Base.astro";
+import BoxMark from "../components/BoxMark.astro";
+---
+
+<Base title="404 — Empty Box" description="Nothing in this box." path="/404">
+  <section class="nf section">
+    <div class="wrap nf__inner">
+      <BoxMark size={68} class="nf__mark" />
+      <p class="label">ERROR · 404 · EMPTY BOX</p>
+      <h1 class="display nf__title">Nothing<br />in here.</h1>
+      <p class="nf__line mono">
+        THIS BOX SHIPPED EMPTY <span class="dot-sep">·</span> 0 BYTES INSIDE
+      </p>
+      <p class="nf__copy">
+        The page you opened isn't on the manifest. Everything we've actually
+        shipped lives in the index.
+      </p>
+      <div class="nf__cta">
+        <a class="btn btn--accent" href="/#index">OPEN THE INDEX ▸</a>
+        <a class="btn btn--ghost" href="/">◂ BACK TO TOP</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .nf__inner {
+    max-width: 60ch;
+    padding-block: clamp(2rem, 8vw, 6rem);
+  }
+  .nf__mark {
+    color: var(--ink);
+    margin-bottom: 1.5rem;
+    opacity: 0.7;
+  }
+  .nf__title {
+    margin: 0.8rem 0 1rem;
+  }
+  .nf__line {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin-bottom: 1rem;
+  }
+  .nf__copy {
+    color: var(--ink-2);
+    margin-bottom: 1.8rem;
+    max-width: 48ch;
+  }
+  .nf__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+</style>

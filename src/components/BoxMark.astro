@@ -1,0 +1,49 @@
+---
+/* The open-box line mark — used in the masthead and as the favicon source.
+   A tiny isometric open carton with lid flaps ajar. Hairline strokes. */
+interface Props {
+  size?: number;
+  class?: string;
+  title?: string;
+}
+const { size = 26, class: cls = "", title = "The Open Box" } = Astro.props;
+---
+
+<svg
+  class={`boxmark ${cls}`}
+  width={size}
+  height={size}
+  viewBox="0 0 48 48"
+  fill="none"
+  role="img"
+  aria-label={title}
+>
+  <!-- open lid flaps -->
+  <path class="bm-lid" d="M24 17 L10 12 L18 6 L32 11 Z" />
+  <path class="bm-lid" d="M24 17 L38 12 L30 6 L16 11 Z" opacity="0.55" />
+  <!-- box body (isometric) -->
+  <path class="bm-edge" d="M24 17 L10 12 L10 30 L24 36 Z" />
+  <path class="bm-edge" d="M24 17 L38 12 L38 30 L24 36 Z" />
+  <path class="bm-edge" d="M10 12 L24 17 L38 12" />
+  <!-- a module rising out -->
+  <rect class="bm-mod" x="20" y="20" width="8" height="6" rx="0.5" />
+</svg>
+
+<style>
+  .boxmark {
+    display: block;
+    overflow: visible;
+  }
+  .bm-edge,
+  .bm-lid {
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linejoin: round;
+    fill: none;
+  }
+  .bm-mod {
+    stroke: var(--accent);
+    stroke-width: 1.6;
+    fill: none;
+  }
+</style>

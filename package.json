@@ -1,0 +1,24 @@
+{
+  "name": "the-open-box",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Open Box — umbrella studio site for small, honest, local-first tools.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && astro build",
+    "installs": "node scripts/fetch-installs.mjs",
+    "og": "node scripts/make-og.mjs",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.3.0",
+    "@astrojs/rss": "^4.0.11",
+    "@astrojs/sitemap": "^3.4.0",
+    "@fontsource-variable/jetbrains-mono": "^5.2.5",
+    "@fontsource-variable/space-grotesk": "^5.2.5",
+    "astro": "^5.13.0"
+  }
+}

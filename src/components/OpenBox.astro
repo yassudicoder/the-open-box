@@ -1,0 +1,1216 @@
+---
+/* =============================================================================
+   THE OPEN BOX — signature hero.  "Unbox on interaction."
+   CSS 3D matte carton (Option A: no WebGL). DEFAULT = sealed & closed, modules
+   hidden. On first of {hover · focus · tap · scrolled-into-view} the lid flaps
+   hinge open and the product modules rise out, fan, and settle — then STAY open
+   (parallax tilt + gentle bob). Modules are REAL focusable links, always in the
+   DOM. prefers-reduced-motion → already-open static state, fully usable.
+   ========================================================================== */
+import { site } from "../data/site.ts";
+import { tools } from "../data/tools.ts";
+
+// The three modules in the box: VOL.01, VOL.02, dimmed VOL.03.
+const modules = tools.slice(0, 3);
+
+// Screen-space positions the modules fan out to once the box opens (px from
+// stage centre). Middle rides highest. The scroll handoff destination is each
+// module's real row in THE INDEX, computed live in JS (matched by data-vol).
+const positions = [
+  { x: -142, y: -126 },
+  { x: 4, y: -178 },
+  { x: 146, y: -120 },
+];
+
+// Build-time stamp for the blueprint "PACKED ON" detail.
+const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
+---
+
+<section class="hero" id="top">
+  <div class="wrap hero__grid">
+    <div class="hero__lede">
+      <p class="hero__eyebrow label">
+        <span class="glyph accent" aria-hidden="true">⌀</span>
+        STUDIO · {site.volume} · {modules.length} MODULES
+      </p>
+      <h1 class="display hero__title">
+        The<br />Open<br />Box<span class="hero__caret" aria-hidden="true"></span>
+      </h1>
+      <p class="hero__tagline mono">{site.tagline}</p>
+      <p class="hero__manifesto">{site.manifesto}</p>
+      <div class="hero__cta">
+        <a class="btn btn--accent" href="#index">
+          OPEN THE INDEX <span aria-hidden="true">▸</span>
+        </a>
+        <button class="btn btn--ghost" data-palette-open>
+          <span class="btn__key">⌘K</span> SEARCH
+        </button>
+      </div>
+      <dl class="hero__facts">
+        <div><dt class="label">LOCAL-FIRST</dt><dd class="num">0 SERVERS</dd></div>
+        <div><dt class="label">UPLOADED</dt><dd class="num">0 BYTES</dd></div>
+        <div><dt class="label">ACCOUNTS</dt><dd class="num">00</dd></div>
+      </dl>
+    </div>
+
+    <div class="hero__stage">
+      <div class="boxstage" data-boxstage tabindex="-1">
+        <div class="boxstage__measure label" aria-hidden="true">
+          <span>SCALE 1:1</span><span>⌀ THE OPEN BOX</span>
+        </div>
+
+        <!-- blueprint ambient framing — decorative, hairline, click-through -->
+        <div class="bp" aria-hidden="true">
+          <div class="bp__grid"></div>
+          <span class="bp__crop bp__crop--tl"></span>
+          <span class="bp__crop bp__crop--tr"></span>
+          <span class="bp__crop bp__crop--bl"></span>
+          <span class="bp__crop bp__crop--br"></span>
+
+          <div class="bp__dim bp__dim--w">
+            <span class="bp__dim-label mono">⌀ W · SCALE 1:1</span>
+          </div>
+          <div class="bp__dim bp__dim--h">
+            <span class="bp__dim-label mono">H · 1:1</span>
+          </div>
+
+          <div class="bp__stamp">
+            <svg viewBox="0 0 100 100" role="presentation">
+              <defs>
+                <path
+                  id="bpStampPath"
+                  d="M50,50 m-33,0 a33,33 0 1,1 66,0 a33,33 0 1,1 -66,0"
+                  fill="none"
+                ></path>
+              </defs>
+              <text class="bp__stamp-text">
+                <textPath href="#bpStampPath" startOffset="0">
+                  ✺ PACKED ON {packedOn} · LOCAL-FIRST ·
+                </textPath>
+              </text>
+              <text x="50" y="56" text-anchor="middle" class="bp__stamp-mark">✺</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="boxstage__float" data-float>
+          <div class="scene" aria-hidden="true">
+            <div class="tilt" data-tilt>
+              <div class="box3d">
+                <!-- opaque carton: floor + four matte walls -->
+                <div class="face floor"></div>
+                <div class="face wall back"></div>
+                <div class="face wall left"></div>
+                <div class="face wall right"></div>
+                <div class="face wall front"></div>
+                <!-- four hinged lid flaps (outer: front/back · inner: left/right) -->
+                <div class="wall-hinge h-back"><div class="flap flap--inner"></div></div>
+                <div class="wall-hinge h-left"><div class="flap flap--inner"></div></div>
+                <div class="wall-hinge h-right"><div class="flap flap--outer"></div></div>
+                <div class="wall-hinge h-front"><div class="flap flap--outer"></div></div>
+                <!-- sealing tape across the centre seam (closed only) -->
+                <div class="lid-tape"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- REAL focusable module links; hidden until the box opens -->
+          <ul class="modules" data-modules>
+            {
+              modules.map((t, i) => {
+                const href = t.site || t.store || "";
+                const isLink = Boolean(href) && t.status !== "research";
+                const Tag = isLink ? "a" : "div";
+                const pos = positions[i] ?? { x: 0, y: -150 };
+                const preview = t.specs?.[0] ?? "LOCAL-FIRST";
+                return (
+                  <li
+                    class="module-slot"
+                    data-vol={t.vol}
+                    style={`--i:${i}; --mx:${pos.x}px; --my:${pos.y}px;`}
+                  >
+                    <Tag
+                      class:list={["module", { "module--dim": !isLink }]}
+                      {...(isLink
+                        ? {
+                            href,
+                            target: "_blank",
+                            rel: "noopener",
+                            "aria-label": `${t.vol} — ${t.title}. ${t.statusLabel}. ${t.oneLiner} Opens product site.`,
+                          }
+                        : { "aria-label": `${t.vol} — ${t.statusLabel}. ${t.oneLiner}` })}
+                      data-module
+                      tabindex={isLink ? "0" : "-1"}
+                    >
+                      <span class="module__card">
+                        <span class="module__head">
+                          <span class="module__vol mono">{t.vol}</span>
+                          <span class="pill module__pill" data-status={t.status}>
+                            {t.statusLabel}
+                          </span>
+                        </span>
+                        <span class="module__name">{t.codename}</span>
+
+                        <span class="module__inspect">
+                          <span class="module__line">{t.oneLiner}</span>
+                          <span class="module__preview">
+                            <span class="module__preview-tag mono">▸ PREVIEW</span>
+                            <span class="module__preview-body mono">
+                              {preview}<i class="module__caret" aria-hidden="true" />
+                            </span>
+                          </span>
+                          {isLink && (
+                            <span class="module__open mono">
+                              OPEN <span aria-hidden="true">▸</span>
+                            </span>
+                          )}
+                        </span>
+                      </span>
+                    </Tag>
+                  </li>
+                );
+              })
+            }
+          </ul>
+        </div>
+
+        <!-- closed-state seal badge -->
+        <p class="boxstage__seal mono" data-seal aria-hidden="true">
+          <span class="glyph">⌀</span> SEALED
+        </p>
+
+        <p class="boxstage__status mono" aria-hidden="true">
+          <kbd>↑</kbd><kbd>↓</kbd> TO INSPECT
+          <span class="dot-sep">·</span>
+          <kbd>↵</kbd> TO OPEN
+        </p>
+        <p class="boxstage__hint mono" data-hint aria-hidden="true">
+          HOVER · FOCUS · TAP TO UNBOX
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero__scrollcue label" aria-hidden="true">
+    <span>SCROLL · HANDOFF TO INDEX</span>
+    <span class="hero__scrollcue-line"></span>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    padding-top: clamp(1.5rem, 4vw, 3rem);
+    padding-bottom: clamp(2rem, 5vw, 4rem);
+  }
+  .hero__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+  }
+
+  /* ---- lede ---- */
+  .hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1.2rem;
+  }
+  .hero__title {
+    margin-bottom: 1.1rem;
+  }
+  .hero__caret {
+    display: inline-block;
+    width: 0.5em;
+    height: 0.16em;
+    margin-left: 0.12em;
+    background: var(--accent);
+    vertical-align: baseline;
+    animation: caret-blink 1.1s steps(1) infinite;
+  }
+  @keyframes caret-blink {
+    50% {
+      opacity: 0;
+    }
+  }
+  .hero__tagline {
+    font-size: 0.9rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 0.9rem;
+  }
+  .hero__manifesto {
+    max-width: 42ch;
+    color: var(--ink-2);
+    font-size: 1.02rem;
+    margin-bottom: 1.6rem;
+  }
+  .hero__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-bottom: 2rem;
+  }
+  .hero__facts {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: clamp(1rem, 4vw, 2.4rem);
+    justify-content: start;
+    padding-top: 1.4rem;
+    border-top: var(--hair) solid var(--line);
+    width: fit-content;
+  }
+  .hero__facts dt {
+    margin-bottom: 0.3em;
+  }
+  .hero__facts dd {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  /* ---- stage ---- */
+  .hero__stage {
+    display: grid;
+    place-items: center;
+    min-height: 460px; /* reserve space → zero CLS */
+  }
+  .boxstage {
+    position: relative;
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    outline: none;
+    /* scroll-driven handoff: 0 = floating, 1 = handed down to index */
+    --handoff: 0;
+  }
+  .boxstage__measure {
+    position: absolute;
+    inset: 0 0 auto 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.62rem;
+    color: var(--ink-3);
+    border-bottom: var(--hair) dashed var(--line-2);
+    padding-bottom: 0.5rem;
+  }
+  .boxstage__float {
+    position: absolute;
+    inset: 0;
+  }
+  .boxstage.is-open .boxstage__float {
+    animation: stage-bob 7s ease-in-out infinite 1.1s;
+  }
+  @keyframes stage-bob {
+    0%,
+    100% {
+      transform: translateY(-5px);
+    }
+    50% {
+      transform: translateY(5px);
+    }
+  }
+
+  .boxstage__seal,
+  .boxstage__status,
+  .boxstage__hint {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+  .boxstage__seal {
+    top: 20%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.62rem;
+    letter-spacing: 0.24em;
+    color: var(--ink-2);
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    padding: 0.32em 0.75em;
+    background: color-mix(in oklab, var(--paper) 78%, transparent);
+    transition: opacity 0.35s var(--ease);
+  }
+  .boxstage__status {
+    bottom: -0.25rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    font-size: 0.64rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+  }
+  .boxstage__status kbd {
+    padding: 0.15em 0.35em;
+  }
+  .boxstage__hint {
+    bottom: -1.7rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    transition: opacity 0.3s var(--ease);
+  }
+  .boxstage.is-open .boxstage__seal,
+  .boxstage.is-open .boxstage__hint {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* ---- blueprint ambient framing — decorative, hairline, click-through ---- */
+  .bp {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .bp__grid {
+    position: absolute;
+    inset: 6% 4% 10% 4%;
+    background-image: radial-gradient(var(--line-2) 1px, transparent 1.4px);
+    background-size: 19px 19px;
+    background-position: center;
+    opacity: 0.5;
+    -webkit-mask-image: radial-gradient(120% 100% at 58% 46%, #000 36%, transparent 78%);
+    mask-image: radial-gradient(120% 100% at 58% 46%, #000 36%, transparent 78%);
+  }
+  .bp__crop {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 0 solid var(--line-2);
+  }
+  .bp__crop--tl {
+    top: 6%;
+    left: 2%;
+    border-top-width: 1px;
+    border-left-width: 1px;
+  }
+  .bp__crop--tr {
+    top: 6%;
+    right: 2%;
+    border-top-width: 1px;
+    border-right-width: 1px;
+  }
+  .bp__crop--bl {
+    bottom: 4%;
+    left: 2%;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+  }
+  .bp__crop--br {
+    bottom: 4%;
+    right: 2%;
+    border-bottom-width: 1px;
+    border-right-width: 1px;
+  }
+  .bp__dim {
+    position: absolute;
+    background: var(--line-2);
+  }
+  .bp__dim::before,
+  .bp__dim::after {
+    content: "";
+    position: absolute;
+    background: var(--line-2);
+  }
+  .bp__dim--w {
+    left: 16%;
+    right: 16%;
+    bottom: 16%;
+    height: 1px;
+  }
+  .bp__dim--w::before,
+  .bp__dim--w::after {
+    top: -3px;
+    width: 1px;
+    height: 7px;
+  }
+  .bp__dim--w::before {
+    left: 0;
+  }
+  .bp__dim--w::after {
+    right: 0;
+  }
+  .bp__dim--h {
+    right: 9%;
+    top: 31%;
+    bottom: 31%;
+    width: 1px;
+  }
+  .bp__dim--h::before,
+  .bp__dim--h::after {
+    left: -3px;
+    height: 1px;
+    width: 7px;
+  }
+  .bp__dim--h::before {
+    top: 0;
+  }
+  .bp__dim--h::after {
+    bottom: 0;
+  }
+  .bp__dim-label {
+    position: absolute;
+    font-size: 0.5rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    background: var(--paper);
+    padding: 0 0.35em;
+    white-space: nowrap;
+  }
+  .bp__dim--w .bp__dim-label {
+    left: 50%;
+    top: 0;
+    transform: translate(-50%, -50%);
+  }
+  .bp__dim--h .bp__dim-label {
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+  .bp__stamp {
+    position: absolute;
+    right: 0;
+    bottom: 6%;
+    width: 86px;
+    height: 86px;
+    opacity: 0.6;
+    animation: bp-stamp-spin 26s linear infinite;
+  }
+  .bp__stamp svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .bp__stamp-text {
+    font-family: var(--font-mono);
+    font-size: 7.3px;
+    letter-spacing: 1.1px;
+    fill: var(--ink-3);
+    text-transform: uppercase;
+  }
+  .bp__stamp-mark {
+    font-size: 13px;
+    fill: var(--accent);
+    opacity: 0.85;
+  }
+  @keyframes bp-stamp-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ---- 3D scene ---- */
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    perspective: 1250px;
+    perspective-origin: 50% 44%;
+    z-index: 1;
+  }
+  .tilt {
+    transform-style: preserve-3d;
+    /* fixed 3/4 isometric view + damped cursor-parallax deltas (open only) */
+    transform: rotateX(calc(-24deg + var(--ptx, 0deg)))
+      rotateY(calc(-32deg + var(--pty, 0deg)));
+  }
+  .box3d {
+    --bw: 196px; /* width  (square footprint) */
+    --bd: 196px; /* depth  */
+    --bh: 124px; /* height */
+    --hw: calc(var(--bw) / 2);
+    --hd: calc(var(--bd) / 2);
+    --hh: calc(var(--bh) / 2);
+    --flaplen: calc(var(--bd) / 2);
+    position: relative;
+    width: var(--bw);
+    height: var(--bh);
+    transform-style: preserve-3d;
+  }
+
+  .face,
+  .wall-hinge,
+  .flap {
+    position: absolute;
+    box-sizing: border-box;
+    transform-style: preserve-3d;
+  }
+
+  /* matte opaque walls */
+  .wall {
+    top: 50%;
+    left: 50%;
+    width: var(--bw);
+    height: var(--bh);
+    margin-left: calc(var(--bw) / -2);
+    margin-top: calc(var(--bh) / -2);
+    border: 1px solid var(--box-edge);
+    background: var(--box-front);
+  }
+  .wall.front {
+    transform: translateZ(var(--hd));
+    background: var(--box-front);
+  }
+  .wall.back {
+    transform: rotateY(180deg) translateZ(var(--hd));
+    background: var(--box-side);
+  }
+  .wall.right {
+    width: var(--bd);
+    margin-left: calc(var(--bd) / -2);
+    transform: rotateY(90deg) translateZ(var(--hw));
+    background: var(--box-side);
+  }
+  .wall.left {
+    width: var(--bd);
+    margin-left: calc(var(--bd) / -2);
+    transform: rotateY(-90deg) translateZ(var(--hw));
+    background: var(--box-front);
+  }
+  .floor {
+    top: 50%;
+    left: 50%;
+    width: var(--bw);
+    height: var(--bd);
+    margin-left: calc(var(--bw) / -2);
+    margin-top: calc(var(--bd) / -2);
+    border: 1px solid var(--box-edge);
+    background: var(--box-floor);
+    transform: rotateX(90deg) translateZ(var(--hh));
+  }
+
+  /* hinges: zero-size anchors sitting on each top rim edge */
+  .wall-hinge {
+    top: 50%;
+    left: 50%;
+    width: var(--bw);
+    height: 0;
+    margin-left: calc(var(--bw) / -2);
+    transform-style: preserve-3d;
+  }
+  .h-front {
+    transform: translateY(calc(var(--hh) * -1)) translateZ(var(--hd));
+  }
+  .h-back {
+    transform: rotateY(180deg) translateY(calc(var(--hh) * -1))
+      translateZ(var(--hd));
+  }
+  /* inner pair hinges sit 4px lower → they tuck under the full-width outer
+     pair when sealed (no z-fight) */
+  .h-right {
+    width: var(--bd);
+    margin-left: calc(var(--bd) / -2);
+    transform: rotateY(90deg) translateY(calc(var(--hh) * -1 + 4px))
+      translateZ(var(--hw));
+  }
+  .h-left {
+    width: var(--bd);
+    margin-left: calc(var(--bd) / -2);
+    transform: rotateY(-90deg) translateY(calc(var(--hh) * -1 + 4px))
+      translateZ(var(--hw));
+  }
+
+  /* flap panel: extends up from the hinge; rotateX folds it.
+     CLOSED (base) = folded flat inward over the opening. */
+  .flap {
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: var(--flaplen);
+    transform-origin: 50% 100%;
+    border: 1px solid var(--box-edge);
+    background: var(--box-top);
+    transition: transform 0.85s var(--ease-out), opacity 0.4s var(--ease-out);
+  }
+  /* CLOSED (base) = folded inward, flat over the opening → sealed top + seam */
+  .flap--outer {
+    transform: rotateX(90deg);
+  }
+  /* inner pair stays invisible while sealed (the full-width outer pair already
+     covers the top) → zero poke; it fades in as it swings open */
+  .flap--inner {
+    width: 96%;
+    left: 2%;
+    opacity: 0;
+    transform: rotateX(90deg);
+  }
+  .boxstage.is-open .flap--inner {
+    opacity: 1;
+  }
+  /* OPEN: hinge down/outward, splay flat, staggered → interior revealed */
+  .boxstage.is-open .flap--outer {
+    transform: rotateX(-96deg);
+  }
+  .boxstage.is-open .flap--inner {
+    transform: rotateX(-112deg);
+  }
+  .boxstage.is-open .h-front .flap {
+    transition-delay: 0.02s;
+  }
+  .boxstage.is-open .h-right .flap {
+    transition-delay: 0.09s;
+  }
+  .boxstage.is-open .h-back .flap {
+    transition-delay: 0.16s;
+  }
+  .boxstage.is-open .h-left .flap {
+    transition-delay: 0.23s;
+  }
+
+  /* sealing tape across the centre seam (visible only while closed) */
+  .lid-tape {
+    top: 50%;
+    left: 50%;
+    width: calc(var(--bw) * 0.86);
+    height: 26px;
+    margin-left: calc(var(--bw) * -0.43);
+    margin-top: -13px;
+    background: var(--box-tape);
+    border: 1px solid color-mix(in oklab, var(--box-edge) 60%, transparent);
+    transform: rotateX(90deg) translateZ(calc(var(--hh) * -1 - 1px));
+    transition: opacity 0.3s var(--ease);
+  }
+  .boxstage.is-open .lid-tape {
+    opacity: 0;
+  }
+
+  /* ---- modules ---- */
+  .modules {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+  /* SCROLL HANDOFF: each module flies from the box into its real INDEX row.
+     --ho-x / --ho-y / --ho-s / --ho-op are computed live in JS each frame
+     (rAF-throttled) from the box and the matching row's positions. */
+  .module-slot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translate(var(--mx), var(--my))
+      translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
+    opacity: var(--ho-op, 1);
+  }
+  .module-slot:hover,
+  .module-slot:focus-within {
+    z-index: 6;
+  }
+  /* during the handoff the modules are flying/fading — don't let them eat
+     clicks meant for the catalog rows beneath */
+  .boxstage.is-handing-off .module {
+    pointer-events: none;
+  }
+  .module {
+    display: block;
+    pointer-events: none;
+    width: max-content;
+    /* CLOSED base: collapsed into the box, hidden */
+    opacity: 0;
+    transform: translateY(64px) scale(0.4);
+    outline-offset: 4px;
+  }
+  .boxstage.is-open .module {
+    pointer-events: auto;
+    animation: module-rise 0.72s var(--ease-out) forwards
+        calc(0.18s + var(--i) * 0.16s),
+      module-bob 6.5s ease-in-out infinite calc(1.4s + var(--i) * 0.35s);
+  }
+  @keyframes module-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(64px) scale(0.4);
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  @keyframes module-bob {
+    0%,
+    100% {
+      transform: translateY(-3px);
+    }
+    50% {
+      transform: translateY(3px);
+    }
+  }
+  .module__card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+    width: 166px;
+    padding: 0.62rem 0.74rem;
+    background: color-mix(in oklab, var(--paper) 95%, transparent);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 3px;
+    transition: transform 0.18s var(--ease), border-color 0.18s var(--ease),
+      box-shadow 0.18s var(--ease);
+  }
+  .module:hover .module__card,
+  .module:focus-visible .module__card,
+  .module:focus-within .module__card {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow: 0 8px 24px -12px rgba(0, 0, 0, 0.5),
+      0 0 0 3px color-mix(in oklab, var(--accent) 15%, transparent);
+  }
+  .module__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .module__vol {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+  }
+  .module__pill {
+    font-size: 0.54rem;
+    padding: 0.2em 0.4em;
+  }
+  .module__name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.2rem;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+
+  /* roomy inspect dropdown — appears on hover/focus; absolute so it never
+     shifts the card or causes layout reflow */
+  .module__inspect {
+    position: absolute;
+    top: calc(100% + 7px);
+    left: 50%;
+    width: 250px;
+    max-width: 76vw;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.78rem 0.85rem;
+    background: var(--paper);
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 3px;
+    box-shadow: 0 16px 36px -18px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(-50%) translateY(-6px) scale(0.98);
+    transform-origin: top center;
+    transition: opacity 0.2s var(--ease), transform 0.22s var(--ease-out);
+    z-index: 4;
+  }
+  .module:hover .module__inspect,
+  .module:focus-visible .module__inspect,
+  .module:focus-within .module__inspect {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  .module__inspect::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    width: 9px;
+    height: 9px;
+    transform: translateX(-50%) rotate(45deg);
+    background: var(--paper);
+    border-left: var(--hair-strong) solid var(--ink);
+    border-top: var(--hair-strong) solid var(--ink);
+  }
+  .module__line {
+    font-family: var(--font-display);
+    font-size: 0.84rem;
+    line-height: 1.45;
+    color: var(--ink);
+    text-wrap: pretty;
+  }
+  .module__preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+    padding: 0.5rem 0.55rem;
+    background: var(--field);
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+  }
+  .module__preview-tag {
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-3);
+  }
+  .module__preview-body {
+    display: flex;
+    align-items: center;
+    font-size: 0.66rem;
+    letter-spacing: 0.03em;
+    color: var(--ink);
+  }
+  .module__caret {
+    display: inline-block;
+    width: 0.5em;
+    height: 1.05em;
+    margin-left: 0.3em;
+    background: var(--accent);
+    animation: caret-blink 1.05s steps(1) infinite;
+  }
+  .module__open {
+    align-self: flex-start;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    border-bottom: var(--hair-strong) solid var(--accent);
+    padding-bottom: 0.1em;
+  }
+
+  .module--dim {
+    cursor: default;
+  }
+  .module--dim .module__card {
+    border-style: dashed;
+    border-color: var(--line-2);
+    opacity: 0.66;
+  }
+  .module--dim .module__name {
+    color: var(--ink-3);
+    letter-spacing: 0.1em;
+  }
+  .module--dim .module__caret {
+    background: var(--ink-3);
+  }
+
+  /* ---- scroll cue ---- */
+  .hero__scrollcue {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-top: clamp(1.5rem, 4vw, 3rem);
+    font-size: 0.62rem;
+    color: var(--ink-3);
+  }
+  .hero__scrollcue-line {
+    width: 1px;
+    height: 28px;
+    background: linear-gradient(var(--line-2), transparent);
+  }
+
+  /* ---- responsive: two columns on wide screens ---- */
+  @media (min-width: 920px) {
+    .hero__grid {
+      grid-template-columns: 1.05fr 1fr;
+    }
+    .hero__stage {
+      min-height: 540px;
+    }
+    .boxstage {
+      max-width: 540px;
+    }
+  }
+
+  /* ---- small screens: shrink carton, pull modules inward, no overflow ---- */
+  @media (max-width: 560px) {
+    .box3d {
+      --bw: 146px;
+      --bd: 146px;
+      --bh: 96px;
+    }
+    .hero__stage {
+      min-height: 400px;
+    }
+    .module-slot {
+      transform: translate(-50%, -50%)
+        translate(calc(var(--mx) * 0.64), calc(var(--my) * 0.82))
+        translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
+    }
+    .module__card {
+      width: 146px;
+    }
+    .module__inspect {
+      width: 210px;
+    }
+  }
+
+  /* ---- reduced motion: render ALREADY OPEN + static, fully placed ----
+     Forced purely in CSS so it holds whether or not JS runs. */
+  @media (prefers-reduced-motion: reduce) {
+    .flap--outer {
+      transform: rotateX(-96deg) !important;
+    }
+    .flap--inner {
+      transform: rotateX(-112deg) !important;
+      opacity: 1 !important;
+    }
+    .lid-tape {
+      opacity: 0 !important;
+    }
+    .module {
+      opacity: 1 !important;
+      transform: none !important;
+      pointer-events: auto;
+    }
+    .boxstage__float,
+    .flap,
+    .module,
+    .lid-tape,
+    .bp__stamp,
+    .module__caret {
+      animation: none !important;
+      transition: none !important;
+    }
+    .boxstage__seal,
+    .boxstage__hint {
+      display: none;
+    }
+    .hero__caret,
+    .hero__scrollcue-line {
+      animation: none;
+    }
+  }
+</style>
+
+<script>
+  // Progressive enhancement. The box is sealed by default; it unboxes on the
+  // first of {hover · focus · tap · in-view}. Once open it stays open.
+  // Works with JS off too: the no-JS fallback opens via CSS (see below).
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const coarse = window.matchMedia("(pointer: coarse)");
+  const narrow = window.matchMedia("(max-width: 760px)");
+
+  function initBox() {
+    const stage = document.querySelector<HTMLElement>("[data-boxstage]");
+    const tilt = document.querySelector<HTMLElement>("[data-tilt]");
+    const modules = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-module]"),
+    );
+    if (!stage) return;
+
+    let opened = false;
+    let autoTimer = 0;
+
+    function open() {
+      if (opened) return;
+      opened = true;
+      window.clearTimeout(autoTimer);
+      stage.classList.add("is-open");
+    }
+
+    if (reduce.matches) {
+      // Already open + static; no animation.
+      stage.classList.add("is-open", "is-static");
+      opened = true;
+    } else {
+      // Reveal on arrival (a short sealed dwell so "closed" registers), or
+      // sooner on the first interaction — whichever fires first. Once open,
+      // it stays open so the module links remain usable.
+      autoTimer = window.setTimeout(open, 1100);
+      stage.addEventListener("pointerenter", open, { once: true });
+      stage.addEventListener("focusin", open, { once: true });
+      stage.addEventListener("click", open, { once: true });
+      stage.addEventListener("touchstart", open, { once: true, passive: true });
+    }
+
+    /* ---- cursor parallax (desktop, motion-ok, only once open) ---- */
+    if (tilt && !reduce.matches && !coarse.matches) {
+      let tx = 0,
+        ty = 0,
+        cx = 0,
+        cy = 0,
+        raf = 0;
+      const damp = () => {
+        cx += (tx - cx) * 0.08;
+        cy += (ty - cy) * 0.08;
+        tilt.style.setProperty("--ptx", cx.toFixed(2) + "deg");
+        tilt.style.setProperty("--pty", cy.toFixed(2) + "deg");
+        if (Math.abs(tx - cx) > 0.01 || Math.abs(ty - cy) > 0.01) {
+          raf = requestAnimationFrame(damp);
+        } else {
+          raf = 0;
+        }
+      };
+      window.addEventListener(
+        "pointermove",
+        (e: PointerEvent) => {
+          if (!opened) return;
+          const r = stage.getBoundingClientRect();
+          const nx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+          const ny = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+          tx = Math.max(-1, Math.min(1, ny)) * -6;
+          ty = Math.max(-1, Math.min(1, nx)) * 7;
+          if (!raf) raf = requestAnimationFrame(damp);
+        },
+        { passive: true },
+      );
+      window.addEventListener(
+        "pointerleave",
+        () => {
+          tx = 0;
+          ty = 0;
+          if (!raf) raf = requestAnimationFrame(damp);
+        },
+        { passive: true },
+      );
+    }
+
+    /* ---- scroll handoff: each module flies into its real INDEX row ----
+       The box hands its contents to the catalog. Each card interpolates (in
+       document space, so it sticks once landed) from the box to its matching
+       row (matched by data-vol), eased so it lingers briefly — reads as a
+       detach — then settles. rAF-throttled; transform/opacity only.
+       Skipped under reduced motion / no-JS / mobile — there the modules just
+       appear in the index and the hero scrolls away normally. */
+    if (!reduce.matches && !coarse.matches && !narrow.matches) {
+      const slots = Array.from(
+        document.querySelectorAll<HTMLElement>(".module-slot"),
+      );
+      const rowFor = (vol: string) =>
+        document.querySelector<HTMLElement>(`[data-irow][data-vol="${vol}"]`);
+
+      let ticking = false;
+      let startScroll = 0;
+      let rangePx = 1;
+      let homes: { cx: number; cyDoc: number }[] = [];
+      // cache each card's destination element (its row's name) — no per-frame DOM queries
+      let targets: (HTMLElement | null)[] = [];
+
+      const measure = () => {
+        // measure home (box) positions with no flight transform applied
+        slots.forEach((s) => {
+          s.style.setProperty("--ho-x", "0px");
+          s.style.setProperty("--ho-y", "0px");
+          s.style.setProperty("--ho-s", "1");
+          s.style.setProperty("--ho-op", "1");
+        });
+        targets = slots.map((s) => {
+          const row = rowFor(s.dataset.vol || "");
+          return row
+            ? (row.querySelector<HTMLElement>(".irow__name") ?? row)
+            : null;
+        });
+        const y = window.scrollY;
+        homes = slots.map((s) => {
+          const r = s.getBoundingClientRect();
+          return { cx: r.left + r.width / 2, cyDoc: r.top + y + r.height / 2 };
+        });
+        const b = stage.getBoundingClientRect();
+        const boxCentreDoc = b.top + y + b.height / 2;
+        startScroll = boxCentreDoc - window.innerHeight * 0.42;
+        const firstRow = rowFor("VOL.01") || slots[0];
+        const fr = firstRow.getBoundingClientRect();
+        const rowDoc = fr.top + y + fr.height / 2;
+        // handoff length: enough scroll to bring the first row into view
+        rangePx = Math.max(
+          window.innerHeight * 0.5,
+          rowDoc - boxCentreDoc - window.innerHeight * 0.08,
+        );
+      };
+
+      const easeInOut = (t: number) =>
+        t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+      const update = () => {
+        const y = window.scrollY;
+        const p = Math.max(0, Math.min(1, (y - startScroll) / rangePx));
+        const e = easeInOut(p);
+        const op = p < 0.82 ? 1 : Math.max(0, 1 - (p - 0.82) / 0.18);
+        slots.forEach((s, i) => {
+          const home = homes[i];
+          if (!home) return;
+          const target = targets[i];
+          let txViewport = home.cx;
+          let tyDoc = home.cyDoc + window.innerHeight * 0.9;
+          if (target) {
+            const nr = target.getBoundingClientRect();
+            txViewport = nr.left + Math.min(nr.width * 0.32, 70);
+            tyDoc = nr.top + y + nr.height / 2;
+          }
+          // horizontal: viewport-space (no h-scroll); vertical: document-space
+          const dx = (txViewport - home.cx) * e;
+          const dy = (tyDoc - home.cyDoc) * e;
+          s.style.setProperty("--ho-x", dx.toFixed(1) + "px");
+          s.style.setProperty("--ho-y", dy.toFixed(1) + "px");
+          s.style.setProperty("--ho-s", (1 - 0.32 * e).toFixed(3));
+          s.style.setProperty("--ho-op", op.toFixed(2));
+        });
+        stage.classList.toggle("is-handing-off", p > 0.02);
+        ticking = false;
+      };
+
+      const onScroll = () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(update);
+      };
+      const remeasure = () => {
+        measure();
+        onScroll();
+      };
+      measure();
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", remeasure, { passive: true });
+      window.addEventListener("load", remeasure);
+      onScroll();
+    }
+
+    /* ---- ↑/↓ to inspect: move focus between module links ---- */
+    const links = modules.filter((m) => m.tagName === "A");
+    links.forEach((m, i) => {
+      m.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+          e.preventDefault();
+          links[(i + 1) % links.length].focus();
+        } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+          e.preventDefault();
+          links[(i - 1 + links.length) % links.length].focus();
+        }
+      });
+    });
+  }
+
+  if (document.readyState !== "loading") initBox();
+  else document.addEventListener("DOMContentLoaded", initBox);
+</script>
+
+<noscript>
+  <style>
+    /* JS off: don't trap the modules inside a sealed box — show them open. */
+    .boxstage .flap--outer {
+      transform: rotateX(-96deg);
+    }
+    .boxstage .flap--inner {
+      transform: rotateX(-112deg);
+    }
+    .boxstage .lid-tape {
+      opacity: 0;
+    }
+    .boxstage .module {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+    .boxstage__seal,
+    .boxstage__hint {
+      display: none;
+    }
+  </style>
+</noscript>

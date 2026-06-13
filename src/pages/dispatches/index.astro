@@ -1,0 +1,148 @@
+---
+import Base from "../../layouts/Base.astro";
+import SectionHeader from "../../components/SectionHeader.astro";
+import Ticker from "../../components/Ticker.astro";
+import { getCollection } from "astro:content";
+import { site } from "../../data/site.ts";
+
+const posts = (await getCollection("dispatches", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.getTime() - a.data.date.getTime(),
+);
+const fmt = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, ".");
+const span = `01–${String(posts.length).padStart(3, "0")}`;
+---
+
+<Base
+  title="Dispatches"
+  description="The changelog and field notes of The Open Box — every ship, in public."
+  path="/dispatches/"
+>
+  <Ticker lead={`DISPATCHES — ${site.volume}`} items={site.claims} speed="46s" />
+  <section class="section">
+    <div class="wrap">
+      <p class="back mono"><a href="/#dispatches">◂ THE OPEN BOX</a></p>
+      <SectionHeader
+        index="06"
+        glyph="§"
+        title="Dispatches"
+        sublabel="CHANGELOG · FIELD NOTES"
+        kicker={`SHIP LOG / ${span}`}
+      />
+
+      <ul class="dlist">
+        {
+          posts.map((p) => (
+            <li class="ditem">
+              <a class="ditem__link" href={`/dispatches/${p.id}/`}>
+                <div class="ditem__rail mono" aria-hidden="true">
+                  <span class="ditem__n">§{String(p.data.n).padStart(3, "0")}</span>
+                  <span>{fmt(p.data.date)}</span>
+                </div>
+                <div class="ditem__body">
+                  <div class="ditem__tags">
+                    <span class="tag mono">{p.data.tag}</span>
+                    {p.data.vol && <span class="tag mono">{p.data.vol}</span>}
+                  </div>
+                  <h2 class="ditem__title">{p.data.title}</h2>
+                  <p class="ditem__sum">{p.data.summary}</p>
+                </div>
+                <span class="ditem__arrow mono" aria-hidden="true">▸</span>
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+
+      <p class="dlist__rss mono">
+        <a href={site.links.rss}>SUBSCRIBE VIA RSS ▸</a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .back {
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+    margin-bottom: 1.5rem;
+  }
+  .back a:hover {
+    color: var(--accent);
+  }
+  .dlist {
+    border-top: var(--hair) solid var(--line);
+  }
+  .ditem__link {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1.2rem;
+    padding: clamp(1.2rem, 3vw, 1.8rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+    transition: background 0.16s var(--ease);
+  }
+  .ditem__link:hover {
+    background: var(--shade);
+  }
+  .ditem__rail {
+    display: flex;
+    gap: 0.9rem;
+    font-size: 0.64rem;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+  .ditem__n {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .ditem__body {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .ditem__tags {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .ditem__title {
+    font-size: clamp(1.3rem, 1rem + 1.4vw, 1.9rem);
+    letter-spacing: -0.02em;
+  }
+  .ditem__sum {
+    color: var(--ink-2);
+    max-width: 64ch;
+  }
+  .ditem__arrow {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--ink-3);
+  }
+  .ditem__link:hover .ditem__arrow {
+    color: var(--accent);
+  }
+  .dlist__rss {
+    margin-top: 1.6rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+  .dlist__rss a:hover {
+    color: var(--accent);
+  }
+  @media (min-width: 680px) {
+    .ditem__link {
+      grid-template-columns: 150px 1fr auto;
+    }
+    .ditem__rail {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .ditem__body {
+      grid-column: 2;
+    }
+    .ditem__arrow {
+      grid-column: 3;
+    }
+  }
+</style>

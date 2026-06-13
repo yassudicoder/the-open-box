@@ -1,0 +1,67 @@
+---
+/* Numbered section header — § / ⌀ glyph + SCALE / INDEX sublabel, hairline rule. */
+interface Props {
+  index: string; // "02"
+  title: string; // "THE INDEX"
+  glyph?: string; // § ⌀ ✺
+  sublabel?: string; // "SCALE 1:1"
+  kicker?: string; // small descriptor under the title
+  id?: string;
+}
+const {
+  index,
+  title,
+  glyph = "§",
+  sublabel = "SCALE 1:1",
+  kicker,
+  id,
+} = Astro.props;
+---
+
+<header class="sh" id={id}>
+  <div class="sh__top">
+    <span class="sh__id label">
+      <span class="glyph" aria-hidden="true">{glyph}</span>&nbsp;{index}
+    </span>
+    <span class="sh__sub label" aria-hidden="true">{sublabel}</span>
+  </div>
+  <hr class="hairline" />
+  <div class="sh__main">
+    <h2 class="sh__title">{title}</h2>
+    {kicker && <p class="sh__kicker label">{kicker}</p>}
+  </div>
+</header>
+
+<style>
+  .sh {
+    margin-bottom: clamp(1.5rem, 3vw, 2.75rem);
+  }
+  .sh__top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.55rem;
+  }
+  .sh__id {
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+  }
+  .sh__main {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.7rem;
+  }
+  .sh__title {
+    font-size: clamp(1.5rem, 1rem + 2.4vw, 2.7rem);
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .sh__kicker {
+    align-self: flex-end;
+  }
+</style>

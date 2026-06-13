@@ -1,0 +1,113 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { lab } from "../data/lab.ts";
+---
+
+<section class="section" id="lab" aria-labelledby="lab-h">
+  <div class="wrap">
+    <SectionHeader
+      index="05"
+      glyph="⌀"
+      title="In the Lab"
+      sublabel="WORK IN PROGRESS"
+      kicker="GRADUATES INTO THE INDEX"
+      id="lab-h"
+    />
+
+    <ul class="lab">
+      {
+        lab.map((entry) => (
+          <li class="labcard" data-state={entry.state}>
+            <div class="labcard__top">
+              <span class="labcard__code mono">{entry.codename}</span>
+              <span class="pill labcard__pill">{entry.stateLabel}</span>
+            </div>
+            <p class="labcard__blurb">{entry.blurb}</p>
+            <div class="labcard__progress" aria-hidden="true">
+              <span
+                class="labcard__bar"
+                style={`--p:${Math.round(entry.progress * 100)}%`}
+              />
+              <span class="labcard__pct mono">
+                {String(Math.round(entry.progress * 100)).padStart(2, "0")}%
+              </span>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .lab {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .labcard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+    padding: 1.2rem;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    background: var(--field);
+    transition: border-color 0.18s var(--ease), transform 0.18s var(--ease);
+  }
+  .labcard:hover {
+    border-color: var(--ink);
+    transform: translateY(-2px);
+  }
+  .labcard__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+  .labcard__code {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+  }
+  .labcard__pill {
+    font-size: 0.56rem;
+  }
+  .labcard[data-state="soon"] .labcard__pill {
+    color: var(--accent);
+    border-color: color-mix(in oklab, var(--accent) 50%, var(--line-2));
+  }
+  .labcard__blurb {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+    flex: 1;
+  }
+  .labcard__progress {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .labcard__bar {
+    position: relative;
+    flex: 1;
+    height: 2px;
+    background: var(--line-2);
+  }
+  .labcard__bar::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: var(--p);
+    background: var(--accent);
+  }
+  .labcard__pct {
+    font-size: 0.62rem;
+    color: var(--ink-2);
+    flex: none;
+  }
+  @media (min-width: 720px) {
+    .lab {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

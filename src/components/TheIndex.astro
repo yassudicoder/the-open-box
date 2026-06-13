@@ -1,0 +1,326 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { tools, statusOrder } from "../data/tools.ts";
+
+const sorted = [...tools].sort(
+  (a, b) => statusOrder[a.status] - statusOrder[b.status],
+);
+const span = `01–${String(tools.length).padStart(2, "0")}`;
+---
+
+<section class="section" id="index" aria-labelledby="index-h">
+  <div class="wrap">
+    <SectionHeader
+      index="02"
+      glyph="⌀"
+      title="The Index"
+      sublabel="SCALE 1:1"
+      kicker={`INDEX / ${span} · ↑↓ INSPECT · ↵ OPEN`}
+      id="index-h"
+    />
+
+    <ol class="index" data-index>
+      {
+        sorted.map((t, i) => {
+          const primary = t.site || t.store || "";
+          const canOpen = Boolean(primary) && t.status !== "research";
+          return (
+            <li
+              class:list={["irow", { "irow--dim": t.status === "research" }]}
+              data-irow
+              data-vol={t.vol}
+              data-primary={canOpen ? primary : ""}
+              tabindex="0"
+              aria-label={`${t.vol} ${t.title}. ${t.statusLabel}.`}
+            >
+              <div class="irow__rail" aria-hidden="true">
+                <span class="irow__n mono">{String(i + 1).padStart(2, "0")}</span>
+                <span class="irow__vol mono">{t.vol}</span>
+              </div>
+
+              <div class="irow__body">
+                <div class="irow__top">
+                  <h3 class="irow__title">
+                    <span class="irow__name">{t.codename}</span>
+                    <span class="irow__full">{t.title}</span>
+                  </h3>
+                  <span class="pill" data-status={t.status}>
+                    {t.statusLabel}
+                  </span>
+                </div>
+
+                <p class="irow__line">{t.oneLiner}</p>
+
+                {t.specs && (
+                  <ul class="irow__specs">
+                    {t.specs.map((s) => (
+                      <li class="mono">{s}</li>
+                    ))}
+                  </ul>
+                )}
+
+                <div class="irow__meta">
+                  <ul class="irow__tags">
+                    {t.platforms.map((p) => (
+                      <li class="tag mono">{p}</li>
+                    ))}
+                  </ul>
+                  {t.installs && (
+                    <span class="irow__installs mono">{t.installs} INSTALLS</span>
+                  )}
+                </div>
+
+                {canOpen && (
+                  <div class="irow__links">
+                    {t.site && (
+                      <a class="ilink mono" href={t.site} target="_blank" rel="noopener">
+                        SITE <span aria-hidden="true">▸</span>
+                      </a>
+                    )}
+                    {t.store && (
+                      <a class="ilink mono" href={t.store} target="_blank" rel="noopener">
+                        CHROME WEB STORE <span aria-hidden="true">▸</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .index {
+    border-top: var(--hair) solid var(--line);
+  }
+  .irow {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    padding: clamp(1.4rem, 3vw, 2.2rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+    position: relative;
+    transition: background 0.18s var(--ease);
+    scroll-margin-top: 70px;
+  }
+  .irow::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * var(--gutter));
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.2s var(--ease);
+  }
+  .irow:hover,
+  .irow:focus-visible {
+    background: var(--shade);
+    outline: none;
+  }
+  .irow:hover::before,
+  .irow:focus-visible::before {
+    transform: scaleY(1);
+  }
+  /* reception flash as the box hands a module down into its row */
+  .irow.is-received::before {
+    animation: irow-receive 0.75s var(--ease-out);
+  }
+  @keyframes irow-receive {
+    0% {
+      transform: scaleY(0);
+    }
+    35% {
+      transform: scaleY(1);
+    }
+    100% {
+      transform: scaleY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .irow.is-received::before {
+      animation: none;
+    }
+  }
+  .irow--dim {
+    opacity: 0.6;
+  }
+
+  .irow__rail {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+  }
+  .irow__n {
+    font-size: 0.7rem;
+    color: var(--ink-3);
+  }
+  .irow__vol {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--ink);
+  }
+  .irow--dim .irow__vol {
+    color: var(--ink-3);
+  }
+
+  .irow__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+  .irow__title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  .irow__name {
+    font-size: clamp(1.5rem, 1rem + 2.2vw, 2.4rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    text-transform: uppercase;
+  }
+  .irow--dim .irow__name {
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+  .irow__full {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-2);
+    letter-spacing: 0.01em;
+    max-width: 52ch;
+  }
+  .irow__line {
+    color: var(--ink-2);
+    max-width: 60ch;
+    font-size: 1rem;
+  }
+  .irow__specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1rem;
+  }
+  .irow__specs li {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    position: relative;
+    padding-left: 0.9em;
+  }
+  .irow__specs li::before {
+    content: "+";
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+  }
+  .irow__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+  }
+  .irow__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .tag {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 0.25em 0.5em;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    color: var(--ink-2);
+  }
+  .irow__installs {
+    font-size: 0.66rem;
+    color: var(--ink-2);
+  }
+  .irow__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.2rem;
+    margin-top: 0.2rem;
+  }
+  .ilink {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding-bottom: 0.2em;
+    border-bottom: var(--hair-strong) solid var(--ink);
+    transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .ilink:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  @media (min-width: 760px) {
+    .irow {
+      grid-template-columns: 130px 1fr;
+      gap: 1.5rem;
+    }
+    .irow__rail {
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+  }
+</style>
+
+<script>
+  // ↑/↓ to move between rows, ↵ to open the primary link — the box's keyboard
+  // contract continues into the catalog.
+  function initIndex() {
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-irow]"),
+    );
+    rows.forEach((row, i) => {
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          rows[Math.min(i + 1, rows.length - 1)].focus();
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          rows[Math.max(i - 1, 0)].focus();
+        } else if (e.key === "Enter") {
+          const href = row.getAttribute("data-primary");
+          if (href) window.open(href, "_blank", "noopener");
+        }
+      });
+    });
+
+    // Reception: each row flashes its accent rail once as it scrolls into view —
+    // the catalog "receiving" the module handed down from the box. Motion-only.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!reduce.matches && "IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((e) => {
+            if (e.isIntersecting) {
+              e.target.classList.add("is-received");
+              io.unobserve(e.target);
+            }
+          });
+        },
+        { threshold: 0.45 },
+      );
+      rows.forEach((r) => io.observe(r));
+    }
+  }
+  if (document.readyState !== "loading") initIndex();
+  else document.addEventListener("DOMContentLoaded", initIndex);
+</script>

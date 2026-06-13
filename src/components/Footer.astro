@@ -1,0 +1,134 @@
+---
+import BoxMark from "./BoxMark.astro";
+import { site } from "../data/site.ts";
+const year = 2026;
+const foot = [
+  { label: "INDEX", href: "/#index" },
+  { label: "DOCTRINE", href: "/#doctrine" },
+  { label: "DISPATCHES", href: "/dispatches/" },
+  { label: "RSS", href: site.links.rss },
+  { label: "CONTACT", href: `mailto:${site.email}` },
+];
+---
+
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div class="foot__brand">
+      <BoxMark size={28} title={site.name} />
+      <div>
+        <p class="foot__name mono">{site.name}</p>
+        <p class="foot__promise mono">
+          LOCAL-FIRST <span class="dot-sep">·</span> NO ACCOUNT
+          <span class="dot-sep">·</span> NOTHING LEAVES YOUR DEVICE
+        </p>
+      </div>
+    </div>
+
+    <nav class="foot__nav" aria-label="Footer">
+      {foot.map((f) => <a class="foot__link mono" href={f.href}>{f.label}</a>)}
+    </nav>
+  </div>
+
+  <div class="wrap foot__social">
+    <span class="foot__social-label mono">⌀ CONTACT</span>
+    <a class="foot__social-link mono" href={site.linkedin} target="_blank" rel="noopener">
+      LINKEDIN ▸ YASH DESAI
+    </a>
+    <span class="dot-sep" aria-hidden="true">·</span>
+    <a class="foot__social-link mono" href={`mailto:${site.email}`}>{site.email}</a>
+  </div>
+
+  <div class="wrap foot__base">
+    <p class="mono">
+      © {year} {site.name}. {site.taglineAlt}
+    </p>
+    <p class="mono foot__sig">
+      <span class="glyph accent">✺</span> BUILT BY {site.maker.toUpperCase()} · 0 BYTES UPLOADED
+    </p>
+  </div>
+</footer>
+
+<style>
+  .foot {
+    border-top: var(--hair-strong) solid var(--ink);
+    margin-top: clamp(2rem, 6vw, 5rem);
+    padding-top: clamp(2rem, 5vw, 3.5rem);
+  }
+  .foot__inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 2rem;
+  }
+  .foot__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--ink);
+  }
+  .foot__name {
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+  .foot__promise {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+  }
+  .foot__nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+  }
+  .foot__link {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+    transition: color 0.15s var(--ease);
+  }
+  .foot__link:hover {
+    color: var(--accent);
+  }
+  .foot__social {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+    padding-block: 1rem;
+    border-top: var(--hair) solid var(--line);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+  }
+  .foot__social-label {
+    color: var(--ink-3);
+    letter-spacing: 0.14em;
+  }
+  .foot__social-link {
+    color: var(--ink-2);
+    transition: color 0.15s var(--ease);
+  }
+  .foot__social-link:hover {
+    color: var(--accent);
+  }
+  .foot__base {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    justify-content: space-between;
+    padding-block: 1.2rem;
+    border-top: var(--hair) solid var(--line);
+    font-size: 0.6rem;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+  }
+  .foot__sig {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+  }
+</style>

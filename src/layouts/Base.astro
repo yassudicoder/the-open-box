@@ -1,0 +1,74 @@
+---
+import "../styles/global.css";
+import Seo from "../components/Seo.astro";
+import Masthead from "../components/Masthead.astro";
+import Footer from "../components/Footer.astro";
+import CommandPalette from "../components/CommandPalette.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  path?: string;
+  type?: "website" | "article";
+  ogImage?: string;
+}
+const { title, description, path, type, ogImage } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-theme-default>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="mask-icon" href="/favicon.svg" color="#ff5a1f" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <!-- No-flash theme: set data-theme before first paint -->
+    <script is:inline>
+      (function () {
+        try {
+          var t = localStorage.getItem("theme");
+          if (t === "light" || t === "dark") {
+            document.documentElement.setAttribute("data-theme", t);
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <Seo title={title} description={description} path={path} type={type} ogImage={ogImage} />
+  </head>
+  <body>
+    <a class="skip-link mono" href="#main">SKIP TO CONTENT</a>
+    <Masthead />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <CommandPalette />
+
+    <!-- theme toggle wiring -->
+    <script is:inline>
+      (function () {
+        function current() {
+          return (
+            document.documentElement.getAttribute("data-theme") ||
+            (window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light")
+          );
+        }
+        document.addEventListener("click", function (e) {
+          var btn = e.target.closest("[data-theme-toggle]");
+          if (!btn) return;
+          var next = current() === "dark" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", next);
+          try {
+            localStorage.setItem("theme", next);
+          } catch (e) {}
+        });
+      })();
+    </script>
+  </body>
+</html>

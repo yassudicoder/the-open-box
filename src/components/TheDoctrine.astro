@@ -1,0 +1,75 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { doctrine } from "../data/doctrine.ts";
+const span = `01–${String(doctrine.length).padStart(2, "0")}`;
+---
+
+<section class="section" id="doctrine" aria-labelledby="doctrine-h">
+  <div class="wrap">
+    <SectionHeader
+      index="04"
+      glyph="✺"
+      title="The Doctrine"
+      sublabel="OPERATING PRINCIPLES"
+      kicker={`PRIMITIVES / ${span}`}
+      id="doctrine-h"
+    />
+
+    <ol class="doctrine">
+      {
+        doctrine.map((p, i) => (
+          <li class="prin">
+            <span class="prin__n mono" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <div class="prin__body">
+              <h3 class="prin__title">{p.title}</h3>
+              <p class="prin__text">{p.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .doctrine {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-top: var(--hair) solid var(--line);
+  }
+  .prin {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 1rem;
+    padding: clamp(1.3rem, 3vw, 1.9rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+  }
+  .prin__n {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+  .prin__title {
+    font-size: clamp(1.15rem, 0.9rem + 1vw, 1.5rem);
+    letter-spacing: -0.01em;
+    margin-bottom: 0.4rem;
+  }
+  .prin__text {
+    color: var(--ink-2);
+    max-width: 58ch;
+    font-size: 0.98rem;
+  }
+  @media (min-width: 760px) {
+    .doctrine {
+      grid-template-columns: 1fr 1fr;
+      column-gap: clamp(2rem, 5vw, 4rem);
+    }
+    .doctrine .prin:nth-last-child(2):nth-child(odd) {
+      border-bottom: var(--hair) solid var(--line);
+    }
+  }
+</style>

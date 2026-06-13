@@ -1,0 +1,138 @@
+---
+import SectionHeader from "./SectionHeader.astro";
+import { getCollection } from "astro:content";
+import { site } from "../data/site.ts";
+
+const posts = (await getCollection("dispatches", ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.getTime() - a.data.date.getTime())
+  .slice(0, 4);
+
+const fmt = (d: Date) =>
+  d.toISOString().slice(0, 10).replace(/-/g, ".");
+---
+
+<section class="section" id="dispatches" aria-labelledby="dispatches-h">
+  <div class="wrap">
+    <SectionHeader
+      index="06"
+      glyph="§"
+      title="Dispatches"
+      sublabel="CHANGELOG · FIELD NOTES"
+      kicker="SHIP LOG · RSS AVAILABLE"
+      id="dispatches-h"
+    />
+
+    <ul class="dispatch">
+      {
+        posts.map((p) => (
+          <li class="dis">
+            <a class="dis__link" href={`/dispatches/${p.id}/`}>
+              <span class="dis__rail mono" aria-hidden="true">
+                <span class="dis__n">§{String(p.data.n).padStart(3, "0")}</span>
+                <span class="dis__date">{fmt(p.data.date)}</span>
+              </span>
+              <span class="dis__body">
+                <span class="dis__tagrow">
+                  <span class="tag mono">{p.data.tag}</span>
+                  {p.data.vol && <span class="tag mono">{p.data.vol}</span>}
+                </span>
+                <span class="dis__title">{p.data.title}</span>
+                <span class="dis__summary">{p.data.summary}</span>
+              </span>
+              <span class="dis__arrow mono" aria-hidden="true">▸</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+
+    <div class="dispatch__foot">
+      <a class="btn btn--ghost" href="/dispatches/">ALL DISPATCHES ▸</a>
+      <a class="btn btn--ghost" href={site.links.rss}>RSS FEED ▸</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .dispatch {
+    border-top: var(--hair) solid var(--line);
+  }
+  .dis__link {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.5rem 1.2rem;
+    padding: clamp(1.1rem, 2.5vw, 1.6rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+    align-items: start;
+    transition: background 0.16s var(--ease);
+  }
+  .dis__link:hover {
+    background: var(--shade);
+  }
+  .dis__rail {
+    grid-row: 1;
+    display: flex;
+    gap: 0.9rem;
+    font-size: 0.64rem;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+  .dis__n {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .dis__body {
+    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .dis__tagrow {
+    display: flex;
+    gap: 0.4rem;
+  }
+  .dis__title {
+    font-size: clamp(1.15rem, 0.9rem + 1vw, 1.55rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .dis__summary {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+    max-width: 64ch;
+  }
+  .dis__arrow {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    color: var(--ink-3);
+    font-size: 1rem;
+    transition: transform 0.16s var(--ease), color 0.16s var(--ease);
+  }
+  .dis__link:hover .dis__arrow {
+    color: var(--accent);
+    transform: translateX(4px);
+  }
+  .dispatch__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-top: 1.6rem;
+  }
+  @media (min-width: 680px) {
+    .dis__link {
+      grid-template-columns: 150px 1fr auto;
+    }
+    .dis__rail {
+      grid-row: 1 / span 2;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .dis__body {
+      grid-column: 2;
+    }
+    .dis__arrow {
+      grid-column: 3;
+    }
+  }
+</style>

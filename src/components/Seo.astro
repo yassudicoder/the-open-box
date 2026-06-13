@@ -1,0 +1,99 @@
+---
+import { site } from "../data/site.ts";
+import { tools } from "../data/tools.ts";
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** absolute or root-relative path for canonical; defaults to current URL */
+  path?: string;
+  ogImage?: string;
+  type?: "website" | "article";
+  noJsonLd?: boolean;
+}
+
+const {
+  title,
+  description = site.manifesto,
+  path,
+  ogImage = "/og-cover.png",
+  type = "website",
+  noJsonLd = false,
+} = Astro.props;
+
+const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.tagline}`;
+const canonical = new URL(path ?? Astro.url.pathname, site.domain).href;
+const ogUrl = new URL(ogImage, site.domain).href;
+
+// JSON-LD: the studio as publisher + each tool as a SoftwareApplication.
+const org = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: site.name,
+  alternateName: site.shortName,
+  url: site.domain,
+  email: site.email,
+  slogan: site.tagline,
+  description: site.manifesto,
+  founder: {
+    "@type": "Person",
+    name: site.maker,
+    sameAs: [site.linkedin],
+  },
+  author: { "@type": "Person", name: site.maker, sameAs: [site.linkedin] },
+  sameAs: [site.linkedin],
+  logo: new URL("/og-cover.svg", site.domain).href,
+};
+
+const software = tools
+  .filter((t) => t.shipped && (t.site || t.store))
+  .map((t) => ({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: t.title,
+    alternateName: `${t.vol} ${t.codename}`,
+    applicationCategory: "BrowserApplication",
+    operatingSystem: "Chrome",
+    description: t.oneLiner,
+    url: t.site || t.store,
+    downloadUrl: t.store || undefined,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    publisher: { "@type": "Organization", name: site.name, url: site.domain },
+  }));
+
+const jsonld = [org, ...software];
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+<meta name="author" content={site.maker} />
+<meta name="generator" content={Astro.generator} />
+<meta name="theme-color" content="#f2f1ea" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)" />
+
+<!-- Open Graph -->
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogUrl} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={`${site.name} — the open box`} />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogUrl} />
+
+<!-- RSS -->
+<link rel="alternate" type="application/rss+xml" title={`${site.name} — Dispatches`} href="/rss.xml" />
+
+{
+  !noJsonLd && (
+    <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
+  )
+}
