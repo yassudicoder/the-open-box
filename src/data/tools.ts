@@ -65,8 +65,8 @@ export const tools: Tool[] = [
     title: "Continue AI — move your AI chat to another model",
     oneLiner:
       "Continue any AI conversation on ChatGPT, Claude, or Gemini without losing context — one click, local-first, no account.",
-    status: "submitted",
-    statusLabel: "SUBMITTED",
+    status: "live",
+    statusLabel: "LIVE",
     platforms: ["CHROME", "CHATGPT", "CLAUDE", "GEMINI"],
     installs: "",
     site: "https://continue-ai.netlify.app/",

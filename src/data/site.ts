@@ -33,7 +33,7 @@ export const site = {
     rss: "/rss.xml",
   },
   // The technical "uses" line for the colophon
-  stack: ["Astro", "Vanilla CSS", "CSS 3D transforms", "Netlify", "No tracking"],
+  stack: ["Astro", "Vanilla CSS", "CSS 3D transforms", "Vercel", "No tracking"],
 } as const;
 
 export type Site = typeof site;
