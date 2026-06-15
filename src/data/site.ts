@@ -5,7 +5,7 @@
 export const site = {
   name: "The Open Box",
   shortName: "OPEN BOX",
-  domain: "https://theopenbox.xyz", // {{change to final domain}}
+  domain: "https://the-open-box.vercel.app", // production URL (swap for a custom domain once owned)
   tagline: "Small tools. Out of the box. Nothing hidden.",
   taglineAlt: "Open box. Local-first tools.",
   manifesto:

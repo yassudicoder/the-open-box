@@ -702,6 +702,7 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
     transform: translate(-50%, -50%) translate(var(--mx), var(--my))
       translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
     opacity: var(--ho-op, 1);
+    will-change: transform;
   }
   .module-slot:hover,
   .module-slot:focus-within {
@@ -1008,6 +1009,21 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
     let opened = false;
     let autoTimer = 0;
 
+    // Shared cached stage rect — refreshed at most once per frame on scroll/
+    // resize. Lets the parallax/handoff read layout without thrashing.
+    let stageRect = stage.getBoundingClientRect();
+    let rectDirty = false;
+    const markRectDirty = () => {
+      if (rectDirty) return;
+      rectDirty = true;
+      requestAnimationFrame(() => {
+        stageRect = stage.getBoundingClientRect();
+        rectDirty = false;
+      });
+    };
+    window.addEventListener("scroll", markRectDirty, { passive: true });
+    window.addEventListener("resize", markRectDirty, { passive: true });
+
     function open() {
       if (opened) return;
       opened = true;
@@ -1030,14 +1046,27 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
       stage.addEventListener("touchstart", open, { once: true, passive: true });
     }
 
-    /* ---- cursor parallax (desktop, motion-ok, only once open) ---- */
+    /* ---- cursor parallax (desktop, motion-ok, only once open) ----
+       The hot path never touches layout: pointer coords are stored on move and
+       the damped write loop reads the cached stageRect, not the DOM. Same tilt
+       motion as before, zero forced reflow. */
     if (tilt && !reduce.matches && !coarse.matches) {
-      let tx = 0,
-        ty = 0,
+      let px = 0,
+        py = 0,
+        tracking = false,
         cx = 0,
         cy = 0,
         raf = 0;
       const damp = () => {
+        let tx = 0,
+          ty = 0;
+        if (tracking) {
+          const r = stageRect;
+          const nx = (px - (r.left + r.width / 2)) / (r.width / 2);
+          const ny = (py - (r.top + r.height / 2)) / (r.height / 2);
+          tx = Math.max(-1, Math.min(1, ny)) * -6;
+          ty = Math.max(-1, Math.min(1, nx)) * 7;
+        }
         cx += (tx - cx) * 0.08;
         cy += (ty - cy) * 0.08;
         tilt.style.setProperty("--ptx", cx.toFixed(2) + "deg");
@@ -1052,11 +1081,9 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
         "pointermove",
         (e: PointerEvent) => {
           if (!opened) return;
-          const r = stage.getBoundingClientRect();
-          const nx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
-          const ny = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
-          tx = Math.max(-1, Math.min(1, ny)) * -6;
-          ty = Math.max(-1, Math.min(1, nx)) * 7;
+          px = e.clientX;
+          py = e.clientY;
+          tracking = true;
           if (!raf) raf = requestAnimationFrame(damp);
         },
         { passive: true },
@@ -1064,8 +1091,7 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
       window.addEventListener(
         "pointerleave",
         () => {
-          tx = 0;
-          ty = 0;
+          tracking = false;
           if (!raf) raf = requestAnimationFrame(damp);
         },
         { passive: true },
@@ -1133,25 +1159,30 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
         const p = Math.max(0, Math.min(1, (y - startScroll) / rangePx));
         const e = easeInOut(p);
         const op = p < 0.82 ? 1 : Math.max(0, 1 - (p - 0.82) / 0.18);
-        slots.forEach((s, i) => {
+
+        // READ phase — gather every target rect first (no writes in between)
+        const rects = targets.map((t) => (t ? t.getBoundingClientRect() : null));
+
+        // WRITE phase — now mutate styles only; layout is never re-read here,
+        // so there's no read/write thrash (the old per-slot interleave is gone)
+        const ih = window.innerHeight;
+        for (let i = 0; i < slots.length; i++) {
           const home = homes[i];
-          if (!home) return;
-          const target = targets[i];
+          if (!home) continue;
+          const nr = rects[i];
           let txViewport = home.cx;
-          let tyDoc = home.cyDoc + window.innerHeight * 0.9;
-          if (target) {
-            const nr = target.getBoundingClientRect();
+          let tyDoc = home.cyDoc + ih * 0.9;
+          if (nr) {
             txViewport = nr.left + Math.min(nr.width * 0.32, 70);
             tyDoc = nr.top + y + nr.height / 2;
           }
           // horizontal: viewport-space (no h-scroll); vertical: document-space
-          const dx = (txViewport - home.cx) * e;
-          const dy = (tyDoc - home.cyDoc) * e;
-          s.style.setProperty("--ho-x", dx.toFixed(1) + "px");
-          s.style.setProperty("--ho-y", dy.toFixed(1) + "px");
-          s.style.setProperty("--ho-s", (1 - 0.32 * e).toFixed(3));
-          s.style.setProperty("--ho-op", op.toFixed(2));
-        });
+          const s = slots[i].style;
+          s.setProperty("--ho-x", ((txViewport - home.cx) * e).toFixed(1) + "px");
+          s.setProperty("--ho-y", ((tyDoc - home.cyDoc) * e).toFixed(1) + "px");
+          s.setProperty("--ho-s", (1 - 0.32 * e).toFixed(3));
+          s.setProperty("--ho-op", op.toFixed(2));
+        }
         stage.classList.toggle("is-handing-off", p > 0.02);
         ticking = false;
       };

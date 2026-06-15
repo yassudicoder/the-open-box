@@ -20,7 +20,7 @@ const sequence = [lead, ...items];
         <div class="ticker__group" aria-hidden={dup === 1 ? "true" : undefined}>
           {sequence.map((item, i) => (
             <span class="ticker__item">
-              <span class="ticker__glyph glyph">{i === 0 ? glyph : "·"}</span>
+              <span class="ticker__glyph glyph" aria-hidden="true">{i === 0 ? glyph : "·"}</span>
               <span class={i === 0 ? "ticker__lead" : "ticker__claim"}>{item}</span>
             </span>
           ))}

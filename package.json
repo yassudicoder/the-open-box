@@ -10,6 +10,7 @@
     "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && astro build",
     "installs": "node scripts/fetch-installs.mjs",
     "og": "node scripts/make-og.mjs",
+    "fonts": "node scripts/subset-fonts.mjs",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -20,5 +21,9 @@
     "@fontsource-variable/jetbrains-mono": "^5.2.5",
     "@fontsource-variable/space-grotesk": "^5.2.5",
     "astro": "^5.13.0"
+  },
+  "devDependencies": {
+    "fontkit": "^2.0.4",
+    "subset-font": "^2.5.0"
   }
 }

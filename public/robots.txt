@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://theopenbox.xyz/sitemap-index.xml
+Sitemap: https://the-open-box.vercel.app/sitemap-index.xml

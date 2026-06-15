@@ -86,6 +86,6 @@
 
   <!-- footer -->
   <line x1="56" y1="560" x2="56" y2="560" class="hair"/>
-  <text x="1144" y="540" text-anchor="end" class="mono" font-size="16" letter-spacing="2" fill="#14130f">theopenbox.xyz</text>
+  <text x="1144" y="540" text-anchor="end" class="mono" font-size="16" letter-spacing="2" fill="#14130f">the-open-box.vercel.app</text>
   <text x="1144" y="566" text-anchor="end" class="mono" font-size="13" letter-spacing="2" fill="#8a8478">© 2026 · BUILT BY YASH · SOLO</text>
 </svg>
