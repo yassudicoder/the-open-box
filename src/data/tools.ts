@@ -47,7 +47,7 @@ export const tools: Tool[] = [
     statusLabel: "LIVE",
     platforms: ["CHROME", "GMAIL", "LINKEDIN"],
     installs: "",
-    site: "https://gmail-templates-and-canned.netlify.app/",
+    site: "https://email-templets-extension.vercel.app/",
     store:
       "https://chromewebstore.google.com/detail/email-templates-canned-re/amhocmgofedeoapkokhjpiklnphpafcl",
     kind: "Browser extension",
@@ -69,7 +69,7 @@ export const tools: Tool[] = [
     statusLabel: "LIVE",
     platforms: ["CHROME", "CHATGPT", "CLAUDE", "GEMINI"],
     installs: "",
-    site: "https://continue-ai.netlify.app/",
+    site: "https://continue-ai-lilac.vercel.app/",
     store:
       "https://chromewebstore.google.com/detail/continue-ai-%E2%80%94-move-your-a/cojmibmimpeakmgllhpolgbjienedfkf",
     kind: "Browser extension",
