@@ -13,11 +13,11 @@
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         {
           "key": "Permissions-Policy",
-          "value": "geolocation=(), microphone=(), camera=(), interest-cohort=()"
+          "value": "geolocation=(), microphone=(self), camera=(), interest-cohort=()"
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://apnaai.online; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://apnaai.online; font-src 'self'; connect-src 'self' https://apnaai.online; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
         }
       ]
     },
