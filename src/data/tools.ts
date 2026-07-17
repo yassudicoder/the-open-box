@@ -83,6 +83,27 @@ export const tools: Tool[] = [
   },
   {
     vol: "VOL.03",
+    codename: "BULK",
+    title: "Bulk Image Downloader — save every image on a page",
+    oneLiner:
+      "Find every image on a page — even lazy-loaded ones — then filter, de-duplicate, and download your picks as files or a ZIP. Local-first.",
+    status: "live",
+    statusLabel: "BETA",
+    platforms: ["CHROME"],
+    installs: "",
+    site: "https://bulk-image-downloader-one.vercel.app/",
+    store: "",
+    kind: "Browser extension",
+    shipped: true,
+    specs: [
+      "SCANS LAZY + BG IMAGES",
+      "PERCEPTUAL DE-DUPE",
+      "ONE-CLICK ZIP",
+      "0 BYTES UPLOADED",
+    ],
+  },
+  {
+    vol: "VOL.04",
     codename: "————",
     title: "In research",
     oneLiner: "Something small and honest is taking shape. Not ready to name yet.",

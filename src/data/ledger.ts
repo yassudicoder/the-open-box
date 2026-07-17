@@ -41,8 +41,8 @@ export const ledger = {
   accounts: 0,
 
   // Maintained by hand on each shipment.
-  lastShipped: "2026-06-13", // ISO date of the most recent shipment
-  lastShippedVol: "VOL.02",
+  lastShipped: "2026-07-17", // ISO date of the most recent shipment
+  lastShippedVol: "VOL.03",
   since: "2026",
 
   /**
