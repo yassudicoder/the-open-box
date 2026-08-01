@@ -1,16 +1,16 @@
 {
-  "_note": "Install counts per shipped tool. `installs` is the SUM source for TOTAL INSTALLS on the ledger. Edit `installs` by hand as a fallback; scripts/fetch-installs.mjs refreshes it from each Chrome Web Store listing at build time and never zeroes a value. There is NO client-side analytics — this number is baked at build time.",
-  "updated": "2026-06-15",
+  "_note": "Install counts per shipped tool. `installs` is the SUM source for TOTAL INSTALLS on the ledger. Edit `installs` by hand as a fallback; scripts/fetch-installs.mjs refreshes it from each Chrome Web Store listing at build time and never zeroes a value. This number is baked at build time — it does not come from site analytics.",
+  "updated": "2026-08-01",
   "tools": [
     {
       "name": "Canned Responses",
       "cwsUrl": "https://chromewebstore.google.com/detail/email-templates-canned-re/amhocmgofedeoapkokhjpiklnphpafcl",
-      "installs": 4
+      "installs": 23
     },
     {
       "name": "Continue AI",
       "cwsUrl": "https://chromewebstore.google.com/detail/continue-ai-%E2%80%94-move-your-a/cojmibmimpeakmgllhpolgbjienedfkf",
-      "installs": 16
+      "installs": 57
     }
   ]
 }

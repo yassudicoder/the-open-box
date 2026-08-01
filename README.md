@@ -146,9 +146,9 @@ and writes it back into `tools.json`. On **any** failure (network, changed marku
 no match) it logs a warning and **keeps the committed number** — it never zeroes a
 value and never fails the build. So `installs` doubles as a hand-editable fallback.
 
-There is **no client-side analytics** and **no runtime backend** — the figure is
-baked at build time. (Other ledger fields — `lastShipped`, `lastShippedVol`,
-`since` — are still maintained by hand in `ledger.ts`.)
+The figure is **baked at build time** — it does not come from site analytics and
+there is **no runtime backend** behind it. (Other ledger fields — `lastShipped`,
+`lastShippedVol`, `since` — are still maintained by hand in `ledger.ts`.)
 
 > A separate "active users" metric, if ever wanted, would come from a dedicated
 > serverless function — not an analytics SDK on the site. There's a `TODO` marker
