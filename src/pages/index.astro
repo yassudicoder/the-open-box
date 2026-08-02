@@ -1,6 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
-import Seal from "../components/Seal.astro";
+import Ticker from "../components/Ticker.astro";
+import OpenBox from "../components/OpenBox.astro";
 import Contents from "../components/Contents.astro";
 import TheLedger from "../components/TheLedger.astro";
 import TheDoctrine from "../components/TheDoctrine.astro";
@@ -8,10 +9,13 @@ import InTheLab from "../components/InTheLab.astro";
 import Dispatches from "../components/Dispatches.astro";
 import Colophon from "../components/Colophon.astro";
 import CreaseDivider from "../components/CreaseDivider.astro";
+import { site } from "../data/site.ts";
 ---
 
 <Base path="/">
-  <Seal />
+  <Ticker lead={`FIELD NOTES — ${site.volume}`} items={site.claims} />
+  <OpenBox />
+  <CreaseDivider variant="fold" />
   <Contents />
   <CreaseDivider variant="flap" />
   <TheLedger />

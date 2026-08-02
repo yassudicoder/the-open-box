@@ -88,12 +88,14 @@
   --accent-ink: #ffffff;
   --grain-opacity: 0.04;
 
-  /* Carton — the sealed face of the box (kraft board) */
-  --carton: #e6dfcc;
-  --carton-2: #ddd5bf;
-  --carton-edge: rgba(20, 19, 15, 0.3);
-  --carton-print: #3d3a31; /* label ink printed on board */
-  /* Interior — inside the box. Always dark; nothing hidden in the dark. */
+  /* Sealed-carton matte faces (opaque — no see-through) for the hero box */
+  --box-top: #ece8dd;
+  --box-front: #ddd7c9;
+  --box-side: #cbc4b2;
+  --box-floor: #bdb6a2;
+  --box-edge: rgba(20, 19, 15, 0.5);
+  --box-tape: rgba(20, 19, 15, 0.14);
+  /* Interior — inside the box (the Continue demo's context capsule) */
   --interior: #121109;
   --interior-ink: #f2f1ea;
   --interior-line: rgba(242, 241, 234, 0.2);
@@ -116,10 +118,12 @@
   --accent-text: #ff6a33; /* 6.86:1 on dark --paper — no darkening needed */
   --accent-ink: #0b0c0e;
   --grain-opacity: 0.05;
-  --carton: #191b21;
-  --carton-2: #14161b;
-  --carton-edge: rgba(233, 231, 223, 0.24);
-  --carton-print: #b5b1a6;
+  --box-top: #242832;
+  --box-front: #191c22;
+  --box-side: #121419;
+  --box-floor: #0c0e12;
+  --box-edge: rgba(233, 231, 223, 0.42);
+  --box-tape: rgba(233, 231, 223, 0.13);
   --interior: #08090b;
   --interior-ink: #e9e7df;
   --interior-line: rgba(233, 231, 223, 0.18);
@@ -143,10 +147,12 @@
     --accent-text: #ff6a33;
     --accent-ink: #0b0c0e;
     --grain-opacity: 0.05;
-    --carton: #191b21;
-    --carton-2: #14161b;
-    --carton-edge: rgba(233, 231, 223, 0.24);
-    --carton-print: #b5b1a6;
+    --box-top: #242832;
+    --box-front: #191c22;
+    --box-side: #121419;
+    --box-floor: #0c0e12;
+    --box-edge: rgba(233, 231, 223, 0.42);
+    --box-tape: rgba(233, 231, 223, 0.13);
     --interior: #08090b;
     --interior-ink: #e9e7df;
     --interior-line: rgba(233, 231, 223, 0.18);
@@ -452,6 +458,18 @@ strong {
   border-color: var(--ink);
   color: var(--ink);
   background: transparent;
+}
+
+.btn__key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding-inline: 0.35em;
+  border: var(--hair) solid currentColor;
+  border-radius: 2px;
+  font-size: 0.82em;
+  opacity: 0.85;
 }
 
 /* ----------------------------------------------------------------------------

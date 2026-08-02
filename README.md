@@ -8,10 +8,11 @@ tool (VOL.01, VOL.02, …) has its own site, and this is where they unpack out o
 > Small tools. Out of the box. Nothing hidden.
 
 Built with [Astro](https://astro.build) — static, fast, zero required JS for the
-core, MDX-powered changelog. The whole site is staged as **opening one carton**:
-the first viewport is the sealed box face and scrolling cuts the tape, hinges
-the lid flaps apart, and reveals the contents. Pure CSS transforms + a tiny
-scroll driver — no WebGL, no animation library, fully reduced-motion aware.
+core, MDX-powered changelog. The signature graphic (an isometric matte carton
+that unboxes on interaction and hands its contents to the catalog) is pure
+**CSS 3D** — no WebGL, no heavy dependency, fully reduced-motion aware. Each
+tool in the catalog then proves itself with a small animated **working
+demonstration** instead of a screenshot.
 
 ---
 
@@ -28,28 +29,27 @@ Node 20+ recommended.
 
 ---
 
-## The signature: the seal
+## The signature: the open box
 
-The opening scene lives in [`src/components/Seal.astro`](src/components/Seal.astro).
-The first viewport **is the box**: a sealed carton face — the wordmark printed
-on board, a shipping label (`FROM / SHIP TO / CONTENTS / STATUS`), and a strip
-of signal-orange packing **tape carrying the studio's claims** on a slow
-marquee.
+The hero box lives in [`src/components/OpenBox.astro`](src/components/OpenBox.astro).
+It is one self-contained component built on the idea of **unboxing on
+interaction** — it starts sealed and opens when you arrive or touch it.
 
-- **Cut the seal** — the scene pins for ~2 viewports of scroll. A blade tracks
-  scroll 1:1 across the tape, drawing the cut; when it clears the edge the
-  halves snap apart and the label stamps `STATUS / OPEN · BY YOU · {date}`.
-- **Flaps hinge apart** — the face is two lid flaps (each carrying its half of
-  the cut tape) that fold away with CSS 3D `rotateX`, revealing the dark
-  interior: **NOTHING HIDDEN** and the contents manifest, each volume a real
-  link down into the catalog.
-- **Fallbacks** — with `prefers-reduced-motion: reduce` or no JS, the scene
-  isn't pinned at all: the face renders already opened (static cut tape,
-  `STATUS / OPEN`) followed by the interior as a normal section. Content is
-  never trapped behind the animation.
-- The driver is one rAF-throttled scroll listener writing three custom
-  properties (`--pcut`, `--tsep`, `--popen`); everything downstream is
-  `transform`/`opacity` only.
+- **Carton** — opaque, matte, three-tone CSS-3D faces with hairline edges and
+  four lid flaps that hinge at the top rim.
+- **Sealed (default)** — closed, with a centre seam, sealing tape, and a
+  `⌀ SEALED` badge; the product modules are collapsed inside but stay in the
+  DOM as real focusable links.
+- **Unbox** — on the first of {hover · focus · tap · arriving after a short
+  sealed beat}, the flaps hinge open and the modules rise, fan out, and settle.
+  Once open it stays open; a gentle bob and a damped cursor parallax follow
+  (desktop only).
+- **Scroll handoff** — as you scroll into **THE CONTENTS**, each module
+  detaches and flies into its real catalog bay (matched by `data-vol`),
+  docking as the catalog takes over. Skipped on mobile / reduced-motion /
+  no-JS.
+- **Reduced motion / no JS** — the box renders already open and static with
+  its modules placed; nothing is ever trapped inside a sealed box.
 
 ## The demonstrations
 
@@ -76,7 +76,7 @@ The site ends by completing the metaphor: the footer draws the **carton
 unfolded flat** (its panels still printed with the volumes it carried) —
 `The box is open. Nothing left inside.`
 
-The line-art box remains the **logo** (`src/components/BoxMark.astro`), the
+The same line-art box is the **logo** (`src/components/BoxMark.astro`), the
 **favicon** (`public/favicon.svg`), and the **OG cover** (`public/og-cover.svg`
 → rasterized to `.png`).
 
@@ -110,9 +110,10 @@ Edit **[`src/data/tools.ts`](src/data/tools.ts)** and append one entry to the
 },
 ```
 
-That single edit updates: **THE CONTENTS**, the seal's **interior manifest**,
-the **ledger** tool count, the **command palette**, the **maker** links, and the
-per-tool **JSON-LD** `SoftwareApplication`. No layout surgery.
+That single edit updates: **THE CONTENTS**, the floating **box modules** (first
+three entries), the **ledger** tool count, the **command palette**, the
+**maker** links, and the per-tool **JSON-LD** `SoftwareApplication`. No layout
+surgery.
 
 > A new volume renders as a bay without a FIG. plate until you give it one:
 > add a demo component under `src/components/demos/` and map it by codename in
@@ -225,13 +226,13 @@ src/
   scripts/demo.ts      the shared demo timeline runner (IO-gated, cancellable)
   styles/global.css    the whole design system (tokens, themes, grain, motion,
                        reveal/stamp system, FIG. plate chrome)
-  components/          Seal, Contents, demos/{DemoCanned,DemoContinue,DemoBulk},
+  components/          OpenBox, Contents, demos/{DemoCanned,DemoContinue,DemoBulk},
                        BoxMark, Masthead, Ticker, SectionHeader, CreaseDivider,
                        TheLedger, TheDoctrine, InTheLab, Dispatches, Colophon,
                        CommandPalette, Seo, Footer
   layouts/Base.astro   <head>, no-flash theme, masthead, footer, palette
   pages/
-    index.astro        the one long scroll (00 SEAL → 06 MAKER → the ending)
+    index.astro        the one long scroll (the box → 01 CONTENTS → 06 MAKER)
     dispatches/        index + [slug] post template
     rss.xml.js · 404.astro
 astro.config.mjs       SITE domain + integrations (mdx, sitemap)
@@ -255,8 +256,9 @@ netlify.toml           build + caching + security headers
 - **Texture** — 0.5–1px hairline rules, a rigid baseline grid, subtle CSS film
   grain, box-fold **crease dividers** between sections. No soft shadows, no glass,
   no decorative gradients.
-- **Tokens you'll touch most**: `--accent`, `--carton/-2` (the sealed board),
-  `--interior` (inside the box), `--ink/-2/-3`, `--line/-2`, `--paper/-2`.
+- **Tokens you'll touch most**: `--accent` / `--accent-text` (bright surface
+  orange vs AA print orange), `--box-*` (the carton faces), `--interior`
+  (inside the box), `--ink/-2/-3`, `--line/-2`, `--paper/-2`.
 
 ### Keyboard-first, made literal
 
