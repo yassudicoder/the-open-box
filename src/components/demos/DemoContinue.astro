@@ -1,0 +1,362 @@
+---
+/* =============================================================================
+   FIG.02 — CONTINUE. The demonstration: a conversation in one model is packed
+   into a structured capsule, carried across, and rebuilt in another model —
+   then it simply keeps going. Continuity made physically visible.
+   ========================================================================== */
+const THREAD = [
+  { who: "u", text: "Draft a cold email for the beta." },
+  { who: "ai", text: "Here's a three-paragraph draft —" },
+  { who: "u", text: "Tighter. Keep the CTA." },
+];
+---
+
+<figure class="fig demo-ct" data-demo="continue" data-phase="static">
+  <span class="fig__corner fig__corner--tl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--tr" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--bl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--br" aria-hidden="true"></span>
+
+  <div class="fig__bar">
+    <span class="fig__bar-label">FIG. 02 — WORKING DEMONSTRATION</span>
+    <button class="fig__replay" data-replay type="button" aria-label="Replay the Continue demonstration">
+      REPLAY ▸
+    </button>
+  </div>
+
+  <div class="fig__stage ct" aria-hidden="true">
+    <div class="ct__pane ct__pane--a">
+      <div class="ct__panehead mono">MODEL A — CHATGPT</div>
+      <div class="ct__msgs">
+        {THREAD.map((m, i) => (
+          <p class={`ct__msg ct__msg--${m.who} ct__msg--a`} style={`--i:${i}`}>{m.text}</p>
+        ))}
+      </div>
+    </div>
+
+    <div class="ct__divider" aria-hidden="true"></div>
+
+    <div class="ct__pane ct__pane--b">
+      <div class="ct__panehead mono">MODEL B — CLAUDE</div>
+      <div class="ct__msgs">
+        <p class="ct__await mono" data-await>NO CONTEXT YET</p>
+        {THREAD.map((m, i) => (
+          <p class={`ct__msg ct__msg--${m.who} ct__msg--b`} style={`--i:${i}`}>{m.text}</p>
+        ))}
+        <p class="ct__msg ct__msg--ai ct__msg--new">
+          <span data-newtext>Picking up your thread — here's the tighter cut.</span><span class="ct__caret" data-newcaret></span>
+        </p>
+      </div>
+    </div>
+
+    <!-- the context capsule: the conversation as an object. Its numbers
+         describe exactly the thread drawn beside it — nothing invented. -->
+    <div class="ct__capsule mono" data-capsule>
+      <span class="ct__capsule-head">CONTEXT · PACKED</span>
+      <span class="ct__capsule-row">MSGS <b>3</b></span>
+      <span class="ct__capsule-row">FORMAT <b>MD</b></span>
+      <span class="ct__capsule-row">LOSS <b>0%</b></span>
+    </div>
+  </div>
+
+  <figcaption class="fig__foot">
+    <span class="fig__status" data-status>ONE CLICK · FULL CONTEXT · NO ACCOUNT</span>
+    <span>PDF · MD · JSON</span>
+  </figcaption>
+</figure>
+
+<style>
+  .ct {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    min-height: 250px;
+  }
+  .ct__pane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .ct__panehead {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.54rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    border-bottom: var(--hair) dashed var(--line);
+  }
+  .ct__msgs {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    padding: 0.7rem;
+  }
+  .ct__msg {
+    font-size: 0.72rem;
+    line-height: 1.4;
+    max-width: 92%;
+    padding: 0.4em 0.6em;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    color: var(--ink);
+    background: var(--paper);
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 0.35s var(--ease-out),
+      transform 0.45s var(--ease-out);
+  }
+  .ct__msg--u {
+    align-self: flex-end;
+    border-color: var(--line-2);
+    background: var(--shade);
+  }
+  .ct__msg--ai {
+    align-self: flex-start;
+    border-left: 2px solid var(--accent-text);
+  }
+  .ct__await {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.56rem;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    opacity: 1;
+    transition: opacity 0.3s var(--ease);
+  }
+  .ct__caret {
+    display: none;
+    width: 2px;
+    height: 1em;
+    margin-left: 2px;
+    background: var(--accent);
+    vertical-align: text-bottom;
+    animation: ct-caret 1s steps(1) infinite;
+  }
+  @keyframes ct-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+  .ct__divider {
+    width: 0;
+    border-left: var(--hair) dashed var(--line-2);
+    margin-block: 0.6rem;
+  }
+
+  /* the capsule */
+  .ct__capsule {
+    position: absolute;
+    left: 25%;
+    top: 58%;
+    transform: translate(-50%, -50%) scale(0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 0.14rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--interior);
+    color: var(--interior-ink);
+    border: var(--hair-strong) solid var(--accent);
+    border-radius: 2px;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition:
+      opacity 0.35s var(--ease),
+      transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+      left 1s var(--ease);
+    z-index: 2;
+    min-width: 96px;
+  }
+  .ct__capsule-head {
+    color: var(--accent);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    margin-bottom: 0.15rem;
+  }
+  .ct__capsule-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8em;
+    opacity: 0.85;
+  }
+  .ct__capsule-row b {
+    font-weight: 700;
+  }
+
+  /* ---------------- phase choreography ---------------- */
+  /* fill: the conversation exists in A */
+  [data-phase="fill"] .ct__msg--a,
+  [data-phase="pack"] .ct__msg--a,
+  [data-phase="transfer"] .ct__msg--a,
+  [data-phase="unpack"] .ct__msg--a,
+  [data-phase="continue"] .ct__msg--a,
+  [data-phase="static"] .ct__msg--a {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(var(--i) * 0.28s);
+  }
+  /* pack: A's messages press into the capsule */
+  [data-phase="pack"] .ct__msg--a,
+  [data-phase="transfer"] .ct__msg--a,
+  [data-phase="unpack"] .ct__msg--a,
+  [data-phase="continue"] .ct__msg--a {
+    transition-delay: calc(var(--i) * 0.07s);
+  }
+  [data-phase="pack"] .ct__msg--a {
+    opacity: 0.25;
+    transform: translateY(calc((2 - var(--i)) * 9px)) scale(0.93);
+  }
+  [data-phase="transfer"] .ct__msg--a,
+  [data-phase="unpack"] .ct__msg--a,
+  [data-phase="continue"] .ct__msg--a {
+    opacity: 0.25;
+    transform: scale(0.97);
+  }
+  [data-phase="pack"] .ct__capsule,
+  [data-phase="transfer"] .ct__capsule,
+  [data-phase="unpack"] .ct__capsule,
+  [data-phase="continue"] .ct__capsule,
+  [data-phase="static"] .ct__capsule {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  /* transfer: the capsule crosses to B */
+  [data-phase="transfer"] .ct__capsule,
+  [data-phase="unpack"] .ct__capsule,
+  [data-phase="continue"] .ct__capsule,
+  [data-phase="static"] .ct__capsule {
+    left: 75%;
+  }
+  /* unpack: context rebuilt in B */
+  [data-phase="unpack"] .ct__await,
+  [data-phase="continue"] .ct__await,
+  [data-phase="static"] .ct__await {
+    opacity: 0;
+  }
+  [data-phase="unpack"] .ct__msg--b,
+  [data-phase="continue"] .ct__msg--b,
+  [data-phase="static"] .ct__msg--b {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(0.15s + var(--i) * 0.18s);
+  }
+  [data-phase="unpack"] .ct__capsule,
+  [data-phase="continue"] .ct__capsule,
+  [data-phase="static"] .ct__capsule {
+    top: 22%;
+    opacity: 0.92;
+    transform: translate(-50%, -50%) scale(0.78);
+    transition:
+      opacity 0.35s var(--ease),
+      transform 0.5s var(--ease),
+      left 1s var(--ease),
+      top 0.5s var(--ease);
+  }
+  /* continue: the new message lands in B */
+  [data-phase="continue"] .ct__msg--new,
+  [data-phase="static"] .ct__msg--new {
+    opacity: 1;
+    transform: none;
+  }
+  [data-phase="continue"] .ct__caret {
+    display: inline-block;
+  }
+  /* static plate: the capsule rests in pane B's clear corner, past the last
+     message — visible, covering nothing */
+  [data-phase="static"] .ct__capsule {
+    left: auto;
+    right: 10px;
+    top: auto;
+    bottom: 10px;
+    transform: none;
+    opacity: 1;
+  }
+
+  /* narrow: stack the panes; the capsule travels down instead of across */
+  @media (max-width: 560px) {
+    .ct {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr auto 1fr;
+    }
+    .ct__divider {
+      width: auto;
+      height: 0;
+      border-left: 0;
+      border-top: var(--hair) dashed var(--line-2);
+      margin-block: 0;
+      margin-inline: 0.6rem;
+    }
+    .ct__capsule {
+      left: 50%;
+      top: 30%;
+    }
+    [data-phase="transfer"] .ct__capsule,
+    [data-phase="unpack"] .ct__capsule,
+    [data-phase="continue"] .ct__capsule {
+      left: 50%;
+      top: 72%;
+      transition:
+        opacity 0.35s var(--ease),
+        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+        top 1s var(--ease);
+    }
+    [data-phase="unpack"] .ct__capsule,
+    [data-phase="continue"] .ct__capsule {
+      top: 58%;
+      transform: translate(-50%, -50%) scale(0.82);
+      opacity: 0.9;
+    }
+    /* static keeps the corner placement from the base rules */
+    [data-phase="static"] .ct__capsule {
+      left: auto;
+      top: auto;
+      right: 10px;
+      bottom: 10px;
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  import { attachDemo } from "../../scripts/demo";
+
+  const root = document.querySelector<HTMLElement>('[data-demo="continue"]');
+  if (root) {
+    const q = (s: string) => root.querySelector<HTMLElement>(s);
+    const status = q("[data-status]");
+    const newtext = q("[data-newtext]");
+    const NEW_MSG = "Picking up your thread — here's the tighter cut.";
+
+    attachDemo(root, async (ctx) => {
+      ctx.phase("reset");
+      ctx.set(newtext, "");
+      ctx.set(status, "A CONVERSATION IN MODEL A…");
+      await ctx.sleep(350);
+
+      ctx.phase("fill");
+      await ctx.sleep(1500);
+
+      ctx.phase("pack");
+      ctx.set(status, "PACKED — STRUCTURE, NOT A SCREENSHOT");
+      await ctx.sleep(1250);
+
+      ctx.phase("transfer");
+      ctx.set(status, "CROSSING — VIA YOUR CLIPBOARD");
+      await ctx.sleep(1400);
+
+      ctx.phase("unpack");
+      ctx.set(status, "CONTEXT REBUILT IN MODEL B");
+      await ctx.sleep(1350);
+
+      ctx.phase("continue");
+      ctx.set(status, "CONTINUES — NOTHING LOST");
+      await ctx.type(newtext, NEW_MSG, 40);
+      await ctx.sleep(2200);
+    });
+  }
+</script>

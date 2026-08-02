@@ -1,0 +1,281 @@
+---
+/* =============================================================================
+   FIG.01 — CANNED. The demonstration: you keep typing the same reply, the
+   tool collapses it into a token, and one shortcut expands it at the cursor.
+   The plate ships in data-phase="static" (composed end state) and is only
+   animated by scripts/demo.ts when motion is allowed.
+   ========================================================================== */
+/* The story stays honest to the product: Canned doesn't watch what you type —
+   YOU notice the repetition and save the template; the tool makes recalling
+   it one shortcut. */
+const MSG = "Hi! Thanks for reaching out — happy to walk you through it this week.";
+---
+
+<figure class="fig demo-cn" data-demo="canned" data-phase="static">
+  <span class="fig__corner fig__corner--tl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--tr" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--bl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--br" aria-hidden="true"></span>
+
+  <div class="fig__bar">
+    <span class="fig__bar-label">FIG. 01 — WORKING DEMONSTRATION</span>
+    <button class="fig__replay" data-replay type="button" aria-label="Replay the Canned demonstration">
+      REPLAY ▸
+    </button>
+  </div>
+
+  <div class="fig__stage cn" aria-hidden="true">
+    <div class="cn__chrome mono">
+      <span>COMPOSE — GMAIL</span>
+      <span class="cn__day" data-day>SAVED AS ;INTRO</span>
+    </div>
+
+    <div class="cn__field">
+      <span class="cn__addr mono">TO: PROSPECT · RE: ONBOARDING</span>
+      <p class="cn__line">
+        <span class="cn__text" data-text>{MSG}</span><span class="cn__cmd mono" data-cmd></span><span class="cn__caret"></span>
+      </p>
+      <span class="cn__token mono" data-token>;intro</span>
+      <span class="cn__detect mono" data-detect>THE SAME REPLY — 3RD TIME THIS WEEK</span>
+    </div>
+
+    <div class="cn__hint mono">
+      <kbd>;intro</kbd> + <kbd>TAB</kbd> <span class="cn__hint-eq">=</span> THE WHOLE REPLY, AT THE CURSOR
+    </div>
+  </div>
+
+  <figcaption class="fig__foot">
+    <span class="fig__status" data-status>TEMPLATES STAY ON YOUR MACHINE</span>
+    <span>0 BYTES UPLOADED</span>
+  </figcaption>
+</figure>
+
+<style>
+  .cn {
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+  }
+  .cn__chrome {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    border-bottom: var(--hair) dashed var(--line);
+  }
+  .cn__day {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .cn__field {
+    position: relative;
+    flex: 1;
+    padding: 0.8rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .cn__addr {
+    font-size: 0.54rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-3);
+  }
+  .cn__line {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 44ch;
+    min-height: 4em;
+  }
+  .cn__text {
+    display: inline;
+    transform-origin: 0 50%;
+    transition: opacity 0.4s var(--ease);
+  }
+  .cn__cmd {
+    color: var(--accent-text);
+    font-weight: 700;
+    font-size: 0.84em;
+    letter-spacing: 0.04em;
+  }
+  .cn__caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.05em;
+    margin-left: 1px;
+    background: var(--accent);
+    vertical-align: text-bottom;
+    animation: cn-caret 1.05s steps(1) infinite;
+  }
+  @keyframes cn-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+
+  /* the saved-template token */
+  .cn__token {
+    position: absolute;
+    right: 0.9rem;
+    bottom: 0.7rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-text);
+    border: var(--hair-strong) solid var(--accent-text);
+    border-radius: 2px;
+    padding: 0.3em 0.55em;
+    background: color-mix(in oklab, var(--accent) 8%, var(--field));
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.3s var(--ease), transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cn__token::before {
+    content: "▸ ";
+    font-size: 0.8em;
+  }
+
+  /* the repetition banner */
+  .cn__detect {
+    position: absolute;
+    left: 0.9rem;
+    bottom: 0.7rem;
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--ink);
+    border-left: 2px solid var(--accent-text);
+    padding: 0.2em 0 0.2em 0.6em;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s var(--ease), transform 0.3s var(--ease-out);
+  }
+
+  .cn__hint {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.55rem 0.9rem;
+    border-top: var(--hair) solid var(--line);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-2);
+  }
+  .cn__hint kbd {
+    font-size: 0.66rem;
+  }
+  .cn__hint-eq {
+    color: var(--accent-text);
+    font-weight: 700;
+  }
+
+  /* ---------------- phase choreography ---------------- */
+  /* typing rounds: plain field, no chip */
+  [data-phase="type1"] .cn__token,
+  [data-phase="type2"] .cn__token,
+  [data-phase="recall"] .cn__token {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  /* repetition detected: banner up, text pressed */
+  [data-phase="detect"] .cn__detect {
+    opacity: 1;
+    transform: none;
+  }
+  [data-phase="detect"] .cn__text {
+    background: color-mix(in oklab, var(--accent) 16%, transparent);
+  }
+  /* collapse: the paragraph folds into the token */
+  [data-phase="collapse"] .cn__text {
+    opacity: 0;
+  }
+  [data-phase="collapse"] .cn__token,
+  [data-phase="expand"] .cn__token,
+  [data-phase="static"] .cn__token {
+    opacity: 1;
+    transform: none;
+  }
+  /* expand: the field flashes as the reply lands whole */
+  [data-phase="expand"] .cn__field::after {
+    content: "";
+    position: absolute;
+    inset: 0.4rem;
+    background: color-mix(in oklab, var(--accent) 10%, transparent);
+    animation: cn-flash 0.55s var(--ease) both;
+    pointer-events: none;
+  }
+  @keyframes cn-flash {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+</style>
+
+<script>
+  import { attachDemo } from "../../scripts/demo";
+
+  const MSG =
+    "Hi! Thanks for reaching out — happy to walk you through it this week.";
+
+  const root = document.querySelector<HTMLElement>('[data-demo="canned"]');
+  if (root) {
+    const q = (s: string) => root.querySelector<HTMLElement>(s);
+    const text = q("[data-text]");
+    const cmd = q("[data-cmd]");
+    const day = q("[data-day]");
+    const status = q("[data-status]");
+
+    attachDemo(root, async (ctx) => {
+      // round 1 — the reply, written by hand
+      ctx.phase("type1");
+      ctx.set(cmd, "");
+      ctx.set(text, "");
+      ctx.set(day, "MON 09:12");
+      ctx.set(status, "WRITING THE REPLY…");
+      await ctx.sleep(500);
+      await ctx.type(text, MSG, 44);
+      ctx.set(status, "SENT · ×1");
+      await ctx.sleep(1000);
+
+      // round 2 — the same reply, again
+      ctx.phase("type2");
+      ctx.set(text, "");
+      ctx.set(day, "TUE 08:47");
+      ctx.set(status, "WRITING IT AGAIN…");
+      await ctx.sleep(420);
+      await ctx.type(text, MSG.slice(0, 42), 46);
+
+      // you notice — this reply is a template waiting to happen
+      ctx.phase("detect");
+      ctx.set(status, "THE SAME REPLY, AGAIN");
+      await ctx.sleep(1350);
+
+      // so you save it — once, on your machine
+      ctx.phase("collapse");
+      ctx.set(status, "YOU SAVE IT AS ;INTRO — LOCALLY");
+      await ctx.sleep(1250);
+
+      // recall: six keys
+      ctx.phase("recall");
+      ctx.set(text, "");
+      ctx.set(day, "NOW");
+      ctx.set(status, "TYPE THE SHORTCUT…");
+      await ctx.sleep(400);
+      await ctx.type(cmd, ";intro", 12);
+      await ctx.sleep(500);
+
+      // expand: the whole reply, at the cursor, at once
+      ctx.phase("expand");
+      ctx.set(cmd, "");
+      ctx.set(text, MSG);
+      ctx.set(status, "ONE SHORTCUT · WHOLE REPLY");
+      await ctx.sleep(2400);
+    });
+  }
+</script>

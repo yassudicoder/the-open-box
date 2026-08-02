@@ -8,9 +8,10 @@ tool (VOL.01, VOL.02, …) has its own site, and this is where they unpack out o
 > Small tools. Out of the box. Nothing hidden.
 
 Built with [Astro](https://astro.build) — static, fast, zero required JS for the
-core, MDX-powered changelog. The signature graphic (an isometric wireframe box
-that boots open and hands its contents to the catalog) is pure **CSS 3D** — no
-WebGL, no heavy dependency, fully reduced-motion aware.
+core, MDX-powered changelog. The whole site is staged as **opening one carton**:
+the first viewport is the sealed box face and scrolling cuts the tape, hinges
+the lid flaps apart, and reveals the contents. Pure CSS transforms + a tiny
+scroll driver — no WebGL, no animation library, fully reduced-motion aware.
 
 ---
 
@@ -27,59 +28,57 @@ Node 20+ recommended.
 
 ---
 
-## The signature: the open box
+## The signature: the seal
 
-The hero box lives in [`src/components/OpenBox.astro`](src/components/OpenBox.astro).
-It is one self-contained component built on the idea of **unboxing on
-interaction** — it starts sealed and opens when you arrive or touch it.
+The opening scene lives in [`src/components/Seal.astro`](src/components/Seal.astro).
+The first viewport **is the box**: a sealed carton face — the wordmark printed
+on board, a shipping label (`FROM / SHIP TO / CONTENTS / STATUS`), and a strip
+of signal-orange packing **tape carrying the studio's claims** on a slow
+marquee.
 
-- **Carton** — opaque, matte, three-tone CSS-3D faces (top / front / side) with
-  hairline edges. No translucency, no see-through wireframe — it reads as a real
-  sealed box. Four lid flaps hinge at the top rim (full-width outer pair + an
-  inner pair that fans out on open).
-- **Sealed (default)** — the box is closed: the outer flaps cover the top with a
-  centre **seam** and a strip of sealing **tape**, plus a `⌀ SEALED` badge. The
-  three product **modules are hidden** (collapsed into the box) — but still present
-  in the DOM as real focusable `<a>` links for SEO and screen readers.
-- **Unbox (on interaction)** — on the **first** of {hover · keyboard focus · tap ·
-  arriving on the page after a short sealed beat}, the flaps hinge open and the
-  modules **rise, fan out, and settle** with a slight stagger (~0.85s). Once open
-  it **stays open** so the links stay usable.
-- **While open** — a gentle bob, plus a small damped **parallax tilt** toward the
-  cursor (desktop only; off on touch / reduced motion).
-- **Modules are real links** — `VOL.01`, `VOL.02`, and a dimmed `VOL.03`. Tab to
-  focus, `↑↓` to move between them, `↵` to open. Hover/focus opens a roomy
-  **inspect panel** (name, status, a readable one-liner, and a small live preview
-  with the tool's key interaction). The dimmed "in research" module is
-  intentionally non-interactive.
-- **Scroll handoff** — as you scroll from the hero into **THE INDEX**, each module
-  detaches from the box and **flies into its real catalog row** (matched by
-  `data-vol`: VOL.01→Canned, VOL.02→Continue, VOL.03→the research placeholder),
-  easing so it lingers — reads as a detach — then docks and fades as the row
-  flashes a reception. The destination is computed live in JS from the box and
-  each row's position (rAF-throttled, transform/opacity only). Skipped on
-  mobile / reduced-motion / no-JS — there the modules simply appear in the index
-  and the hero scrolls away normally.
-- **Blueprint framing** — the space around the box is filled with low-contrast,
-  click-through engineering detail: an ISO dot-grid, corner crop marks, dimension
-  lines with monospace callouts, and a slowly-rotating `✺ PACKED ON {build date}`
-  stamp.
-- **Reduced motion** — with `prefers-reduced-motion: reduce`, the box renders
-  **already open and static** with modules placed. No flap animation, no bob, no
-  parallax, no scroll-flight, no spinning stamp — the modules simply appear in the
-  index and the hero scrolls away normally. Everything stays fully usable (forced
-  in CSS, JS-independent).
-- **No JS?** — a `<noscript>` rule renders the box open with its modules visible,
-  so the links are never trapped inside a sealed box.
+- **Cut the seal** — the scene pins for ~2 viewports of scroll. A blade tracks
+  scroll 1:1 across the tape, drawing the cut; when it clears the edge the
+  halves snap apart and the label stamps `STATUS / OPEN · BY YOU · {date}`.
+- **Flaps hinge apart** — the face is two lid flaps (each carrying its half of
+  the cut tape) that fold away with CSS 3D `rotateX`, revealing the dark
+  interior: **NOTHING HIDDEN** and the contents manifest, each volume a real
+  link down into the catalog.
+- **Fallbacks** — with `prefers-reduced-motion: reduce` or no JS, the scene
+  isn't pinned at all: the face renders already opened (static cut tape,
+  `STATUS / OPEN`) followed by the interior as a normal section. Content is
+  never trapped behind the animation.
+- The driver is one rAF-throttled scroll listener writing three custom
+  properties (`--pcut`, `--tsep`, `--popen`); everything downstream is
+  `transform`/`opacity` only.
 
-Animation touches only `transform`/`opacity`; the box's dimensions are reserved
-(zero layout shift) and it's CSS-only (no WebGL), so it never blocks LCP. Tune the
-sealed-dwell (`setTimeout(open, 1100)`) or the flap open angles at the top of the
-component's `<style>`/`<script>`.
+## The demonstrations
 
-The same line-art box is the **logo** (`src/components/BoxMark.astro`), the
-**favicon** (`public/favicon.svg`, with a subtle open animation), and the
-**OG cover** (`public/og-cover.svg` → rasterized to `.png`).
+Each shipped tool in **01 / THE CONTENTS** is a *bay*: an identity plate
+(codename, specs, platforms, links) beside a **FIG. plate that demonstrates the
+tool instead of describing it** (`src/components/demos/`):
+
+- **FIG.01 CANNED** — the same reply gets typed twice, so you save it as a
+  `;intro` template (locally), and from then on one shortcut expands it whole
+  at the cursor.
+- **FIG.02 CONTINUE** — a conversation in Model A is packed into a structured
+  context capsule, crosses the seam, and is rebuilt in Model B — where it
+  simply keeps going.
+- **FIG.03 BULK** — a page is swept by a scanline, every image (incl. lazy +
+  background) is extracted into a sorted field, duplicates struck, keepers
+  checked, and the lot compressed into one ZIP.
+
+All three run on a shared cancellable timeline runner
+([`src/scripts/demo.ts`](src/scripts/demo.ts)): they play only while on
+screen, pause when the tab hides, loop with a REPLAY control, and under
+reduced motion ship as static composed end-states (`data-phase="static"`).
+
+The site ends by completing the metaphor: the footer draws the **carton
+unfolded flat** (its panels still printed with the volumes it carried) —
+`The box is open. Nothing left inside.`
+
+The line-art box remains the **logo** (`src/components/BoxMark.astro`), the
+**favicon** (`public/favicon.svg`), and the **OG cover** (`public/og-cover.svg`
+→ rasterized to `.png`).
 
 ---
 
@@ -111,13 +110,13 @@ Edit **[`src/data/tools.ts`](src/data/tools.ts)** and append one entry to the
 },
 ```
 
-That single edit updates: **THE INDEX**, the floating **box modules** (first three
-entries), the **ledger** tool count, the **command palette**, the **footer**
-links, and the per-tool **JSON-LD** `SoftwareApplication`. No layout surgery.
+That single edit updates: **THE CONTENTS**, the seal's **interior manifest**,
+the **ledger** tool count, the **command palette**, the **maker** links, and the
+per-tool **JSON-LD** `SoftwareApplication`. No layout surgery.
 
-> The hero box shows the first **three** tools as modules. To feature VOL.04 in
-> the box, reorder the array or adjust the `modules`/`positions` slice at the top
-> of `OpenBox.astro`.
+> A new volume renders as a bay without a FIG. plate until you give it one:
+> add a demo component under `src/components/demos/` and map it by codename in
+> `Contents.astro` (see how CANNED / CONTINUE / BULK are wired).
 
 If the new tool is in the Chrome Web Store, also add a `{ name, cwsUrl, installs }`
 entry to [`src/data/tools.json`](src/data/tools.json) so its installs are counted
@@ -223,13 +222,16 @@ src/
   content/
     dispatches/        one Markdown file per changelog post
   content.config.ts    dispatches collection schema
-  styles/global.css    the whole design system (tokens, themes, grain, motion)
-  components/          OpenBox, BoxMark, Masthead, Ticker, SectionHeader,
-                       CreaseDivider, TheIndex, TheLedger, TheDoctrine, InTheLab,
-                       Dispatches, Colophon, CommandPalette, Seo, Footer
+  scripts/demo.ts      the shared demo timeline runner (IO-gated, cancellable)
+  styles/global.css    the whole design system (tokens, themes, grain, motion,
+                       reveal/stamp system, FIG. plate chrome)
+  components/          Seal, Contents, demos/{DemoCanned,DemoContinue,DemoBulk},
+                       BoxMark, Masthead, Ticker, SectionHeader, CreaseDivider,
+                       TheLedger, TheDoctrine, InTheLab, Dispatches, Colophon,
+                       CommandPalette, Seo, Footer
   layouts/Base.astro   <head>, no-flash theme, masthead, footer, palette
   pages/
-    index.astro        the one long scroll (sections 01–07)
+    index.astro        the one long scroll (00 SEAL → 06 MAKER → the ending)
     dispatches/        index + [slug] post template
     rss.xml.js · 404.astro
 astro.config.mjs       SITE domain + integrations (mdx, sitemap)
@@ -253,8 +255,8 @@ netlify.toml           build + caching + security headers
 - **Texture** — 0.5–1px hairline rules, a rigid baseline grid, subtle CSS film
   grain, box-fold **crease dividers** between sections. No soft shadows, no glass,
   no decorative gradients.
-- **Tokens you'll touch most**: `--accent`, `--wire` (the box stroke), `--ink/-2/-3`,
-  `--line/-2`, `--paper/-2`.
+- **Tokens you'll touch most**: `--accent`, `--carton/-2` (the sealed board),
+  `--interior` (inside the box), `--ink/-2/-3`, `--line/-2`, `--paper/-2`.
 
 ### Keyboard-first, made literal
 

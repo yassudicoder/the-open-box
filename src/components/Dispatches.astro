@@ -14,22 +14,23 @@ const fmt = (d: Date) =>
 <section class="section" id="dispatches" aria-labelledby="dispatches-h">
   <div class="wrap">
     <SectionHeader
-      index="06"
+      index="05"
       glyph="§"
       title="Dispatches"
-      sublabel="CHANGELOG · FIELD NOTES"
-      kicker="SHIP LOG · RSS AVAILABLE"
+      sublabel="FIELD REPORTS · SHIP LOG"
+      kicker="FILED IN PUBLIC · RSS AVAILABLE"
       id="dispatches-h"
     />
 
     <ul class="dispatch">
       {
-        posts.map((p) => (
-          <li class="dis">
+        posts.map((p, i) => (
+          <li class="dis" data-reveal style={`--reveal-delay:${i * 0.06}s`}>
             <a class="dis__link" href={`/dispatches/${p.id}/`}>
               <span class="dis__rail mono" aria-hidden="true">
-                <span class="dis__n">§{String(p.data.n).padStart(3, "0")}</span>
+                <span class="dis__n">REPORT §{String(p.data.n).padStart(3, "0")}</span>
                 <span class="dis__date">{fmt(p.data.date)}</span>
+                <span class="dis__filed">STATUS / FILED</span>
               </span>
               <span class="dis__body">
                 <span class="dis__tagrow">
@@ -39,7 +40,7 @@ const fmt = (d: Date) =>
                 <span class="dis__title">{p.data.title}</span>
                 <span class="dis__summary">{p.data.summary}</span>
               </span>
-              <span class="dis__arrow mono" aria-hidden="true">▸</span>
+              <span class="dis__arrow mono" aria-hidden="true">READ ▸</span>
             </a>
           </li>
         ))
@@ -78,8 +79,13 @@ const fmt = (d: Date) =>
     letter-spacing: 0.06em;
   }
   .dis__n {
-    color: var(--accent);
+    color: var(--accent-text);
     font-weight: 600;
+  }
+  .dis__filed {
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+    color: var(--label-aa);
   }
   .dis__body {
     grid-column: 1;
@@ -106,7 +112,10 @@ const fmt = (d: Date) =>
     grid-row: 1 / span 2;
     align-self: center;
     color: var(--ink-3);
-    font-size: 1rem;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
     transition: transform 0.16s var(--ease), color 0.16s var(--ease);
   }
   .dis__link:hover .dis__arrow {

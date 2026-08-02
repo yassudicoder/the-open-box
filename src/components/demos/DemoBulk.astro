@@ -1,0 +1,485 @@
+---
+/* =============================================================================
+   FIG.03 — BULK. The demonstration: a page is scanned like material on a
+   belt — every image found (even lazy/background ones), extracted into an
+   ordered field, de-duplicated, selected, compressed into one ZIP.
+   ========================================================================== */
+
+// the mini page being scanned — positions in % of the page panel
+const pageImgs = [
+  { t: 16, l: 6, w: 40, h: 22, mod: "" },
+  { t: 16, l: 52, w: 42, h: 30, mod: "" },
+  { t: 44, l: 6, w: 26, h: 24, mod: "lazy" },
+  { t: 54, l: 38, w: 24, h: 18, mod: "" },
+  { t: 58, l: 68, w: 26, h: 26, mod: "bg" },
+  { t: 76, l: 8, w: 44, h: 16, mod: "lazy" },
+];
+
+// the extraction field — what the scan produced
+const thumbs = [
+  { label: "1920×1080", kind: "keep" },
+  { label: "1280×720", kind: "keep" },
+  { label: "800×600", kind: "keep" },
+  { label: "800×600", kind: "dup" },
+  { label: "1200×900", kind: "keep" },
+  { label: "640×640", kind: "keep" },
+  { label: "16×16", kind: "noise" },
+  { label: "960×540", kind: "keep" },
+  { label: "640×640", kind: "dup" },
+  { label: "1×1", kind: "noise" },
+  { label: "1024×768", kind: "keep" },
+  { label: "2048×1152", kind: "keep" },
+];
+const kept = thumbs.filter((t) => t.kind === "keep").length;
+---
+
+<figure class="fig demo-bk" data-demo="bulk" data-phase="static">
+  <span class="fig__corner fig__corner--tl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--tr" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--bl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--br" aria-hidden="true"></span>
+
+  <div class="fig__bar">
+    <span class="fig__bar-label">FIG. 03 — WORKING DEMONSTRATION</span>
+    <button class="fig__replay" data-replay type="button" aria-label="Replay the Bulk demonstration">
+      REPLAY ▸
+    </button>
+  </div>
+
+  <div class="fig__stage bk" aria-hidden="true">
+    <!-- the page under inspection -->
+    <div class="bk__page">
+      <div class="bk__pagehead mono">
+        <span>ANY PAGE</span>
+        <span data-found>FOUND 12</span>
+      </div>
+      <div class="bk__pagebody">
+        <span class="bk__bar" style="width:64%"></span>
+        <span class="bk__bar" style="width:38%"></span>
+        {pageImgs.map((im, i) => (
+          <span
+            class:list={["bk__img", im.mod && `bk__img--${im.mod}`]}
+            style={`top:${im.t}%;left:${im.l}%;width:${im.w}%;height:${im.h}%;--d:${(im.t / 100) * 1.1}s`}
+          >
+            {im.mod && <i class="bk__imgtag mono">{im.mod.toUpperCase()}</i>}
+          </span>
+        ))}
+        <span class="bk__scan"></span>
+        <span class="bk__fold mono">+ BELOW THE FOLD</span>
+      </div>
+    </div>
+
+    <!-- the extraction field -->
+    <div class="bk__field">
+      <div class="bk__fieldhead mono">
+        <span>EXTRACTED · SORTED</span>
+        <span class="bk__cull mono" data-cull>-2 DUP · -2 NOISE</span>
+      </div>
+      <div class="bk__grid">
+        {thumbs.map((t, i) => (
+          <span class:list={["bk__thumb", `bk__thumb--${t.kind}`]} style={`--i:${i}`}>
+            <i class="bk__thumbimg"></i>
+            <i class="bk__thumblabel mono">{t.label}</i>
+            <i class="bk__check" aria-hidden="true">
+              <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4.2 L3.6 6.8 L9 1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </i>
+            <i class="bk__cross" aria-hidden="true">
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1 1 L7 7 M7 1 L1 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+            </i>
+          </span>
+        ))}
+      </div>
+      <div class="bk__zip mono" data-zip>
+        <span class="bk__zipicon" aria-hidden="true">
+          <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><path d="M1 1h9v11H1z M5.5 1v3 M5.5 6v1 M5.5 8.5v1" stroke="currentColor" stroke-width="1.4"/></svg>
+        </span>
+        bulk-images.zip · {kept} FILES
+      </div>
+    </div>
+  </div>
+
+  <figcaption class="fig__foot">
+    <span class="fig__status" data-status>SCAN · SORT · DE-DUPE · ZIP — ON DEVICE</span>
+    <span>0 BYTES UPLOADED</span>
+  </figcaption>
+</figure>
+
+<style>
+  .bk {
+    display: grid;
+    grid-template-columns: 5fr 6fr;
+    min-height: 260px;
+  }
+
+  /* ---- the page ---- */
+  .bk__page {
+    display: flex;
+    flex-direction: column;
+    border-right: var(--hair) dashed var(--line);
+  }
+  .bk__pagehead {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.54rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    border-bottom: var(--hair) dashed var(--line);
+  }
+  .bk__pagehead [data-found] {
+    color: var(--accent-text);
+    font-weight: 700;
+    min-width: 7ch;
+    text-align: right;
+  }
+  .bk__pagebody {
+    position: relative;
+    flex: 1;
+    margin: 0.7rem;
+    overflow: hidden;
+  }
+  .bk__bar {
+    display: block;
+    height: 5px;
+    background: var(--line);
+    margin-bottom: 6px;
+    border-radius: 1px;
+  }
+  .bk__img {
+    position: absolute;
+    border: var(--hair) solid var(--line-2);
+    background:
+      linear-gradient(135deg, transparent 47%, var(--line) 47%, var(--line) 53%, transparent 53%),
+      var(--shade);
+    transition: outline-color 0.25s var(--ease), opacity 0.25s var(--ease);
+    outline: 1.5px solid transparent;
+    outline-offset: 1px;
+  }
+  .bk__img--lazy,
+  .bk__img--bg {
+    border-style: dashed;
+    background: none;
+    opacity: 0.45;
+  }
+  .bk__imgtag {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    font-style: normal;
+    font-size: 0.4rem;
+    letter-spacing: 0.1em;
+    color: var(--ink-3);
+  }
+  .bk__scan {
+    position: absolute;
+    left: -2%;
+    right: -2%;
+    top: 0;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px 1px color-mix(in oklab, var(--accent) 55%, transparent);
+    opacity: 0;
+  }
+  .bk__fold {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
+    font-size: 0.44rem;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    opacity: 0;
+    transition: opacity 0.3s var(--ease);
+  }
+
+  /* ---- the field ---- */
+  .bk__field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .bk__fieldhead {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0.7rem;
+    font-size: 0.54rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-3);
+    border-bottom: var(--hair) dashed var(--line);
+  }
+  .bk__cull {
+    color: var(--ink-2);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s var(--ease);
+  }
+  .bk__grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.45rem;
+    padding: 0.7rem;
+    align-content: start;
+  }
+  .bk__thumb {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border: var(--hair) solid var(--line-2);
+    border-radius: 1px;
+    opacity: 0;
+    transform: translateX(-14px);
+    transition:
+      opacity 0.3s var(--ease-out),
+      transform 0.4s var(--ease-out),
+      border-color 0.3s var(--ease);
+  }
+  .bk__thumbimg {
+    position: absolute;
+    inset: 2px;
+    background:
+      linear-gradient(135deg, transparent 46%, var(--line) 46%, var(--line) 54%, transparent 54%),
+      var(--shade);
+  }
+  .bk__thumblabel {
+    position: absolute;
+    left: 2px;
+    bottom: 1px;
+    font-style: normal;
+    font-size: 0.4rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-3);
+  }
+  .bk__check,
+  .bk__cross {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    display: grid;
+    place-items: center;
+    width: 13px;
+    height: 13px;
+    border-radius: 1px;
+    opacity: 0;
+    transform: scale(0.5);
+    transition: opacity 0.22s var(--ease), transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .bk__check {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .bk__cross {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .bk__zip {
+    position: absolute;
+    left: 50%;
+    bottom: 0.65rem;
+    transform: translateX(-50%) translateY(8px) scale(0.85);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    padding: 0.42em 0.75em;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: 2px;
+    opacity: 0;
+    transition:
+      opacity 0.3s var(--ease),
+      transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 2;
+  }
+  .bk__zipicon {
+    display: grid;
+    color: var(--accent);
+  }
+
+  /* ---------------- phase choreography ---------------- */
+  /* scan: the beam sweeps; images light as it passes */
+  [data-phase="scan"] .bk__scan {
+    opacity: 1;
+    animation: bk-sweep 1.35s linear both;
+  }
+  @keyframes bk-sweep {
+    from {
+      top: 0;
+    }
+    to {
+      top: 99%;
+    }
+  }
+  [data-phase="scan"] .bk__img,
+  [data-phase="extract"] .bk__img,
+  [data-phase="dedupe"] .bk__img,
+  [data-phase="select"] .bk__img,
+  [data-phase="zip"] .bk__img,
+  [data-phase="static"] .bk__img {
+    outline-color: var(--accent);
+    opacity: 1;
+    transition-delay: var(--d, 0s);
+  }
+  [data-phase="extract"] .bk__img,
+  [data-phase="dedupe"] .bk__img,
+  [data-phase="select"] .bk__img,
+  [data-phase="zip"] .bk__img,
+  [data-phase="static"] .bk__img {
+    transition-delay: 0s;
+    opacity: 0.4;
+    outline-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  }
+  [data-phase="scan"] .bk__fold,
+  [data-phase="extract"] .bk__fold,
+  [data-phase="dedupe"] .bk__fold,
+  [data-phase="select"] .bk__fold,
+  [data-phase="zip"] .bk__fold,
+  [data-phase="static"] .bk__fold {
+    opacity: 1;
+    transition-delay: 1.1s;
+  }
+
+  /* extract: thumbs arrive in order */
+  [data-phase="extract"] .bk__thumb,
+  [data-phase="dedupe"] .bk__thumb,
+  [data-phase="select"] .bk__thumb,
+  [data-phase="zip"] .bk__thumb,
+  [data-phase="static"] .bk__thumb {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(var(--i) * 0.07s);
+  }
+
+  /* dedupe: duplicates and noise are struck and emptied */
+  [data-phase="dedupe"] .bk__thumb,
+  [data-phase="select"] .bk__thumb,
+  [data-phase="zip"] .bk__thumb,
+  [data-phase="static"] .bk__thumb {
+    transition-delay: 0s;
+  }
+  [data-phase="dedupe"] .bk__thumb--dup .bk__cross,
+  [data-phase="dedupe"] .bk__thumb--noise .bk__cross {
+    opacity: 1;
+    transform: scale(1);
+    transition-delay: calc(var(--i) * 0.05s);
+  }
+  [data-phase="dedupe"] .bk__cull,
+  [data-phase="select"] .bk__cull,
+  [data-phase="zip"] .bk__cull,
+  [data-phase="static"] .bk__cull {
+    opacity: 1;
+  }
+  [data-phase="select"] .bk__thumb--dup,
+  [data-phase="select"] .bk__thumb--noise,
+  [data-phase="zip"] .bk__thumb--dup,
+  [data-phase="zip"] .bk__thumb--noise,
+  [data-phase="static"] .bk__thumb--dup,
+  [data-phase="static"] .bk__thumb--noise {
+    opacity: 0.22;
+    border-style: dashed;
+  }
+  [data-phase="select"] .bk__thumb--dup .bk__thumbimg,
+  [data-phase="select"] .bk__thumb--noise .bk__thumbimg,
+  [data-phase="zip"] .bk__thumb--dup .bk__thumbimg,
+  [data-phase="zip"] .bk__thumb--noise .bk__thumbimg,
+  [data-phase="static"] .bk__thumb--dup .bk__thumbimg,
+  [data-phase="static"] .bk__thumb--noise .bk__thumbimg {
+    opacity: 0;
+  }
+
+  /* select: keepers get the mark */
+  [data-phase="select"] .bk__thumb--keep .bk__check,
+  [data-phase="zip"] .bk__thumb--keep .bk__check,
+  [data-phase="static"] .bk__thumb--keep .bk__check {
+    opacity: 1;
+    transform: scale(1);
+    transition-delay: calc(var(--i) * 0.06s);
+  }
+
+  /* zip: the keepers compress into the archive */
+  [data-phase="zip"] .bk__thumb--keep {
+    opacity: 0;
+    transform: translateY(56px) scale(0.1);
+    transition:
+      opacity 0.5s var(--ease) calc(var(--i) * 0.04s),
+      transform 0.55s var(--ease) calc(var(--i) * 0.04s);
+  }
+  [data-phase="zip"] .bk__thumb--keep .bk__check {
+    transition-delay: 0s;
+  }
+  [data-phase="zip"] .bk__zip,
+  [data-phase="static"] .bk__zip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+    transition-delay: 0.4s;
+  }
+  [data-phase="static"] .bk__zip {
+    transition-delay: 0s;
+  }
+
+  /* static plate keeps everything legible at once */
+  [data-phase="static"] .bk__thumb--keep {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* narrow: stack page above field */
+  @media (max-width: 560px) {
+    .bk {
+      grid-template-columns: 1fr;
+    }
+    .bk__page {
+      border-right: 0;
+      border-bottom: var(--hair) dashed var(--line);
+      min-height: 150px;
+    }
+    .bk__grid {
+      padding-bottom: 2.6rem;
+    }
+  }
+</style>
+
+<script>
+  import { attachDemo } from "../../scripts/demo";
+
+  const root = document.querySelector<HTMLElement>('[data-demo="bulk"]');
+  if (root) {
+    const q = (s: string) => root.querySelector<HTMLElement>(s);
+    const found = q("[data-found]");
+    const status = q("[data-status]");
+
+    attachDemo(root, async (ctx) => {
+      ctx.phase("reset");
+      ctx.set(found, "FOUND 0");
+      ctx.set(status, "IDLE — POINT IT AT A PAGE");
+      await ctx.sleep(500);
+
+      ctx.phase("scan");
+      ctx.set(status, "SCANNING — DOM + LAZY + BACKGROUND…");
+      for (let i = 1; i <= 12; i++) {
+        ctx.set(found, `FOUND ${i}`);
+        await ctx.sleep(105);
+      }
+      await ctx.sleep(500);
+
+      ctx.phase("extract");
+      ctx.set(status, "EXTRACTING — SORTED BY SIZE");
+      await ctx.sleep(1450);
+
+      ctx.phase("dedupe");
+      ctx.set(status, "DE-DUPLICATING — PERCEPTUAL MATCH");
+      await ctx.sleep(1350);
+
+      ctx.phase("select");
+      ctx.set(status, "SELECTED 8 — NOISE DROPPED");
+      await ctx.sleep(1400);
+
+      ctx.phase("zip");
+      ctx.set(status, "COMPRESSED — ONE CLICK, ONE ZIP");
+      await ctx.sleep(2400);
+    });
+  }
+</script>

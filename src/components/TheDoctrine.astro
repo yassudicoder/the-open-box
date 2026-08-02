@@ -1,4 +1,9 @@
 ---
+/* =============================================================================
+   03 / THE DOCTRINE — operating principles presented as what they are:
+   engineering constraints. Every rule ships verified — each row carries its
+   PASS mark, stamped as it enters. Not marketing claims; acceptance criteria.
+   ========================================================================== */
 import SectionHeader from "./SectionHeader.astro";
 import { doctrine } from "../data/doctrine.ts";
 const span = `01–${String(doctrine.length).padStart(2, "0")}`;
@@ -7,25 +12,31 @@ const span = `01–${String(doctrine.length).padStart(2, "0")}`;
 <section class="section" id="doctrine" aria-labelledby="doctrine-h">
   <div class="wrap">
     <SectionHeader
-      index="04"
+      index="03"
       glyph="✺"
       title="The Doctrine"
-      sublabel="OPERATING PRINCIPLES"
-      kicker={`PRIMITIVES / ${span}`}
+      sublabel="ENGINEERING CONSTRAINTS"
+      kicker={`RULES / ${span} · ALL PASS`}
       id="doctrine-h"
     />
 
     <ol class="doctrine">
       {
         doctrine.map((p, i) => (
-          <li class="prin">
-            <span class="prin__n mono" aria-hidden="true">
-              {String(i + 1).padStart(2, "0")}
+          <li class="rule" data-reveal style={`--reveal-delay:${(i % 2) * 0.08}s`}>
+            <span class="rule__n mono" aria-hidden="true">
+              RULE<br />{String(i + 1).padStart(2, "0")}
             </span>
-            <div class="prin__body">
-              <h3 class="prin__title">{p.title}</h3>
-              <p class="prin__text">{p.body}</p>
+            <div class="rule__body">
+              <h3 class="rule__title">{p.title}</h3>
+              <p class="rule__text">{p.body}</p>
             </div>
+            <span class="rule__pass mono" aria-label="Verified">
+              <svg width="12" height="10" viewBox="0 0 12 10" fill="none" aria-hidden="true">
+                <path d="M1 5.2 L4.4 8.6 L11 1" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+              </svg>
+              PASS
+            </span>
           </li>
         ))
       }
@@ -39,36 +50,53 @@ const span = `01–${String(doctrine.length).padStart(2, "0")}`;
     grid-template-columns: 1fr;
     border-top: var(--hair) solid var(--line);
   }
-  .prin {
+  .rule {
     display: grid;
-    grid-template-columns: 3.2rem 1fr;
-    gap: 1rem;
+    grid-template-columns: 3.6rem 1fr auto;
+    gap: 1.1rem;
+    align-items: start;
     padding: clamp(1.3rem, 3vw, 1.9rem) 0;
     border-bottom: var(--hair) solid var(--line);
   }
-  .prin__n {
-    font-size: 1.1rem;
+  .rule__n {
+    font-size: 0.72rem;
     font-weight: 700;
-    color: var(--accent);
-    letter-spacing: 0.02em;
-    line-height: 1;
+    color: var(--accent-text);
+    letter-spacing: 0.1em;
+    line-height: 1.35;
   }
-  .prin__title {
+  .rule__title {
     font-size: clamp(1.15rem, 0.9rem + 1vw, 1.5rem);
     letter-spacing: -0.01em;
     margin-bottom: 0.4rem;
   }
-  .prin__text {
+  .rule__text {
     color: var(--ink-2);
-    max-width: 58ch;
+    max-width: 54ch;
     font-size: 0.98rem;
+  }
+  .rule__pass {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45em;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--accent-text);
+    border: var(--hair-strong) solid currentColor;
+    border-radius: 2px;
+    padding: 0.32em 0.55em;
+    transform: rotate(-2deg);
+    align-self: start;
+    margin-top: 0.2rem;
+    white-space: nowrap;
   }
   @media (min-width: 760px) {
     .doctrine {
       grid-template-columns: 1fr 1fr;
       column-gap: clamp(2rem, 5vw, 4rem);
     }
-    .doctrine .prin:nth-last-child(2):nth-child(odd) {
+    .doctrine .rule:nth-last-child(2):nth-child(odd) {
       border-bottom: var(--hair) solid var(--line);
     }
   }

@@ -1,9 +1,15 @@
 ---
-import BoxMark from "./BoxMark.astro";
+/* =============================================================================
+   THE ENDING — the box, fully unpacked. Once every volume is out, all that's
+   left is the carton itself: unfolded flat, its panels still printed with
+   what it carried, ready for recycling. The net draws itself as you arrive.
+   Then the base bar: the last line of the slip.
+   ========================================================================== */
 import { site } from "../data/site.ts";
 const year = 2026;
 const foot = [
-  { label: "INDEX", href: "/#index" },
+  { label: "CONTENTS", href: "/#index" },
+  { label: "LEDGER", href: "/#ledger" },
   { label: "DOCTRINE", href: "/#doctrine" },
   { label: "DISPATCHES", href: "/dispatches/" },
   { label: "RSS", href: site.links.rss },
@@ -12,30 +18,63 @@ const foot = [
 ---
 
 <footer class="foot">
-  <div class="wrap foot__inner">
-    <div class="foot__brand">
-      <BoxMark size={28} title={site.name} />
-      <div>
-        <p class="foot__name mono">{site.name}</p>
-        <p class="foot__promise mono">
-          LOCAL-FIRST <span class="dot-sep">·</span> NO ACCOUNT
-          <span class="dot-sep">·</span> NOTHING LEAVES YOUR DEVICE
-        </p>
-      </div>
-    </div>
+  <div class="wrap foot__ending">
+    <p class="foot__eol label" data-reveal>
+      <span class="accent" aria-hidden="true">⌀</span> END OF BOX / 001 — FULLY UNPACKED
+    </p>
 
+    <figure
+      class="foot__net"
+      data-reveal="draw"
+      style="--draw-len:1600"
+      role="img"
+      aria-label="The carton, unfolded flat — its panels printed with the volumes it carried."
+    >
+      <svg viewBox="0 0 560 352" fill="none">
+        <!-- fold lines (score) -->
+        <g class="net-fold" aria-hidden="true">
+          <path d="M200 120 V240 M360 120 V240 M200 120 H360 M200 240 H360" />
+        </g>
+        <!-- the cut outline — draws itself -->
+        <path
+          class="draw-stroke net-edge"
+          d="M200 20 H360 V120 H520 V240 H360 V330 H200 V240 H40 V120 H200 Z"
+        />
+        <!-- panel print -->
+        <g class="net-label">
+          <text x="280" y="60" text-anchor="middle">THE OPEN BOX</text>
+          <text x="280" y="78" text-anchor="middle" class="net-label--sub">BOX / 001 · SN TOB-2026-001</text>
+          <text x="120" y="176" text-anchor="middle">VOL.01</text>
+          <text x="120" y="192" text-anchor="middle" class="net-label--sub">CANNED</text>
+          <text x="280" y="176" text-anchor="middle">VOL.02</text>
+          <text x="280" y="192" text-anchor="middle" class="net-label--sub">CONTINUE</text>
+          <text x="440" y="176" text-anchor="middle">VOL.03</text>
+          <text x="440" y="192" text-anchor="middle" class="net-label--sub">BULK</text>
+          <text x="280" y="282" text-anchor="middle" class="net-label--dim">VOL.04</text>
+          <text x="280" y="298" text-anchor="middle" class="net-label--dim">STILL SEALED</text>
+        </g>
+        <!-- what's left of the tape -->
+        <rect class="net-tape" x="252" y="114" width="56" height="12" rx="1" />
+        <text x="280" y="123" text-anchor="middle" class="net-tape-label">CUT</text>
+      </svg>
+      <figcaption class="foot__net-caption mono" aria-hidden="true">
+        FIG. 04 — CARTON, FLATTENED FOR RECYCLING
+      </figcaption>
+    </figure>
+
+    <p class="foot__closing" data-reveal>The box is open.</p>
+    <p class="foot__closing-sub mono" data-reveal>
+      NOTHING LEFT INSIDE · NOTHING HIDDEN
+    </p>
+  </div>
+
+  <div class="wrap foot__inner">
     <nav class="foot__nav" aria-label="Footer">
       {foot.map((f) => <a class="foot__link mono" href={f.href}>{f.label}</a>)}
     </nav>
-  </div>
-
-  <div class="wrap foot__social">
-    <span class="foot__social-label mono">⌀ CONTACT</span>
     <a class="foot__social-link mono" href={site.linkedin} target="_blank" rel="noopener">
-      LINKEDIN ▸ YASH DESAI
+      LINKEDIN · YASH DESAI ▸
     </a>
-    <span class="dot-sep" aria-hidden="true">·</span>
-    <a class="foot__social-link mono" href={`mailto:${site.email}`}>{site.email}</a>
   </div>
 
   <div class="wrap foot__base">
@@ -52,33 +91,88 @@ const foot = [
   .foot {
     border-top: var(--hair-strong) solid var(--ink);
     margin-top: clamp(2rem, 6vw, 5rem);
-    padding-top: clamp(2rem, 5vw, 3.5rem);
   }
+  .foot__ending {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-block: clamp(3rem, 8vw, 6rem) clamp(2.5rem, 6vw, 4.5rem);
+  }
+  .foot__eol {
+    margin-bottom: clamp(1.6rem, 4vw, 2.6rem);
+  }
+  .foot__net {
+    width: min(560px, 92%);
+    color: var(--ink-2);
+    margin-bottom: clamp(2rem, 5vw, 3.2rem);
+  }
+  .foot__net svg {
+    width: 100%;
+    height: auto;
+  }
+  .net-edge {
+    stroke: var(--ink);
+    stroke-width: 1.5;
+  }
+  .net-fold path {
+    stroke: var(--line-2);
+    stroke-width: 1;
+    stroke-dasharray: 6 5;
+  }
+  .net-label text {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    fill: var(--ink);
+  }
+  .net-label--sub {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    fill: var(--ink-2) !important;
+  }
+  .net-label--dim {
+    fill: var(--ink-3) !important;
+  }
+  .net-tape {
+    fill: var(--accent);
+    opacity: 0.9;
+  }
+  .net-tape-label {
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: 0.28em;
+    fill: #141210; /* tape print ink — same as the seal's tape */
+  }
+  .foot__net-caption {
+    margin-top: 0.9rem;
+    font-size: 0.54rem;
+    letter-spacing: 0.2em;
+    color: var(--ink-3);
+  }
+  .foot__closing {
+    font-family: var(--font-display);
+    font-size: clamp(2.2rem, 1.4rem + 4vw, 4.4rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 0.9rem;
+  }
+  .foot__closing-sub {
+    font-size: 0.64rem;
+    letter-spacing: 0.22em;
+    color: var(--ink-2);
+  }
+
   .foot__inner {
     display: flex;
     flex-wrap: wrap;
-    gap: 1.5rem;
-    align-items: flex-start;
-    justify-content: space-between;
-    padding-bottom: 2rem;
-  }
-  .foot__brand {
-    display: flex;
+    gap: 0.8rem 1.5rem;
     align-items: center;
-    gap: 0.9rem;
-    color: var(--ink);
-  }
-  .foot__name {
-    font-size: 0.86rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 0.3rem;
-  }
-  .foot__promise {
-    font-size: 0.6rem;
-    letter-spacing: 0.1em;
-    color: var(--ink-2);
+    justify-content: space-between;
+    padding-block: 1.1rem;
+    border-top: var(--hair) solid var(--line);
   }
   .foot__nav {
     display: flex;
@@ -94,21 +188,9 @@ const foot = [
   .foot__link:hover {
     color: var(--accent);
   }
-  .foot__social {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem 0.9rem;
-    padding-block: 1rem;
-    border-top: var(--hair) solid var(--line);
+  .foot__social-link {
     font-size: 0.66rem;
     letter-spacing: 0.08em;
-  }
-  .foot__social-label {
-    color: var(--ink-3);
-    letter-spacing: 0.14em;
-  }
-  .foot__social-link {
     color: var(--ink-2);
     transition: color 0.15s var(--ease);
   }

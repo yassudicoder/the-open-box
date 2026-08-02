@@ -3,12 +3,12 @@ import BoxMark from "./BoxMark.astro";
 import { site } from "../data/site.ts";
 
 const nav = [
-  { id: "index", label: "INDEX", n: "02" },
-  { id: "ledger", label: "LEDGER", n: "03" },
-  { id: "doctrine", label: "DOCTRINE", n: "04" },
-  { id: "lab", label: "LAB", n: "05" },
-  { id: "dispatches", label: "DISPATCHES", n: "06" },
-  { id: "colophon", label: "COLOPHON", n: "07" },
+  { id: "index", label: "CONTENTS", n: "01" },
+  { id: "ledger", label: "LEDGER", n: "02" },
+  { id: "doctrine", label: "DOCTRINE", n: "03" },
+  { id: "lab", label: "LAB", n: "04" },
+  { id: "dispatches", label: "DISPATCHES", n: "05" },
+  { id: "colophon", label: "MAKER", n: "06" },
 ];
 ---
 
@@ -39,6 +39,7 @@ const nav = [
       >
         <span class="mast__cmd-glyph" aria-hidden="true">⌘</span>K
       </button>
+      <span class="mast__depthlabel mono" data-depth-label aria-hidden="true">DEPTH / 000%</span>
       <button
         class="mast__theme"
         data-theme-toggle
@@ -57,6 +58,8 @@ const nav = [
       </button>
     </div>
   </div>
+  <!-- how deep into the box you are -->
+  <span class="mast__depth" data-depth aria-hidden="true"></span>
 </header>
 
 <style>
@@ -175,9 +178,66 @@ const nav = [
       display: block;
     }
   }
+  .mast__depth {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: 0 50%;
+    pointer-events: none;
+  }
+  .mast__depthlabel {
+    display: none;
+    font-size: 0.56rem;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+    min-width: 10ch;
+    text-align: right;
+  }
   @media (min-width: 880px) {
     .mast__nav {
       display: flex;
     }
+    .mast__depthlabel {
+      display: inline-block;
+    }
   }
 </style>
+
+<script>
+  // Depth gauge — a state readout, not decoration, so it runs regardless of
+  // motion preference. One rAF-throttled scroll listener, transform-only.
+  function initDepth() {
+    const bar = document.querySelector<HTMLElement>("[data-depth]");
+    const label = document.querySelector<HTMLElement>("[data-depth-label]");
+    if (!bar) return;
+    let ticking = false;
+    let last = -1;
+    const update = () => {
+      ticking = false;
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      const p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+      bar.style.transform = `scaleX(${p.toFixed(4)})`;
+      if (label) {
+        const n = Math.round(p * 100);
+        if (n !== last) {
+          last = n;
+          label.textContent = `DEPTH / ${String(n).padStart(3, "0")}%`;
+        }
+      }
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    update();
+  }
+  if (document.readyState !== "loading") initDepth();
+  else document.addEventListener("DOMContentLoaded", initDepth);
+</script>

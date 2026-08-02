@@ -49,9 +49,12 @@ const { title, description, path, type, ogImage } = Astro.props;
       crossorigin
     />
 
-    <!-- No-flash theme: set data-theme before first paint -->
+    <!-- No-flash theme: set data-theme before first paint. Also mark JS as
+         available so reveal-on-scroll states only hide content when the
+         observer that reveals them is guaranteed to run. -->
     <script is:inline>
       (function () {
+        document.documentElement.classList.add("js");
         try {
           var t = localStorage.getItem("theme");
           if (t === "light" || t === "dark") {
@@ -71,6 +74,30 @@ const { title, description, path, type, ogImage } = Astro.props;
     </main>
     <Footer />
     <CommandPalette />
+
+    <!-- reveal-on-scroll: one observer for every [data-reveal] element -->
+    <script is:inline>
+      (function () {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        var els = document.querySelectorAll("[data-reveal]");
+        if (!els.length || !("IntersectionObserver" in window)) {
+          els.forEach && els.forEach(function (el) { el.classList.add("is-in"); });
+          return;
+        }
+        var io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("is-in");
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { threshold: 0.25, rootMargin: "0px 0px -5% 0px" },
+        );
+        els.forEach(function (el) { io.observe(el); });
+      })();
+    </script>
 
     <!-- theme toggle wiring -->
     <script is:inline>
