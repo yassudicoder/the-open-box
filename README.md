@@ -72,9 +72,12 @@ All three run on a shared cancellable timeline runner
 screen, pause when the tab hides, loop with a REPLAY control, and under
 reduced motion ship as static composed end-states (`data-phase="static"`).
 
-The site ends by completing the metaphor: the footer draws the **carton
-unfolded flat** (its panels still printed with the volumes it carried) —
-`The box is open. Nothing left inside.`
+The site ends by completing the metaphor: the footer lays out the **complete
+contents, unpacked** — one tile per volume, rendered straight from
+`tools.ts`, so it stays aligned and simply grows a row as more tools ship
+(shipped tools read `OUT ✓` and stay clickable; anything unshipped stays
+`SEALED`). Then the last line of the slip: `The box is open. Nothing left
+inside.`
 
 The same line-art box is the **logo** (`src/components/BoxMark.astro`), the
 **favicon** (`public/favicon.svg`), and the **OG cover** (`public/og-cover.svg`

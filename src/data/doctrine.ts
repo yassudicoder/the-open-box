@@ -26,10 +26,6 @@ export const doctrine: Principle[] = [
     body: "What it does, what it touches, what it sends — stated plainly. Nothing hidden. If a thing leaves your device, you put it there.",
   },
   {
-    title: "Free what we can",
-    body: "Small tools should be cheap or free. We charge only where it keeps the lights on, and we say which parts those are.",
-  },
-  {
     title: "Ship in public",
     body: "Built in the open, shipped when honest, changed in the changelog. No vapor. The ledger is the receipt.",
   },

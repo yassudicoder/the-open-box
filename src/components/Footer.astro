@@ -1,12 +1,19 @@
 ---
 /* =============================================================================
-   THE ENDING — the box, fully unpacked. Once every volume is out, all that's
-   left is the carton itself: unfolded flat, its panels still printed with
-   what it carried, ready for recycling. The net draws itself as you arrive.
-   Then the base bar: the last line of the slip.
+   THE ENDING — the box, fully unpacked. The complete contents are laid out:
+   one tile per volume, driven straight from the catalog so it stays aligned
+   and simply grows a row as more tools ship. Shipped tools are out (and still
+   clickable — take one); anything unshipped is still sealed. Then the last
+   line of the slip.
    ========================================================================== */
 import { site } from "../data/site.ts";
+import { tools } from "../data/tools.ts";
+
 const year = 2026;
+const shippedCount = tools.filter((t) => t.shipped).length;
+const sealedCount = tools.length - shippedCount;
+const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
+
 const foot = [
   { label: "CONTENTS", href: "/#index" },
   { label: "LEDGER", href: "/#ledger" },
@@ -20,47 +27,56 @@ const foot = [
 <footer class="foot">
   <div class="wrap foot__ending">
     <p class="foot__eol label" data-reveal>
-      <span class="accent" aria-hidden="true">⌀</span> END OF BOX / 001 — FULLY UNPACKED
+      <span class="accent" aria-hidden="true">⌀</span> END OF BOX / 001 ·
+      {String(shippedCount).padStart(2, "0")} OUT · {String(sealedCount).padStart(2, "0")} SEALED
     </p>
 
-    <figure
-      class="foot__net"
-      data-reveal="draw"
-      style="--draw-len:1600"
-      role="img"
-      aria-label="The carton, unfolded flat — its panels printed with the volumes it carried."
-    >
-      <svg viewBox="0 0 560 352" fill="none">
-        <!-- fold lines (score) -->
-        <g class="net-fold" aria-hidden="true">
-          <path d="M200 120 V240 M360 120 V240 M200 120 H360 M200 240 H360" />
-        </g>
-        <!-- the cut outline — draws itself -->
-        <path
-          class="draw-stroke net-edge"
-          d="M200 20 H360 V120 H520 V240 H360 V330 H200 V240 H40 V120 H200 Z"
-        />
-        <!-- panel print -->
-        <g class="net-label">
-          <text x="280" y="60" text-anchor="middle">THE OPEN BOX</text>
-          <text x="280" y="78" text-anchor="middle" class="net-label--sub">BOX / 001 · SN TOB-2026-001</text>
-          <text x="120" y="176" text-anchor="middle">VOL.01</text>
-          <text x="120" y="192" text-anchor="middle" class="net-label--sub">CANNED</text>
-          <text x="280" y="176" text-anchor="middle">VOL.02</text>
-          <text x="280" y="192" text-anchor="middle" class="net-label--sub">CONTINUE</text>
-          <text x="440" y="176" text-anchor="middle">VOL.03</text>
-          <text x="440" y="192" text-anchor="middle" class="net-label--sub">BULK</text>
-          <text x="280" y="282" text-anchor="middle" class="net-label--dim">VOL.04</text>
-          <text x="280" y="298" text-anchor="middle" class="net-label--dim">STILL SEALED</text>
-        </g>
-        <!-- what's left of the tape -->
-        <rect class="net-tape" x="252" y="114" width="56" height="12" rx="1" />
-        <text x="280" y="123" text-anchor="middle" class="net-tape-label">CUT</text>
-      </svg>
-      <figcaption class="foot__net-caption mono" aria-hidden="true">
-        FIG. 04 — CARTON, FLATTENED FOR RECYCLING
-      </figcaption>
-    </figure>
+    <ul class="foot__contents" aria-label="Contents of the box, unpacked">
+      {
+        tools.map((t, i) => {
+          const out = t.shipped;
+          const href = t.site || t.store || "";
+          const isLink = out && Boolean(href);
+          const Tag = isLink ? "a" : "div";
+          return (
+            <li
+              class:list={["foot__item", { "foot__item--sealed": !out }]}
+              data-reveal
+              style={`--reveal-delay:${(i * 0.05).toFixed(2)}s`}
+            >
+              <Tag
+                class="foot__item-in"
+                {...(isLink
+                  ? {
+                      href,
+                      target: "_blank",
+                      rel: "noopener",
+                      "aria-label": `${t.vol} ${t.codename} — ${t.statusLabel}. Unpacked. Opens the tool.`,
+                    }
+                  : { "aria-label": `${t.vol} — ${t.statusLabel}. Still sealed.` })}
+              >
+                <span class="foot__item-top">
+                  <span class="foot__item-vol mono">{t.vol}</span>
+                  <span class:list={["foot__item-mark mono", { "is-out": out }]}>
+                    {out ? (
+                      <>
+                        <svg width="11" height="9" viewBox="0 0 11 9" fill="none" aria-hidden="true">
+                          <path d="M1 4.6 L4 7.6 L10 1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                        OUT
+                      </>
+                    ) : (
+                      "SEALED"
+                    )}
+                  </span>
+                </span>
+                <span class="foot__item-name">{t.codename}</span>
+              </Tag>
+            </li>
+          );
+        })
+      }
+    </ul>
 
     <p class="foot__closing" data-reveal>The box is open.</p>
     <p class="foot__closing-sub mono" data-reveal>
@@ -100,56 +116,84 @@ const foot = [
     padding-block: clamp(3rem, 8vw, 6rem) clamp(2.5rem, 6vw, 4.5rem);
   }
   .foot__eol {
-    margin-bottom: clamp(1.6rem, 4vw, 2.6rem);
+    margin-bottom: clamp(1.8rem, 4vw, 2.8rem);
   }
-  .foot__net {
-    width: min(560px, 92%);
-    color: var(--ink-2);
-    margin-bottom: clamp(2rem, 5vw, 3.2rem);
-  }
-  .foot__net svg {
+
+  /* the contents, laid out — a grid that stays aligned and grows a row per
+     new volume (auto-fit tracks; no fixed geometry to drift out of line) */
+  .foot__contents {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.7rem;
     width: 100%;
-    height: auto;
+    max-width: 840px;
+    margin-bottom: clamp(2.4rem, 5vw, 3.6rem);
+    text-align: left;
   }
-  .net-edge {
-    stroke: var(--ink);
-    stroke-width: 1.5;
+  .foot__item {
+    display: flex;
   }
-  .net-fold path {
-    stroke: var(--line-2);
-    stroke-width: 1;
-    stroke-dasharray: 6 5;
+  .foot__item-in {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 0.7rem;
+    width: 100%;
+    padding: 0.85rem 0.95rem;
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 2px;
+    background: var(--field);
+    transition:
+      transform 0.18s var(--ease),
+      border-color 0.18s var(--ease),
+      color 0.18s var(--ease);
   }
-  .net-label text {
-    font-family: var(--font-mono);
-    font-size: 12px;
-    font-weight: 600;
+  a.foot__item-in:hover,
+  a.foot__item-in:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--accent-text);
+    outline: none;
+  }
+  .foot__item--sealed .foot__item-in {
+    border-style: dashed;
+    border-color: var(--line-2);
+    background: transparent;
+  }
+  .foot__item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+  .foot__item-vol {
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    color: var(--ink-2);
+  }
+  .foot__item-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
+    font-size: 0.56rem;
+    font-weight: 700;
     letter-spacing: 0.16em;
-    fill: var(--ink);
-  }
-  .net-label--sub {
-    font-size: 10px !important;
-    font-weight: 500 !important;
-    fill: var(--ink-2) !important;
-  }
-  .net-label--dim {
-    fill: var(--ink-3) !important;
-  }
-  .net-tape {
-    fill: var(--accent);
-    opacity: 0.9;
-  }
-  .net-tape-label {
-    font-family: var(--font-mono);
-    font-size: 7px;
-    letter-spacing: 0.28em;
-    fill: #141210; /* tape print ink — same as the seal's tape */
-  }
-  .foot__net-caption {
-    margin-top: 0.9rem;
-    font-size: 0.54rem;
-    letter-spacing: 0.2em;
     color: var(--ink-3);
+  }
+  .foot__item-mark.is-out {
+    color: var(--accent-text);
+  }
+  .foot__item-name {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+  .foot__item--sealed .foot__item-name {
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
   }
   .foot__closing {
     font-family: var(--font-display);

@@ -24,7 +24,6 @@ export const site = {
     "KEYBOARD-FIRST",
     "OPEN ABOUT EVERYTHING",
     "WORKS OUT OF THE BOX",
-    "FREE WHAT WE CAN",
     "SHIP IN PUBLIC",
   ],
   links: {
