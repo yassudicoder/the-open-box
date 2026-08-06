@@ -1,37 +1,51 @@
 ---
+/* =============================================================================
+   04 / IN THE LAB — the back of the workshop. Unshipped things live here, so
+   the room reads different: hatched floor, dashed fixtures, bench notes taped
+   slightly crooked, calibration gauges instead of progress bars. Intentionally
+   unfinished — but honest about exactly how unfinished.
+   ========================================================================== */
 import SectionHeader from "./SectionHeader.astro";
 import { lab } from "../data/lab.ts";
 ---
 
-<section class="section" id="lab" aria-labelledby="lab-h">
+<section class="section lab-zone" id="lab" aria-labelledby="lab-h">
   <div class="wrap">
     <SectionHeader
-      index="05"
+      index="04"
       glyph="⌀"
       title="In the Lab"
-      sublabel="WORK IN PROGRESS"
-      kicker="GRADUATES INTO THE INDEX"
+      sublabel="RESTRICTED · UNSHIPPED"
+      kicker="CLEARANCE / PENDING · GRADUATES INTO THE CONTENTS"
       id="lab-h"
     />
 
     <ul class="lab">
       {
-        lab.map((entry) => (
-          <li class="labcard" data-state={entry.state}>
-            <div class="labcard__top">
-              <span class="labcard__code mono">{entry.codename}</span>
-              <span class="pill labcard__pill">{entry.stateLabel}</span>
+        lab.map((entry, i) => (
+          <li
+            class="note"
+            data-state={entry.state}
+            data-reveal
+            style={`--tilt:${[-0.5, 0.4, -0.3][i % 3]}deg; --reveal-delay:${i * 0.08}s`}
+          >
+            <span class="note__tape" aria-hidden="true"></span>
+            <div class="note__top">
+              <span class="note__code mono">{entry.codename}</span>
+              <span class="pill note__pill">{entry.stateLabel}</span>
             </div>
-            <p class="labcard__blurb">{entry.blurb}</p>
-            <div class="labcard__progress" aria-hidden="true">
-              <span
-                class="labcard__bar"
-                style={`--p:${Math.round(entry.progress * 100)}%`}
-              />
-              <span class="labcard__pct mono">
+            <p class="note__blurb">{entry.blurb}</p>
+            <div class="note__gauge" aria-label={`Progress ${Math.round(entry.progress * 100)} percent`}>
+              <span class="note__track" aria-hidden="true">
+                <span class="note__fill" style={`--p:${Math.round(entry.progress * 100)}%`} />
+              </span>
+              <span class="note__pct mono" aria-hidden="true">
                 {String(Math.round(entry.progress * 100)).padStart(2, "0")}%
               </span>
             </div>
+            <span class="note__clearance mono" aria-hidden="true">
+              CLEARANCE / PENDING · NOT ON THE MANIFEST
+            </span>
           </li>
         ))
       }
@@ -40,70 +54,127 @@ import { lab } from "../data/lab.ts";
 </section>
 
 <style>
+  /* the room itself changes: hatched floor between dashed thresholds */
+  .lab-zone {
+    background:
+      repeating-linear-gradient(
+        -45deg,
+        transparent 0 14px,
+        color-mix(in oklab, var(--ink) 3.5%, transparent) 14px 15px
+      ),
+      var(--paper-2);
+    border-block: var(--hair) dashed var(--line-2);
+  }
+
   .lab {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 1rem;
+    gap: 1.2rem;
   }
-  .labcard {
+  .note {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
-    padding: 1.2rem;
-    border: var(--hair) solid var(--line-2);
+    padding: 1.4rem 1.2rem 1.1rem;
+    border: var(--hair) dashed var(--line-2);
     border-radius: 2px;
-    background: var(--field);
-    transition: border-color 0.18s var(--ease), transform 0.18s var(--ease);
+    background: var(--paper);
+    transform: rotate(var(--tilt, 0deg));
+    transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
   }
-  .labcard:hover {
+  .note:hover {
+    transform: rotate(0deg) translateY(-2px);
     border-color: var(--ink);
-    transform: translateY(-2px);
+    border-style: solid;
   }
-  .labcard__top {
+  /* the generic reveal end-state sets transform:none — restore the crooked
+     tilt (and the hover straighten) once the note has landed */
+  :global(html.js) li.note.is-in {
+    transform: rotate(var(--tilt, 0deg));
+    transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
+  }
+  :global(html.js) li.note.is-in:hover {
+    transform: rotate(0deg) translateY(-2px);
+  }
+  /* the strip of tape holding the note to the bench */
+  .note__tape {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    width: 58px;
+    height: 16px;
+    transform: translateX(-50%) rotate(calc(var(--tilt, 0deg) * -2));
+    background: color-mix(in oklab, var(--accent) 22%, var(--paper-2));
+    border: 1px solid color-mix(in oklab, var(--ink) 14%, transparent);
+    opacity: 0.85;
+  }
+  .note__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.8rem;
   }
-  .labcard__code {
+  .note__code {
     font-size: 0.78rem;
     font-weight: 600;
     letter-spacing: 0.06em;
   }
-  .labcard__pill {
+  .note__pill {
     font-size: 0.56rem;
   }
-  .labcard[data-state="soon"] .labcard__pill {
-    color: var(--accent);
-    border-color: color-mix(in oklab, var(--accent) 50%, var(--line-2));
+  .note[data-state="soon"] .note__pill {
+    color: var(--accent-text);
+    border-color: color-mix(in oklab, var(--accent-text) 50%, var(--line-2));
   }
-  .labcard__blurb {
+  .note__blurb {
     color: var(--ink-2);
     font-size: 0.92rem;
     flex: 1;
   }
-  .labcard__progress {
+  /* calibration gauge: ticked track, thin fill */
+  .note__gauge {
     display: flex;
     align-items: center;
     gap: 0.7rem;
   }
-  .labcard__bar {
+  .note__track {
     position: relative;
     flex: 1;
-    height: 2px;
-    background: var(--line-2);
+    height: 10px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--line-2) 0 1px,
+      transparent 1px 10%
+    );
   }
-  .labcard__bar::before {
+  .note__track::after {
     content: "";
     position: absolute;
-    inset: 0 auto 0 0;
-    width: var(--p);
-    background: var(--accent);
+    inset: auto 0 4.5px 0;
+    height: 1px;
+    background: var(--line-2);
   }
-  .labcard__pct {
+  .note__fill {
+    position: absolute;
+    left: 0;
+    bottom: 3px;
+    height: 4px;
+    width: var(--p);
+    background: var(--accent-text);
+    z-index: 1;
+  }
+  .note__pct {
     font-size: 0.62rem;
     color: var(--ink-2);
     flex: none;
+  }
+  .note__clearance {
+    font-size: 0.5rem;
+    letter-spacing: 0.18em;
+    color: var(--label-aa);
+    border-top: var(--hair) dashed var(--line);
+    padding-top: 0.6rem;
   }
   @media (min-width: 720px) {
     .lab {

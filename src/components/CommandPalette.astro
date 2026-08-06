@@ -12,13 +12,13 @@ type Item = {
 };
 
 const sections: Item[] = [
-  { label: "Hero / Top", hint: "↑ TOP", group: "GO", action: "scroll:#top", keywords: "home start box" },
-  { label: "The Index", hint: "02 · CATALOG", group: "GO", action: "scroll:#index", keywords: "tools catalog vol" },
-  { label: "The Ledger", hint: "03 · MANIFEST", group: "GO", action: "scroll:#ledger", keywords: "stats shipped installs" },
-  { label: "The Doctrine", hint: "04 · PRINCIPLES", group: "GO", action: "scroll:#doctrine", keywords: "manifesto principles" },
-  { label: "In the Lab", hint: "05 · WIP", group: "GO", action: "scroll:#lab", keywords: "next building research" },
-  { label: "Dispatches", hint: "06 · CHANGELOG", group: "GO", action: "scroll:#dispatches", keywords: "blog news field notes" },
-  { label: "Colophon", hint: "07 · CONTACT", group: "GO", action: "scroll:#colophon", keywords: "about contact stack uses" },
+  { label: "The Box / Top", hint: "00 · UNBOX", group: "GO", action: "scroll:#top", keywords: "home start box hero seal" },
+  { label: "The Contents", hint: "01 · CATALOG", group: "GO", action: "scroll:#index", keywords: "tools catalog vol index demos" },
+  { label: "The Ledger", hint: "02 · MANIFEST", group: "GO", action: "scroll:#ledger", keywords: "stats shipped installs" },
+  { label: "The Doctrine", hint: "03 · CONSTRAINTS", group: "GO", action: "scroll:#doctrine", keywords: "manifesto principles rules" },
+  { label: "In the Lab", hint: "04 · RESTRICTED", group: "GO", action: "scroll:#lab", keywords: "next building research" },
+  { label: "Dispatches", hint: "05 · FIELD REPORTS", group: "GO", action: "scroll:#dispatches", keywords: "blog news field notes changelog" },
+  { label: "The Maker", hint: "06 · SIGNATURE", group: "GO", action: "scroll:#colophon", keywords: "about contact stack uses colophon" },
 ];
 
 const toolItems: Item[] = tools.flatMap((t) => {
@@ -88,6 +88,10 @@ const paletteData = {
         aria-label="Search or run a command"
         autocomplete="off"
         spellcheck="false"
+        role="combobox"
+        aria-expanded="true"
+        aria-controls="palette-results"
+        aria-autocomplete="list"
         data-palette-input
       />
       <kbd class="palette__esc">ESC</kbd>
@@ -95,7 +99,13 @@ const paletteData = {
 
     <div class="palette__console mono" data-palette-console hidden></div>
 
-    <ul class="palette__results" role="listbox" aria-label="Results" data-palette-results></ul>
+    <ul
+      class="palette__results"
+      role="listbox"
+      aria-label="Results"
+      id="palette-results"
+      data-palette-results
+    ></ul>
 
     <div class="palette__foot mono">
       <span><kbd>↑</kbd><kbd>↓</kbd> NAVIGATE</span>
@@ -120,23 +130,28 @@ const paletteData = {
   .palette[hidden] {
     display: none;
   }
+  /* flat scrim, hard offset shadow — a document laid on the page, not a
+     floating glass modal */
   .palette__scrim {
     position: absolute;
     inset: 0;
-    background: color-mix(in oklab, var(--paper) 30%, #000 55%);
-    backdrop-filter: blur(2px);
+    background: color-mix(in oklab, var(--paper) 26%, #000 60%);
     animation: fade 0.16s var(--ease) both;
   }
   :root[data-theme="dark"] .palette__scrim {
-    background: color-mix(in oklab, #000 70%, transparent);
+    background: color-mix(in oklab, #000 74%, transparent);
   }
   .palette__panel {
     position: relative;
     width: min(620px, 92vw);
+    max-height: calc(100vh - 12vh - 2rem);
+    max-height: calc(100svh - 12vh - 2rem);
+    display: flex;
+    flex-direction: column;
     background: var(--paper);
     border: var(--hair-strong) solid var(--ink);
     border-radius: 3px;
-    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45);
+    box-shadow: 7px 7px 0 0 color-mix(in oklab, var(--ink) 22%, transparent);
     overflow: hidden;
     animation: pop 0.18s var(--ease-out) both;
   }
@@ -158,8 +173,15 @@ const paletteData = {
     padding: 0.85rem 1rem;
     border-bottom: var(--hair) solid var(--line);
   }
+  .palette__inputrow,
+  .palette__foot {
+    flex: none;
+  }
+  .palette__console {
+    flex: none;
+  }
   .palette__prompt {
-    color: var(--accent);
+    color: var(--accent-text);
     font-size: 1rem;
   }
   .palette__input {
@@ -172,7 +194,7 @@ const paletteData = {
     letter-spacing: 0.01em;
   }
   .palette__input::placeholder {
-    color: var(--ink-3);
+    color: var(--label-aa);
   }
   .palette__esc {
     font-size: 0.6rem;
@@ -192,7 +214,7 @@ const paletteData = {
     display: none;
   }
   .palette__console .c-accent {
-    color: var(--accent);
+    color: var(--accent-text);
   }
   .palette__console .c-ink {
     color: var(--ink);
@@ -202,6 +224,8 @@ const paletteData = {
     color: var(--ink);
   }
   .palette__results {
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: 46vh;
     overflow-y: auto;
     padding: 0.4rem;
@@ -241,7 +265,7 @@ const paletteData = {
   }
   .palette__item-label::before {
     content: "▸";
-    color: var(--accent);
+    color: var(--accent-text);
     font-family: var(--font-mono);
     font-size: 0.8em;
   }
@@ -252,13 +276,13 @@ const paletteData = {
     font-family: var(--font-mono);
     font-size: 0.6rem;
     letter-spacing: 0.08em;
-    color: var(--ink-3);
+    color: var(--label-aa);
     flex: none;
   }
   .palette__empty {
     padding: 1.4rem 0.7rem;
     text-align: center;
-    color: var(--ink-3);
+    color: var(--label-aa);
     font-family: var(--font-mono);
     font-size: 0.74rem;
   }
@@ -282,7 +306,7 @@ const paletteData = {
     margin-left: auto;
   }
   .palette__foot-cmd strong {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 </style>
 
@@ -319,6 +343,10 @@ const paletteData = {
 
     const isCommand = (q: string) =>
       KNOWN_CMDS.includes(q.trim().toLowerCase().split(/\s+/)[0]);
+
+    // the console is an innerHTML sink — user input must never reach it raw
+    const esc = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
     function open() {
       lastFocus = document.activeElement as HTMLElement;
@@ -363,12 +391,13 @@ const paletteData = {
           html += `<li class="palette__group" role="presentation">${it.group}</li>`;
           lastGroup = it.group;
         }
-        html += `<li class="palette__item" role="option" data-i="${i}" aria-selected="${i === 0}">
+        html += `<li class="palette__item" role="option" id="palette-opt-${i}" data-i="${i}" aria-selected="${i === 0}">
           <span class="palette__item-label">${it.label}</span>
           <span class="palette__item-hint">${it.hint}</span>
         </li>`;
       });
       results.innerHTML = html;
+      input.setAttribute("aria-activedescendant", filtered.length ? "palette-opt-0" : "");
       bindRows();
     }
 
@@ -389,7 +418,10 @@ const paletteData = {
       results.querySelectorAll<HTMLElement>(".palette__item").forEach((row) => {
         const on = Number(row.dataset.i) === selected;
         row.setAttribute("aria-selected", String(on));
-        if (on) row.scrollIntoView({ block: "nearest" });
+        if (on) {
+          row.scrollIntoView({ block: "nearest" });
+          input.setAttribute("aria-activedescendant", row.id);
+        }
       });
     }
 
@@ -418,7 +450,7 @@ const paletteData = {
       const parts = raw.trim().split(/\s+/);
       const cmd = parts[0].toLowerCase();
       const arg = parts.slice(1).join(" ").toLowerCase();
-      print(`<span class="c-accent">›</span> <span class="c-cmd">${raw}</span>`);
+      print(`<span class="c-accent">›</span> <span class="c-cmd">${esc(raw)}</span>`);
       switch (cmd) {
         case "help":
           print(
@@ -451,7 +483,7 @@ const paletteData = {
         case "doctrine":
           print(
             `01 local-first · 02 no accounts · 03 keyboard-first\n` +
-              `04 open about everything · 05 free what we can · 06 ship in public`,
+              `04 open about everything · 05 ship in public`,
           );
           break;
         case "vol": {
@@ -463,7 +495,7 @@ const paletteData = {
             const v = vols.find((x: any) => x.vol.endsWith(n));
             if (v)
               print(`<span class="c-ink">${v.vol} ${v.codename}</span> [${v.status}]\n  ${v.title}\n  ${v.line}${v.site ? `\n  ↪ ${v.site}` : ""}`);
-            else print(`no such volume: ${arg}`);
+            else print(`no such volume: ${esc(arg)}`);
           }
           break;
         }
@@ -484,7 +516,7 @@ const paletteData = {
             print(`opening <span class="c-accent">${v.vol} ${v.codename}</span> ↪ ${v.site}`);
             window.open(v.site, "_blank", "noopener");
           } else {
-            print(`can't open "${arg}" — try: open index · open vol01 · vol`);
+            print(`can't open "${esc(arg)}" — try: open index · open vol01 · vol`);
           }
           break;
         }
@@ -561,7 +593,9 @@ const paletteData = {
       }
     });
 
-    // global open shortcut + triggers
+    // global open shortcut + triggers. Escape and Tab are handled here too so
+    // the dialog contract holds even when focus has drifted to the body
+    // (e.g. after clicking the console output).
     document.addEventListener("keydown", (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -569,6 +603,12 @@ const paletteData = {
       } else if (e.key === "/" && !isOpen() && !/^(INPUT|TEXTAREA)$/.test((e.target as HTMLElement)?.tagName)) {
         e.preventDefault();
         open();
+      } else if (e.key === "Escape" && isOpen()) {
+        e.preventDefault();
+        close();
+      } else if (e.key === "Tab" && isOpen() && !panel.contains(document.activeElement)) {
+        e.preventDefault();
+        input.focus();
       }
     });
     document.querySelectorAll("[data-palette-open]").forEach((b) =>

@@ -1130,7 +1130,7 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
         targets = slots.map((s) => {
           const row = rowFor(s.dataset.vol || "");
           return row
-            ? (row.querySelector<HTMLElement>(".irow__name") ?? row)
+            ? (row.querySelector<HTMLElement>(".bay__name") ?? row)
             : null;
         });
         const y = window.scrollY;

@@ -92,7 +92,8 @@ export const tools: Tool[] = [
     platforms: ["CHROME"],
     installs: "",
     site: "https://bulk-image-downloader-one.vercel.app/",
-    store: "",
+    store:
+      "https://chromewebstore.google.com/detail/bulk-image-downloader-by/nekankjpjfcbejfjhgebddbfepecgjfb",
     kind: "Browser extension",
     shipped: true,
     specs: [

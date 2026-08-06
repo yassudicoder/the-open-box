@@ -11,6 +11,11 @@
       "name": "Continue AI",
       "cwsUrl": "https://chromewebstore.google.com/detail/continue-ai-%E2%80%94-move-your-a/cojmibmimpeakmgllhpolgbjienedfkf",
       "installs": 57
+    },
+    {
+      "name": "Bulk Image Downloader",
+      "cwsUrl": "https://chromewebstore.google.com/detail/bulk-image-downloader-by/nekankjpjfcbejfjhgebddbfepecgjfb",
+      "installs": 0
     }
   ]
 }

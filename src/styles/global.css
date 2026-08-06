@@ -78,20 +78,27 @@
   --line-2: rgba(20, 19, 15, 0.34);
   --field: #f7f6f1;
   --shade: rgba(20, 19, 15, 0.045);
-  --wire: rgba(20, 19, 15, 0.62); /* blueprint wireframe stroke */
-  --wire-fill: rgba(20, 19, 15, 0.035);
-  /* sealed-carton matte faces (opaque — no see-through) */
+
+  /* Single restrained accent — reserved for LIVE / active states only.
+     --accent is the bright surface orange (tape, fills, marks);
+     --accent-text is the ink-heavy print orange that clears WCAG AA for
+     small text and focus rings on paper/field. */
+  --accent: #ff5a1f; /* signal orange — box tape / shipping */
+  --accent-text: #bf3a08; /* printed safety orange — 4.85:1 on --paper */
+  --accent-ink: #ffffff;
+  --grain-opacity: 0.04;
+
+  /* Sealed-carton matte faces (opaque — no see-through) for the hero box */
   --box-top: #ece8dd;
   --box-front: #ddd7c9;
   --box-side: #cbc4b2;
   --box-floor: #bdb6a2;
   --box-edge: rgba(20, 19, 15, 0.5);
   --box-tape: rgba(20, 19, 15, 0.14);
-
-  /* Single restrained accent — reserved for LIVE / active states only */
-  --accent: #ff5a1f; /* signal orange — box tape / shipping */
-  --accent-ink: #ffffff;
-  --grain-opacity: 0.04;
+  /* Interior — inside the box (the Continue demo's context capsule) */
+  --interior: #121109;
+  --interior-ink: #f2f1ea;
+  --interior-line: rgba(242, 241, 234, 0.2);
 
   color-scheme: light;
 }
@@ -107,17 +114,19 @@
   --line-2: rgba(233, 231, 223, 0.32);
   --field: #101216;
   --shade: rgba(233, 231, 223, 0.05);
-  --wire: rgba(233, 231, 223, 0.5);
-  --wire-fill: rgba(233, 231, 223, 0.04);
+  --accent: #ff6a33;
+  --accent-text: #ff6a33; /* 6.86:1 on dark --paper — no darkening needed */
+  --accent-ink: #0b0c0e;
+  --grain-opacity: 0.05;
   --box-top: #242832;
   --box-front: #191c22;
   --box-side: #121419;
   --box-floor: #0c0e12;
   --box-edge: rgba(233, 231, 223, 0.42);
   --box-tape: rgba(233, 231, 223, 0.13);
-  --accent: #ff6a33;
-  --accent-ink: #0b0c0e;
-  --grain-opacity: 0.05;
+  --interior: #08090b;
+  --interior-ink: #e9e7df;
+  --interior-line: rgba(233, 231, 223, 0.18);
   color-scheme: dark;
 }
 
@@ -134,17 +143,19 @@
     --line-2: rgba(233, 231, 223, 0.32);
     --field: #101216;
     --shade: rgba(233, 231, 223, 0.05);
-    --wire: rgba(233, 231, 223, 0.5);
-    --wire-fill: rgba(233, 231, 223, 0.04);
+    --accent: #ff6a33;
+    --accent-text: #ff6a33;
+    --accent-ink: #0b0c0e;
+    --grain-opacity: 0.05;
     --box-top: #242832;
     --box-front: #191c22;
     --box-side: #121419;
     --box-floor: #0c0e12;
     --box-edge: rgba(233, 231, 223, 0.42);
     --box-tape: rgba(233, 231, 223, 0.13);
-    --accent: #ff6a33;
-    --accent-ink: #0b0c0e;
-    --grain-opacity: 0.05;
+    --interior: #08090b;
+    --interior-ink: #e9e7df;
+    --interior-line: rgba(233, 231, 223, 0.18);
     color-scheme: dark;
   }
 }
@@ -218,13 +229,13 @@ ol {
 }
 
 :focus-visible {
-  outline: var(--hair-strong) solid var(--accent);
+  outline: 2px solid var(--accent-text);
   outline-offset: 2px;
   border-radius: 1px;
 }
 
 ::selection {
-  background: var(--accent);
+  background: var(--accent-text);
   color: var(--accent-ink);
 }
 
@@ -357,8 +368,8 @@ strong {
 }
 
 .pill[data-status="live"] {
-  color: var(--accent);
-  border-color: color-mix(in oklab, var(--accent) 55%, var(--line-2));
+  color: var(--accent-text);
+  border-color: color-mix(in oklab, var(--accent-text) 55%, var(--line-2));
 }
 
 .pill[data-status="live"]::before {
@@ -428,14 +439,14 @@ strong {
 }
 
 .btn--accent {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--accent-text);
+  background: var(--accent-text);
   color: var(--accent-ink);
 }
 
 .btn--accent:hover {
   background: transparent;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .btn--ghost {
@@ -614,4 +625,198 @@ kbd {
 }
 .faint {
   color: var(--ink-3);
+}
+/* rotate a ▸ glyph instead of shipping extra arrow glyphs in the font subset */
+.r90 {
+  display: inline-block;
+  transform: rotate(90deg);
+}
+
+/* ----------------------------------------------------------------------------
+   MOTION SYSTEM — reveal-on-scroll. Everything enters the way freight does:
+   set down (rise), stamped (press), or unfolded. Gated behind html.js +
+   motion-ok so content is never hidden from reduced-motion / no-JS visitors.
+   --------------------------------------------------------------------------*/
+@media (prefers-reduced-motion: no-preference) {
+  html.js [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.65s var(--ease-out),
+      transform 0.65s var(--ease-out);
+    transition-delay: var(--reveal-delay, 0s);
+  }
+  html.js [data-reveal="stamp"] {
+    transform: scale(1.5) rotate(-9deg);
+    transition:
+      opacity 0.28s var(--ease),
+      transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  html.js [data-reveal="draw"] {
+    transform: none;
+  }
+  html.js [data-reveal].is-in {
+    opacity: 1;
+    transform: none;
+  }
+  html.js [data-reveal="stamp"].is-in {
+    transform: scale(1) rotate(var(--stamp-tilt, -3deg));
+  }
+  /* self-drawing strokes (the carton net in the ending) */
+  html.js [data-reveal="draw"] .draw-stroke {
+    stroke-dashoffset: var(--draw-len, 1200);
+    stroke-dasharray: var(--draw-len, 1200);
+    transition: stroke-dashoffset 1.6s var(--ease) 0.15s;
+  }
+  html.js [data-reveal="draw"].is-in .draw-stroke {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   STAMP — inspection mark. Mono caps in a heavy border, slightly tilted,
+   like rubber ink on board.
+   --------------------------------------------------------------------------*/
+.stamp {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  border: 2px solid currentColor;
+  border-radius: 2px;
+  padding: 0.4em 0.75em;
+  transform: rotate(var(--stamp-tilt, -3deg));
+  /* uneven ink: a hair of the border kept lighter, like a worn stamp */
+  -webkit-mask-image: radial-gradient(140% 120% at 30% 20%, #000 55%, rgba(0, 0, 0, 0.82));
+  mask-image: radial-gradient(140% 120% at 30% 20%, #000 55%, rgba(0, 0, 0, 0.82));
+  white-space: nowrap;
+}
+.stamp--ink {
+  color: var(--ink);
+}
+
+/* ----------------------------------------------------------------------------
+   FIG — the inspection window that frames every product demonstration.
+   Hairline frame, corner crops, caption bar. Same chrome for every figure so
+   the demos read as plates from one manual.
+   --------------------------------------------------------------------------*/
+.fig {
+  position: relative;
+  border: var(--hair-strong) solid var(--ink);
+  background: var(--field);
+  border-radius: 2px;
+}
+/* crop marks are printed in the key ink, like the seal's — never the accent */
+.fig__corner {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 0 solid var(--line-2);
+  pointer-events: none;
+  z-index: 3;
+}
+.fig__corner--tl {
+  top: -2px;
+  left: -2px;
+  border-top-width: 2px;
+  border-left-width: 2px;
+}
+.fig__corner--tr {
+  top: -2px;
+  right: -2px;
+  border-top-width: 2px;
+  border-right-width: 2px;
+}
+.fig__corner--bl {
+  bottom: -2px;
+  left: -2px;
+  border-bottom-width: 2px;
+  border-left-width: 2px;
+}
+.fig__corner--br {
+  bottom: -2px;
+  right: -2px;
+  border-bottom-width: 2px;
+  border-right-width: 2px;
+}
+.fig__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.5rem 0.8rem;
+  border-bottom: var(--hair) solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.fig__bar-label {
+  font-weight: 600;
+}
+.fig__replay {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  border: var(--hair) solid var(--line-2);
+  border-radius: 2px;
+  padding: 0.25em 0.55em;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+/* a replay control is meaningless when the demos can't run */
+html:not(.js) .fig__replay {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fig__replay {
+    display: none;
+  }
+}
+.fig__replay:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.fig__stage {
+  position: relative;
+  overflow: hidden;
+}
+.fig__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.45rem 0.8rem;
+  border-top: var(--hair) solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--label-aa);
+  min-height: 1.9rem;
+}
+.fig__status {
+  color: var(--accent-text);
+  font-weight: 600;
+  transition: opacity 0.2s var(--ease);
+}
+
+/* ----------------------------------------------------------------------------
+   TAG CHIP — small bordered mono chip for platforms / post tags. Shared by
+   the catalog bays and the dispatches lists.
+   --------------------------------------------------------------------------*/
+.tag {
+  display: inline-block;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.25em 0.5em;
+  border: var(--hair) solid var(--line-2);
+  border-radius: 2px;
+  color: var(--ink-2);
+  white-space: nowrap;
 }

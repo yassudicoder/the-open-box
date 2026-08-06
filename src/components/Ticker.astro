@@ -13,7 +13,7 @@ const { lead, items, speed = "42s", glyph = "✺" } = Astro.props;
 const sequence = [lead, ...items];
 ---
 
-<div class="ticker" style={`--speed:${speed}`} role="marquee" aria-label={lead}>
+<div class="ticker" style={`--speed:${speed}`} role="marquee" aria-label={lead} data-ticker>
   <div class="ticker__track">
     {
       [0, 1].map((dup) => (
@@ -28,12 +28,61 @@ const sequence = [lead, ...items];
       ))
     }
   </div>
+  <button
+    class="ticker__hold mono"
+    data-ticker-hold
+    type="button"
+    aria-pressed="false"
+    aria-label="Pause the moving ticker"
+  >HOLD</button>
 </div>
+
+<script>
+  // WCAG 2.2.2: auto-moving text needs a real stop control, not just hover.
+  function initTicker() {
+    document.querySelectorAll<HTMLElement>("[data-ticker]").forEach((ticker) => {
+      const hold = ticker.querySelector<HTMLButtonElement>("[data-ticker-hold]");
+      hold?.addEventListener("click", () => {
+        const held = ticker.classList.toggle("is-held");
+        hold.setAttribute("aria-pressed", String(held));
+        hold.textContent = held ? "RUN" : "HOLD";
+        hold.setAttribute("aria-label", held ? "Resume the moving ticker" : "Pause the moving ticker");
+      });
+    });
+  }
+  if (document.readyState !== "loading") initTicker();
+  else document.addEventListener("DOMContentLoaded", initTicker);
+</script>
 
 <style>
   .ticker__group {
     display: inline-flex;
     align-items: center;
+  }
+  .ticker__hold {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--ink-2);
+    background: var(--paper-2);
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    padding: 0.3em 0.55em;
+  }
+  .ticker__hold:hover {
+    color: var(--ink);
+    border-color: var(--ink);
+  }
+  :global(html:not(.js)) .ticker__hold {
+    display: none;
+  }
+  :global(html:not(.js)) .ticker__track,
+  .ticker.is-held .ticker__track {
+    animation-play-state: paused;
   }
   .ticker__item {
     display: inline-flex;

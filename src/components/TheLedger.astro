@@ -11,7 +11,7 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
 <section class="section" id="ledger" aria-labelledby="ledger-h">
   <div class="wrap">
     <SectionHeader
-      index="03"
+      index="02"
       glyph="§"
       title="The Ledger"
       sublabel="PACKING MANIFEST"
@@ -19,7 +19,14 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
       id="ledger-h"
     />
 
-    <div class="slip" role="table" aria-label="Shipping manifest">
+    <div
+      class="slip"
+      role="table"
+      aria-label="Shipping manifest"
+      data-reveal
+      data-ledger
+      data-installs={ledger.installsTotalRaw}
+    >
       <div class="slip__head">
         <div class="slip__brand">
           <span class="slip__from label">FROM</span>
@@ -30,7 +37,7 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
           {Array.from({ length: 42 }).map((_, i) => (
             <span style={`--w:${(i * 7) % 3 === 0 ? 3 : 1}px`}></span>
           ))}
-          <span class="slip__barcode-n mono">OPEN-BOX · {site.taglineAlt ? "LOCAL-FIRST" : ""}</span>
+          <span class="slip__barcode-n mono">SN TOB-2026-001 · LOCAL-FIRST</span>
         </div>
       </div>
 
@@ -52,7 +59,11 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
                   {r.label}
                 </span>
                 <span class="slip__dots" aria-hidden="true" />
-                <span class="slip__value mono" role="cell">
+                <span
+                  class="slip__value mono"
+                  role="cell"
+                  data-countup={r.label === "TOTAL INSTALLS" ? "" : undefined}
+                >
                   {r.value}
                 </span>
               </div>
@@ -68,7 +79,7 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
       </div>
 
       <div class="slip__foot">
-        <span class="slip__stamp mono">NOTHING UPLOADED</span>
+        <span class="stamp" data-reveal="stamp">⌀ NOTHING UPLOADED</span>
         <span class="slip__foot-note mono">
           EVERY ROW COMPUTED ON-DEVICE · THIS SLIP IS THE RECEIPT
         </span>
@@ -138,7 +149,8 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
   .slip__row {
     display: flex;
     align-items: center;
-    gap: 0.7rem;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.7rem;
     padding: 0.55rem 1.2rem;
   }
   .slip__row:nth-child(odd) {
@@ -166,12 +178,23 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
     font-weight: 700;
     letter-spacing: 0.02em;
     color: var(--ink);
-    flex: none;
+    flex: 0 1 auto;
+    min-width: 0;
     text-align: right;
+    margin-left: auto;
   }
   /* the only real, fetched metric */
   .slip__row--real .slip__value {
-    color: var(--accent);
+    color: var(--accent-text);
+  }
+  /* narrow phones: the dotted leader goes, label and value may stack */
+  @media (max-width: 420px) {
+    .slip__dots {
+      display: none;
+    }
+    .slip__label {
+      flex: 1 1 auto;
+    }
   }
   /* the local-first constants: visibly fixed, never measured */
   .slip__row--fixed .slip__label,
@@ -190,12 +213,12 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
     font-size: 0.56rem;
     letter-spacing: 0.1em;
     line-height: 1.55;
-    color: var(--ink-3);
+    color: var(--label-aa);
     border-top: var(--hair) dashed var(--line-2);
     margin-top: 0.25rem;
   }
   .slip__caption .glyph {
-    color: var(--accent);
+    color: var(--accent-text);
   }
   .slip__caption strong {
     color: var(--ink-2);
@@ -210,22 +233,45 @@ const lastFixed = rows.reduce((acc, r, i) => (r.fixed ? i : acc), -1);
     padding: 1rem 1.2rem;
     border-top: var(--hair) dashed var(--line-2);
   }
-  .slip__stamp {
-    font-size: 0.74rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    color: var(--accent);
-    border: var(--hair-strong) solid var(--accent);
-    border-radius: 2px;
-    padding: 0.35em 0.7em;
-    transform: rotate(-3deg);
-  }
   .slip__foot-note {
     font-size: 0.58rem;
     letter-spacing: 0.1em;
-    color: var(--ink-3);
+    color: var(--label-aa);
     text-align: right;
     flex: 1;
     min-width: 14ch;
   }
 </style>
+
+<script>
+  // TOTAL INSTALLS ticks up like a counter being read off the slip — the only
+  // moving number, because it is the only real one. Motion-gated.
+  function initLedger() {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const slip = document.querySelector<HTMLElement>("[data-ledger]");
+    const value = slip?.querySelector<HTMLElement>("[data-countup]");
+    const target = Number(slip?.dataset.installs || "0");
+    if (!slip || !value || reduce.matches || !target || !("IntersectionObserver" in window)) return;
+
+    const fmt = (n: number) => n.toLocaleString("en-US");
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        const t0 = performance.now();
+        const dur = 900;
+        const tick = (t: number) => {
+          const p = Math.min(1, (t - t0) / dur);
+          const eased = 1 - Math.pow(1 - p, 3);
+          value.textContent = fmt(Math.round(target * eased));
+          if (p < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      },
+      { threshold: 0.5 },
+    );
+    io.observe(slip);
+  }
+  if (document.readyState !== "loading") initLedger();
+  else document.addEventListener("DOMContentLoaded", initLedger);
+</script>
