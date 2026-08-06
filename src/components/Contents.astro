@@ -9,7 +9,7 @@ import SectionHeader from "./SectionHeader.astro";
 import DemoCanned from "./demos/DemoCanned.astro";
 import DemoContinue from "./demos/DemoContinue.astro";
 import DemoBulk from "./demos/DemoBulk.astro";
-import MapsAudit from "./MapsAudit.astro";
+import DemoMaps from "./demos/DemoMaps.astro";
 import { tools, statusOrder } from "../data/tools.ts";
 
 const sorted = [...tools].sort(
@@ -115,7 +115,7 @@ const HAS_FIG = new Set(["CANNED", "CONTINUE", "BULK", "MAPS"]);
                       {t.codename === "CANNED" && <DemoCanned />}
                       {t.codename === "CONTINUE" && <DemoContinue />}
                       {t.codename === "BULK" && <DemoBulk />}
-                      {t.codename === "MAPS" && <MapsAudit />}
+                      {t.codename === "MAPS" && <DemoMaps />}
                     </div>
                   )}
                 </div>
