@@ -1,0 +1,139 @@
+---
+/* =============================================================================
+   FIG.04 — MAPS. Not a working demo but a PERMISSIONS AUDIT, because this
+   tool's whole claim is one a skeptic can verify: it has no permission to
+   reach a server. Every value below is from the extension's own manifest and
+   is visible in the Chrome Web Store listing's permissions panel — nothing
+   here is a promise, and nothing is invented. Rows tick in via the shared
+   reveal system (no demo runner); static and fully legible without motion.
+   ========================================================================== */
+const rows = [
+  { k: "HOST_PERMISSIONS", v: "NONE", none: true },
+  { k: "CONTENT_SCRIPTS", v: "NONE", none: true },
+  { k: "EXTERNALLY_CONNECTABLE", v: "NONE", none: true },
+  { k: "NETWORK · XHR · WS · BEACON", v: "0", none: true },
+  { k: "STORAGE", v: "LOCAL ×14 · SYNC 0", none: false },
+  { k: "LOGIN · API KEY · ANALYTICS", v: "NONE", none: true },
+];
+---
+
+<figure
+  class="fig audit"
+  aria-label="Permissions audit — this extension has no permission to reach a server."
+>
+  <span class="fig__corner fig__corner--tl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--tr" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--bl" aria-hidden="true"></span>
+  <span class="fig__corner fig__corner--br" aria-hidden="true"></span>
+
+  <div class="fig__bar">
+    <span class="fig__bar-label">FIG. 04 — PERMISSIONS AUDIT</span>
+    <span class="audit__src mono">MANIFEST.JSON</span>
+  </div>
+
+  <div class="fig__stage audit__stage">
+    <ul class="audit__rows">
+      {
+        rows.map((r, i) => (
+          <li class="audit__row" data-reveal style={`--reveal-delay:${(i * 0.06).toFixed(2)}s`}>
+            <span class="audit__k mono">{r.k}</span>
+            <span class="audit__dots" aria-hidden="true" />
+            <span class:list={["audit__v mono", { "is-none": r.none }]}>{r.v}</span>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="audit__note mono" data-reveal>
+      1 fetch in the codebase — reads a bundled <b>selectors.json</b> over
+      <b>chrome-extension://</b>. Never the network.
+    </p>
+
+    <p class="audit__claim" data-reveal>
+      It has no permission to reach a server.
+      <span>Chrome wouldn’t let it.</span>
+    </p>
+  </div>
+
+  <figcaption class="fig__foot">
+    <span class="fig__status">CHROME-ENFORCED — NOT A PROMISE</span>
+    <span>GOOGLE MAPS → CSV</span>
+  </figcaption>
+</figure>
+
+<style>
+  .audit__src {
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+    color: var(--label-aa);
+  }
+  .audit__stage {
+    display: flex;
+    flex-direction: column;
+    padding: 0.9rem 0.95rem 1rem;
+    gap: 0.8rem;
+  }
+  .audit__rows {
+    display: flex;
+    flex-direction: column;
+  }
+  .audit__row {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.42rem 0;
+    border-bottom: var(--hair) dashed var(--line);
+  }
+  .audit__row:first-child {
+    border-top: var(--hair) dashed var(--line);
+  }
+  .audit__k {
+    font-size: 0.64rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-2);
+    flex: none;
+  }
+  .audit__dots {
+    flex: 1;
+    align-self: center;
+    border-bottom: var(--hair) dotted var(--line-2);
+    transform: translateY(-1px);
+    min-width: 1.2rem;
+  }
+  .audit__v {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    flex: none;
+    text-align: right;
+  }
+  /* the values that prove the claim — the zeros and NONEs carry the accent */
+  .audit__v.is-none {
+    color: var(--accent-text);
+  }
+  .audit__note {
+    font-size: 0.56rem;
+    line-height: 1.6;
+    letter-spacing: 0.04em;
+    color: var(--label-aa);
+    text-transform: none;
+  }
+  .audit__note b {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+  .audit__claim {
+    font-family: var(--font-display);
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.28;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    border-left: 2px solid var(--accent-text);
+    padding-left: 0.7rem;
+  }
+  .audit__claim span {
+    color: var(--accent-text);
+  }
+</style>

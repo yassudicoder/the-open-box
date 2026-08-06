@@ -1,6 +1,6 @@
 /* =============================================================================
    TOOLS — the catalog. THIS IS THE FILE.
-   To publish VOL.04: copy a block below, bump the `vol`, fill it in, set status.
+   To publish VOL.05: copy a block below, bump the `vol`, fill it in, set status.
    Everything downstream (THE INDEX, the open-box modules, JSON-LD, the ledger
    count, the command palette) reads from this array. No layout surgery needed.
    ========================================================================== */
@@ -105,17 +105,24 @@ export const tools: Tool[] = [
   },
   {
     vol: "VOL.04",
-    codename: "————",
-    title: "In research",
-    oneLiner: "Something small and honest is taking shape. Not ready to name yet.",
-    status: "research",
-    statusLabel: "IN RESEARCH",
-    platforms: ["TBD"],
-    site: "",
+    codename: "MAPS",
+    title: "Maps Lead Export — Google Maps results to a pitch-ready CSV",
+    oneLiner:
+      "Export the Google Maps results you’re already looking at as a pitch-ready CSV — including an honest “don’t know yet” instead of a guess.",
+    status: "live",
+    statusLabel: "LIVE",
+    platforms: ["CHROME", "GOOGLE MAPS"],
+    installs: "",
+    site: "https://maps-lead-export.vercel.app/",
     store: "",
-    kind: "Unannounced",
-    shipped: false,
-    specs: ["SCOPE: SMALL", "ETHOS: LOCAL-FIRST", "STATUS: STILL THINKING"],
+    kind: "Browser extension",
+    shipped: true,
+    specs: [
+      "GOOGLE MAPS → CSV",
+      "HOST_PERMISSIONS: NONE",
+      "NO SERVER · NO ACCOUNT · NO SYNC",
+      "HONEST BLANKS, NOT GUESSES",
+    ],
   },
 ];
 

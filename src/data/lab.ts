@@ -17,7 +17,7 @@ export interface LabEntry {
 // tools.ts (and gain a VOL number) once they're real.
 export const lab: LabEntry[] = [
   {
-    codename: "VOL.04 · UNTITLED",
+    codename: "VOL.05 · UNTITLED",
     blurb:
       "The next tool, still unnamed. A small local-first utility for a chore nobody enjoys — scoping it until it does exactly one thing well.",
     state: "research",
@@ -25,7 +25,7 @@ export const lab: LabEntry[] = [
     progress: 0.28,
   },
   {
-    codename: "VOL.05 · CANDIDATE",
+    codename: "VOL.06 · CANDIDATE",
     blurb:
       "On the shortlist: another small browser tool that deletes one repetitive step. Not committed yet — it has to earn its volume number.",
     state: "research",
