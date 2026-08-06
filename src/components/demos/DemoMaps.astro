@@ -45,7 +45,7 @@ const rows = [
             <span class="mp__pin" aria-hidden="true"></span>
             <span class="mp__cardbody">
               <span class="mp__name">{r.name}</span>
-              <span class="mp__meta mono">★ {r.stars} ({r.n}) · {r.phone}</span>
+              <span class="mp__meta mono">{r.stars} ({r.n}) · {r.phone}</span>
             </span>
             <span class="mp__tick" aria-hidden="true">
               <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.6 L3.4 6 L8 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -66,7 +66,7 @@ const rows = [
 
       <div class="mp__table" role="presentation">
         <!-- the rejection stamp lands across the column Maps never filled -->
-        <span class="mp__stamp mono" data-stamp>NOT ON THE PAGE</span>
+        <span class="mp__stamp mono" data-stamp>DON’T KNOW YET</span>
         <div class="mp__tr mp__tr--head mono">
           <span>NAME</span><span>PHONE</span><span>SITE</span><span>EMAIL</span>
         </div>
@@ -124,8 +124,10 @@ const rows = [
     color: var(--label-aa);
     border-bottom: var(--hair) dashed var(--line);
   }
+  /* ⌀ and · are in the shipped font subset (scripts/subset-fonts.mjs);
+     ★ and ⌕ are NOT — never reach for a glyph that isn't subset. */
   .mp__query::before {
-    content: "⌕ ";
+    content: "⌀ ";
     color: var(--accent-text);
   }
   .mp__read {
@@ -470,10 +472,9 @@ const rows = [
   [data-phase="static"] .mp__file {
     transition-delay: 0s;
   }
-  [data-phase="csv"] .mp__table {
-    opacity: 0.32;
-    transition: opacity 0.4s var(--ease) 0.2s;
-  }
+  /* NOTE: do not dim the table here. The honest blanks are the point of the
+     whole plate — fading them out on the final beat throws away the payoff
+     the preceding phases spent ten seconds establishing. */
 
   /* narrow: stack the page above the sheet */
   @media (max-width: 620px) {
