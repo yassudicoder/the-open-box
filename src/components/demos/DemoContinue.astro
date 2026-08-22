@@ -173,7 +173,9 @@ const THREAD = [
     min-width: 96px;
   }
   .ct__capsule-head {
-    color: var(--accent);
+    /* the capsule is already an inverted block — its heading takes the
+       interior's own ink, never --accent (which equals page ink) */
+    color: var(--interior-ink);
     font-weight: 700;
     letter-spacing: 0.14em;
     margin-bottom: 0.15rem;
