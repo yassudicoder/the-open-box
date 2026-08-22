@@ -90,14 +90,14 @@ The same line-art box is the **logo** (`src/components/BoxMark.astro`), the
 All copy and data live in `src/data/` and `src/content/`. Layout never needs to
 change to add a tool, a principle, or a post.
 
-### ▸ Add a tool (publish VOL.04)
+### ▸ Add a tool (publish VOL.05)
 
 Edit **[`src/data/tools.ts`](src/data/tools.ts)** and append one entry to the
 `tools` array:
 
 ```ts
 {
-  vol: "VOL.04",
+  vol: "VOL.05",
   codename: "SHORTNAME",                 // big label in the index + on the module
   title: "Full Product Title",
   oneLiner: "One sentence describing it.",

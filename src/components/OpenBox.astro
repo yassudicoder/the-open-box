@@ -10,16 +10,20 @@
 import { site } from "../data/site.ts";
 import { tools } from "../data/tools.ts";
 
-// The three modules in the box: VOL.01, VOL.02, dimmed VOL.03.
-const modules = tools.slice(0, 3);
+// The modules that rise out of the box — every shipped volume, in order.
+const modules = tools.slice(0, 4);
 
 // Screen-space positions the modules fan out to once the box opens (px from
-// stage centre). Middle rides highest. The scroll handoff destination is each
-// module's real row in THE INDEX, computed live in JS (matched by data-vol).
+// stage centre). A symmetric arc: the inner pair rides highest, the outer pair
+// sits lower and wider. Cards that overlap horizontally are separated
+// vertically by more than a card's height, so nothing ever covers anything.
+// The scroll handoff destination is each module's real bay in THE CONTENTS,
+// computed live in JS (matched by data-vol).
 const positions = [
-  { x: -142, y: -126 },
-  { x: 4, y: -178 },
-  { x: 146, y: -120 },
+  { x: -168, y: -104 },
+  { x: -86, y: -192 },
+  { x: 86, y: -192 },
+  { x: 168, y: -104 },
 ];
 
 // Build-time stamp for the blueprint "PACKED ON" detail.
@@ -799,6 +803,10 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
   /* roomy inspect dropdown — appears on hover/focus; absolute so it never
      shifts the card or causes layout reflow */
   .module__inspect {
+    /* --ix / --arrow let the outer modules anchor their panel to the card's
+       inner edge instead of centring it, so it can't run off the stage */
+    --ix: -50%;
+    --arrow: 50%;
     position: absolute;
     top: calc(100% + 7px);
     left: 50%;
@@ -814,23 +822,35 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
     box-shadow: 0 16px 36px -18px rgba(0, 0, 0, 0.6);
     opacity: 0;
     pointer-events: none;
-    transform: translateX(-50%) translateY(-6px) scale(0.98);
+    transform: translateX(var(--ix)) translateY(-6px) scale(0.98);
     transform-origin: top center;
     transition: opacity 0.2s var(--ease), transform 0.22s var(--ease-out);
     z-index: 4;
+  }
+  /* leftmost module opens rightward, rightmost opens leftward */
+  .module-slot:first-child .module__inspect {
+    left: 0;
+    --ix: 0%;
+    --arrow: 83px;
+  }
+  .module-slot:last-child .module__inspect {
+    left: auto;
+    right: 0;
+    --ix: 0%;
+    --arrow: calc(100% - 83px);
   }
   .module:hover .module__inspect,
   .module:focus-visible .module__inspect,
   .module:focus-within .module__inspect {
     opacity: 1;
     pointer-events: auto;
-    transform: translateX(-50%) translateY(0) scale(1);
+    transform: translateX(var(--ix)) translateY(0) scale(1);
   }
   .module__inspect::before {
     content: "";
     position: absolute;
     top: -5px;
-    left: 50%;
+    left: var(--arrow);
     width: 9px;
     height: 9px;
     transform: translateX(-50%) rotate(45deg);
@@ -929,6 +949,28 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
     }
   }
 
+  /* ---- medium screens: pull the arc in before it can reach the edges.
+     Runs past the 920px two-column switch, where the stage is at its
+     narrowest relative to the arc. ---- */
+  @media (max-width: 1080px) {
+    .module-slot {
+      transform: translate(-50%, -50%)
+        translate(calc(var(--mx) * 0.82), calc(var(--my) * 0.94))
+        translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
+    }
+    /* the inner pair sits 172px * 0.82 = 141px apart, so the card must stay
+       narrower than that or VOL.02 and VOL.03 collide */
+    .module__card {
+      width: 136px;
+    }
+    .module-slot:first-child .module__inspect {
+      --arrow: 68px;
+    }
+    .module-slot:last-child .module__inspect {
+      --arrow: calc(100% - 68px);
+    }
+  }
+
   /* ---- small screens: shrink carton, pull modules inward, no overflow ---- */
   @media (max-width: 560px) {
     .box3d {
@@ -937,18 +979,54 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
       --bh: 96px;
     }
     .hero__stage {
-      min-height: 400px;
+      min-height: 430px;
     }
+    /* Four cards can't fan into one arc this narrow without colliding, so
+       small screens get a 2×2 stack instead. The scroll handoff is already
+       disabled below 760px, so --ho-* is never applied here. */
     .module-slot {
-      transform: translate(-50%, -50%)
-        translate(calc(var(--mx) * 0.64), calc(var(--my) * 0.82))
-        translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
+      transform: translate(-50%, -50%) translate(var(--sx), var(--sy));
+    }
+    .module-slot:nth-child(1) {
+      --sx: -66px;
+      --sy: -192px;
+    }
+    .module-slot:nth-child(2) {
+      --sx: 66px;
+      --sy: -192px;
+    }
+    .module-slot:nth-child(3) {
+      --sx: -66px;
+      --sy: -102px;
+    }
+    .module-slot:nth-child(4) {
+      --sx: 66px;
+      --sy: -102px;
     }
     .module__card {
-      width: 146px;
+      width: 120px;
+      padding: 0.5rem 0.56rem;
+      gap: 0.3rem;
     }
+    .module__name {
+      font-size: 1rem;
+    }
+    .module__vol {
+      font-size: 0.56rem;
+    }
+    .module__pill {
+      font-size: 0.48rem;
+      padding: 0.18em 0.34em;
+    }
+  }
+
+  /* The inspect panel is a hover affordance. On touch (and on screens too
+     narrow to hold it) it never opens, but it still occupies layout and the
+     outer modules push it past the viewport edge — so drop it there. Its
+     content is on the module's aria-label and in the bay below. */
+  @media (max-width: 620px), (hover: none) {
     .module__inspect {
-      width: 210px;
+      display: none;
     }
   }
 

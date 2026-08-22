@@ -67,95 +67,95 @@
   --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Light theme (default) — blueprint paper */
-  --paper: #f2f1ea;
-  --paper-2: #eae8df;
-  --ink: #14130f;
-  --ink-2: #514d44;
-  --ink-3: #8a8478;
-  --label-aa: #696458; /* faint label that still clears WCAG AA on --paper */
-  --line: rgba(20, 19, 15, 0.16);
-  --line-2: rgba(20, 19, 15, 0.34);
-  --field: #f7f6f1;
-  --shade: rgba(20, 19, 15, 0.045);
+  /* Light theme (default) — white paper, black ink */
+  --paper: #ffffff;
+  --paper-2: #f2f2f2;
+  --ink: #000000;
+  --ink-2: #454545;
+  --ink-3: #6e6e6e;
+  --label-aa: #565656; /* faint label that still clears WCAG AA on --paper */
+  --line: rgba(0, 0, 0, 0.16);
+  --line-2: rgba(0, 0, 0, 0.32);
+  --field: #fafafa;
+  --shade: rgba(0, 0, 0, 0.045);
 
-  /* Single restrained accent — reserved for LIVE / active states only.
-     --accent is the bright surface orange (tape, fills, marks);
-     --accent-text is the ink-heavy print orange that clears WCAG AA for
-     small text and focus rings on paper/field. */
-  --accent: #ff5a1f; /* signal orange — box tape / shipping */
-  --accent-text: #bf3a08; /* printed safety orange — 4.85:1 on --paper */
+  /* Sealed-carton faces for the hero box — neutral greys, no warmth */
+  --box-top: #f0f0f0;
+  --box-front: #dedede;
+  --box-side: #c4c4c4;
+  --box-floor: #b0b0b0;
+  --box-edge: rgba(0, 0, 0, 0.5);
+  --box-tape: rgba(0, 0, 0, 0.14);
+  /* Interior — inside the box. The opposite of the page. */
+  --interior: #000000;
+  --interior-ink: #ffffff;
+  --interior-line: rgba(255, 255, 255, 0.22);
+
+  /* No hue anywhere. "Active" is expressed by INVERSION — a filled block of
+     ink with paper-coloured text — not by a third colour. --accent is simply
+     full-strength ink; --accent-ink is what sits on top of it. */
+  --accent: #000000;
+  --accent-text: #000000;
   --accent-ink: #ffffff;
-  --grain-opacity: 0.04;
+  --grain-opacity: 0.035;
 
-  /* Sealed-carton matte faces (opaque — no see-through) for the hero box */
-  --box-top: #ece8dd;
-  --box-front: #ddd7c9;
-  --box-side: #cbc4b2;
-  --box-floor: #bdb6a2;
-  --box-edge: rgba(20, 19, 15, 0.5);
-  --box-tape: rgba(20, 19, 15, 0.14);
-  /* Interior — inside the box (the Continue demo's context capsule) */
-  --interior: #121109;
-  --interior-ink: #f2f1ea;
-  --interior-line: rgba(242, 241, 234, 0.2);
 
   color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  --paper: #0b0c0e;
-  --paper-2: #121317;
-  --ink: #e9e7df;
-  --ink-2: #a7a399;
-  --ink-3: #6c685f;
-  --label-aa: #8a857a; /* faint label that still clears WCAG AA on dark --paper */
-  --line: rgba(233, 231, 223, 0.16);
-  --line-2: rgba(233, 231, 223, 0.32);
-  --field: #101216;
-  --shade: rgba(233, 231, 223, 0.05);
-  --accent: #ff6a33;
-  --accent-text: #ff6a33; /* 6.86:1 on dark --paper — no darkening needed */
-  --accent-ink: #0b0c0e;
+  --paper: #000000;
+  --paper-2: #0e0e0e;
+  --ink: #ffffff;
+  --ink-2: #b4b4b4;
+  --ink-3: #8a8a8a;
+  --label-aa: #9e9e9e; /* faint label that still clears WCAG AA on dark --paper */
+  --line: rgba(255, 255, 255, 0.18);
+  --line-2: rgba(255, 255, 255, 0.34);
+  --field: #0a0a0a;
+  --shade: rgba(255, 255, 255, 0.06);
+  --box-top: #232323;
+  --box-front: #181818;
+  --box-side: #101010;
+  --box-floor: #0a0a0a;
+  --box-edge: rgba(255, 255, 255, 0.44);
+  --box-tape: rgba(255, 255, 255, 0.14);
+  --interior: #ffffff;
+  --interior-ink: #000000;
+  --interior-line: rgba(0, 0, 0, 0.22);
+  --accent: #ffffff;
+  --accent-text: #ffffff;
+  --accent-ink: #000000;
   --grain-opacity: 0.05;
-  --box-top: #242832;
-  --box-front: #191c22;
-  --box-side: #121419;
-  --box-floor: #0c0e12;
-  --box-edge: rgba(233, 231, 223, 0.42);
-  --box-tape: rgba(233, 231, 223, 0.13);
-  --interior: #08090b;
-  --interior-ink: #e9e7df;
-  --interior-line: rgba(233, 231, 223, 0.18);
   color-scheme: dark;
 }
 
 /* Respect OS preference when the user hasn't chosen a theme */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0b0c0e;
-    --paper-2: #121317;
-    --ink: #e9e7df;
-    --ink-2: #a7a399;
-    --ink-3: #6c685f;
-    --label-aa: #8a857a; /* faint label that still clears WCAG AA on dark --paper */
-    --line: rgba(233, 231, 223, 0.16);
-    --line-2: rgba(233, 231, 223, 0.32);
-    --field: #101216;
-    --shade: rgba(233, 231, 223, 0.05);
-    --accent: #ff6a33;
-    --accent-text: #ff6a33;
-    --accent-ink: #0b0c0e;
+    --paper: #000000;
+    --paper-2: #0e0e0e;
+    --ink: #ffffff;
+    --ink-2: #b4b4b4;
+    --ink-3: #8a8a8a;
+    --label-aa: #9e9e9e; /* faint label that still clears WCAG AA on dark --paper */
+    --line: rgba(255, 255, 255, 0.18);
+    --line-2: rgba(255, 255, 255, 0.34);
+    --field: #0a0a0a;
+    --shade: rgba(255, 255, 255, 0.06);
+    --box-top: #232323;
+    --box-front: #181818;
+    --box-side: #101010;
+    --box-floor: #0a0a0a;
+    --box-edge: rgba(255, 255, 255, 0.44);
+    --box-tape: rgba(255, 255, 255, 0.14);
+    --interior: #ffffff;
+    --interior-ink: #000000;
+    --interior-line: rgba(0, 0, 0, 0.22);
+    --accent: #ffffff;
+    --accent-text: #ffffff;
+    --accent-ink: #000000;
     --grain-opacity: 0.05;
-    --box-top: #242832;
-    --box-front: #191c22;
-    --box-side: #121419;
-    --box-floor: #0c0e12;
-    --box-edge: rgba(233, 231, 223, 0.42);
-    --box-tape: rgba(233, 231, 223, 0.13);
-    --interior: #08090b;
-    --interior-ink: #e9e7df;
-    --interior-line: rgba(233, 231, 223, 0.18);
     color-scheme: dark;
   }
 }
@@ -367,19 +367,18 @@ strong {
   opacity: 0.55;
 }
 
+/* LIVE is expressed by inversion — a solid block of ink carrying paper-
+   coloured type. In a two-tone system that is the loudest signal available,
+   and it needs no third colour. */
 .pill[data-status="live"] {
-  color: var(--accent-text);
-  border-color: color-mix(in oklab, var(--accent-text) 55%, var(--line-2));
-}
-
-.pill[data-status="live"]::before {
+  color: var(--accent-ink);
   background: var(--accent);
+  border-color: var(--accent);
+}
+.pill[data-status="live"]::before {
+  background: var(--accent-ink);
   opacity: 1;
 }
-
-/* Pulsing glow — same look as the old box-shadow ring, but a scaling + fading
-   pseudo-element so it runs on the compositor (transform/opacity only, no
-   paint). Positioned exactly over the status dot. */
 .pill[data-status="live"]::after {
   content: "";
   position: absolute;
@@ -389,7 +388,7 @@ strong {
   height: 0.5em;
   margin: -0.25em 0 0 -0.25em;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-ink);
   opacity: 0;
   pointer-events: none;
   will-change: transform, opacity;

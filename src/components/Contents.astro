@@ -9,6 +9,7 @@ import SectionHeader from "./SectionHeader.astro";
 import DemoCanned from "./demos/DemoCanned.astro";
 import DemoContinue from "./demos/DemoContinue.astro";
 import DemoBulk from "./demos/DemoBulk.astro";
+import DemoMaps from "./demos/DemoMaps.astro";
 import { tools, statusOrder } from "../data/tools.ts";
 
 const sorted = [...tools].sort(
@@ -16,6 +17,10 @@ const sorted = [...tools].sort(
 );
 const span = `01–${String(tools.length).padStart(2, "0")}`;
 const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
+
+// Which codenames render a FIG. plate beside their identity plate. A shipped
+// tool without one gets a full-width plate rather than an empty column.
+const HAS_FIG = new Set(["CANNED", "CONTINUE", "BULK", "MAPS"]);
 ---
 
 <section class="section" id="index" aria-labelledby="index-h">
@@ -70,7 +75,7 @@ const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
                   </div>
                 </div>
               ) : (
-                <div class="bay__grid">
+                <div class:list={["bay__grid", { "bay__grid--solo": !HAS_FIG.has(t.codename) }]}>
                   <div class="bay__plate" data-reveal>
                     <h3 class="bay__name">{t.codename}</h3>
                     <p class="bay__full mono">{t.title}</p>
@@ -105,11 +110,14 @@ const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
                     </div>
                   </div>
 
-                  <div class="bay__fig" data-reveal style="--reveal-delay:0.12s">
-                    {t.codename === "CANNED" && <DemoCanned />}
-                    {t.codename === "CONTINUE" && <DemoContinue />}
-                    {t.codename === "BULK" && <DemoBulk />}
-                  </div>
+                  {HAS_FIG.has(t.codename) && (
+                    <div class="bay__fig" data-reveal style="--reveal-delay:0.12s">
+                      {t.codename === "CANNED" && <DemoCanned />}
+                      {t.codename === "CONTINUE" && <DemoContinue />}
+                      {t.codename === "BULK" && <DemoBulk />}
+                      {t.codename === "MAPS" && <DemoMaps />}
+                    </div>
+                  )}
                 </div>
               )}
             </li>
@@ -175,6 +183,11 @@ const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
     grid-template-columns: 1fr;
     gap: clamp(1.4rem, 3.5vw, 3rem);
     align-items: start;
+  }
+  /* a shipped tool with no FIG. plate keeps a single readable column instead
+     of leaving an empty half */
+  .bay__grid--solo .bay__plate {
+    max-width: 62ch;
   }
 
   .bay__plate {
@@ -277,11 +290,11 @@ const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
   }
 
   @media (min-width: 860px) {
-    .bay__grid {
+    .bay__grid:not(.bay__grid--solo) {
       grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
       align-items: center;
     }
-    .bay--flip .bay__grid {
+    .bay--flip .bay__grid:not(.bay__grid--solo) {
       grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
     }
     .bay--flip .bay__plate {
