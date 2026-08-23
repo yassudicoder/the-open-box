@@ -9,7 +9,6 @@ import SectionHeader from "./SectionHeader.astro";
 import DemoCanned from "./demos/DemoCanned.astro";
 import DemoContinue from "./demos/DemoContinue.astro";
 import DemoBulk from "./demos/DemoBulk.astro";
-import DemoMaps from "./demos/DemoMaps.astro";
 import { tools, statusOrder } from "../data/tools.ts";
 
 const sorted = [...tools].sort(
@@ -20,7 +19,7 @@ const volId = (vol: string) => vol.toLowerCase().replace(".", "-");
 
 // Which codenames render a FIG. plate beside their identity plate. A shipped
 // tool without one gets a full-width plate rather than an empty column.
-const HAS_FIG = new Set(["CANNED", "CONTINUE", "BULK", "MAPS"]);
+const HAS_FIG = new Set(["CANNED", "CONTINUE", "BULK"]);
 ---
 
 <section class="section" id="index" aria-labelledby="index-h">
@@ -115,7 +114,6 @@ const HAS_FIG = new Set(["CANNED", "CONTINUE", "BULK", "MAPS"]);
                       {t.codename === "CANNED" && <DemoCanned />}
                       {t.codename === "CONTINUE" && <DemoContinue />}
                       {t.codename === "BULK" && <DemoBulk />}
-                      {t.codename === "MAPS" && <DemoMaps />}
                     </div>
                   )}
                 </div>

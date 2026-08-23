@@ -10,8 +10,9 @@
 import { site } from "../data/site.ts";
 import { tools } from "../data/tools.ts";
 
-// The modules that rise out of the box — every shipped volume, in order.
-const modules = tools.slice(0, 4);
+// Only SHIPPED volumes rise out of the box — an unannounced placeholder has
+// nothing to hand to the catalog. Capped at four; a fifth would need its own arc.
+const modules = tools.filter((t) => t.shipped).slice(0, 4);
 
 // Screen-space positions the modules fan out to once the box opens (px from
 // stage centre). A symmetric arc: the inner pair rides highest, the outer pair
@@ -19,12 +20,25 @@ const modules = tools.slice(0, 4);
 // vertically by more than a card's height, so nothing ever covers anything.
 // The scroll handoff destination is each module's real bay in THE CONTENTS,
 // computed live in JS (matched by data-vol).
-const positions = [
-  { x: -168, y: -104 },
-  { x: -86, y: -192 },
-  { x: 86, y: -192 },
-  { x: 168, y: -104 },
-];
+const ARCS: Record<number, { x: number; y: number }[]> = {
+  1: [{ x: 0, y: -168 }],
+  2: [
+    { x: -94, y: -150 },
+    { x: 94, y: -150 },
+  ],
+  3: [
+    { x: -142, y: -126 },
+    { x: 4, y: -178 },
+    { x: 146, y: -120 },
+  ],
+  4: [
+    { x: -168, y: -104 },
+    { x: -86, y: -192 },
+    { x: 86, y: -192 },
+    { x: 168, y: -104 },
+  ],
+};
+const positions = ARCS[modules.length] ?? ARCS[3];
 
 // Build-time stamp for the blueprint "PACKED ON" detail.
 const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
@@ -119,7 +133,7 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
           </div>
 
           <!-- REAL focusable module links; hidden until the box opens -->
-          <ul class="modules" data-modules>
+          <ul class="modules" data-modules data-count={modules.length}>
             {
               modules.map((t, i) => {
                 const href = t.site || t.store || "";
@@ -981,25 +995,31 @@ const packedOn = new Date().toISOString().slice(0, 10).replace(/-/g, ".");
     .hero__stage {
       min-height: 430px;
     }
+    /* Three or fewer still fan; only four need rearranging. */
+    .module-slot {
+      transform: translate(-50%, -50%)
+        translate(calc(var(--mx) * 0.62), calc(var(--my) * 0.84))
+        translate(var(--ho-x, 0px), var(--ho-y, 0px)) scale(var(--ho-s, 1));
+    }
     /* Four cards can't fan into one arc this narrow without colliding, so
        small screens get a 2×2 stack instead. The scroll handoff is already
        disabled below 760px, so --ho-* is never applied here. */
-    .module-slot {
+    [data-count="4"] .module-slot {
       transform: translate(-50%, -50%) translate(var(--sx), var(--sy));
     }
-    .module-slot:nth-child(1) {
+    [data-count="4"] .module-slot:nth-child(1) {
       --sx: -66px;
       --sy: -192px;
     }
-    .module-slot:nth-child(2) {
+    [data-count="4"] .module-slot:nth-child(2) {
       --sx: 66px;
       --sy: -192px;
     }
-    .module-slot:nth-child(3) {
+    [data-count="4"] .module-slot:nth-child(3) {
       --sx: -66px;
       --sy: -102px;
     }
-    .module-slot:nth-child(4) {
+    [data-count="4"] .module-slot:nth-child(4) {
       --sx: 66px;
       --sy: -102px;
     }
