@@ -1,0 +1,300 @@
+---
+/* =============================================================================
+   BUILT TO ORDER — home-page band.
+
+   Sits between THE CONTENTS (what ships off the shelf) and THE LEDGER. It is
+   deliberately UN-NUMBERED: the numbered sections are the catalog's own
+   documentation, and inserting a numbered section here would renumber
+   everything below it. This is a different kind of thing — a card slipped
+   into the box, not a chapter of the manual — so it reads as an insert.
+
+   Inverted, because on this site emphasis is a filled block rather than a
+   colour. It is the only inverted band on the page, which is the point.
+   ========================================================================== */
+import { site } from "../data/site.ts";
+import { serviceLines } from "../data/services.ts";
+---
+
+<aside class="bto" aria-labelledby="bto-h">
+  <div class="wrap bto__inner">
+    <div class="bto__mark" aria-hidden="true">
+      <span class="bto__marktop mono">ALSO IN THE BOX</span>
+      <svg viewBox="0 0 64 44" fill="none" class="bto__glyph">
+        <!-- an open carton, seen from the side, with something going in -->
+        <path d="M6 18 L32 6 L58 18 L58 38 L32 42 L6 38 Z" stroke="currentColor" stroke-width="1.4" />
+        <path d="M6 18 L32 22 L58 18" stroke="currentColor" stroke-width="1.4" />
+        <path d="M32 22 L32 42" stroke="currentColor" stroke-width="1.4" />
+        <path d="M32 2 L32 14 M27 9.5 L32 14.5 L37 9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <div class="bto__body">
+      <p class="bto__eyebrow mono">
+        THE CATALOG ABOVE SHIPS OFF THE SHELF · THIS PART IS MADE TO MEASURE
+      </p>
+
+      <h2 class="bto__title" id="bto-h">
+        <a href="/build/">Built to order<span class="bto__arrow" aria-hidden="true">▸</span></a>
+      </h2>
+
+      <p class="bto__lead">
+        The same hands that made these tools also build websites for other
+        people — clinics, cafes, salons, shops, startups. Designed in Figma,
+        built responsive, deployed live.
+      </p>
+
+    </div>
+
+    <!-- the tear-off stub: what you can order, and how to start -->
+    <div class="bto__stub">
+      <ul class="bto__lines mono" aria-label="Lines of work">
+        {
+          serviceLines.map((s) => (
+            <li>
+              <span class="bto__code">{s.code}</span>
+              {s.name.toUpperCase()}
+            </li>
+          ))
+        }
+        <li><span class="bto__code">+</span>OR BOTH, WITH NO HANDOVER BETWEEN THEM</li>
+      </ul>
+
+      <div class="bto__cta">
+        <a class="bto__btn" href="/build/">
+          SEE WHAT I BUILD <span aria-hidden="true">▸</span>
+        </a>
+        <a class="bto__alt mono" href="/build/#brief">START A BRIEF</a>
+      </div>
+    </div>
+  </div>
+
+  <p class="visually-hidden">
+    {site.maker} takes freelance web development and UI/UX design commissions
+    from {site.build.region} and remotely.
+  </p>
+</aside>
+
+<style>
+  .bto {
+    /* the one inverted band on the page — emphasis by block, not by hue */
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-block: var(--hair-strong) solid var(--ink);
+    padding-block: clamp(2.2rem, 5vw, 3.6rem);
+  }
+  .bto__inner {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1.2rem, 3vw, 2.4rem);
+    align-items: start;
+  }
+
+  .bto__mark {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    color: var(--accent-ink);
+  }
+  .bto__marktop {
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    opacity: 0.72;
+  }
+  .bto__glyph {
+    width: 52px;
+    height: auto;
+    flex: none;
+    opacity: 0.85;
+  }
+
+  .bto__eyebrow {
+    font-size: 0.52rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    line-height: 1.7;
+    opacity: 0.72;
+    margin-bottom: 0.9rem;
+  }
+  .bto__title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 1.3rem + 3.4vw, 3.6rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    text-transform: none;
+    margin-bottom: 0.9rem;
+  }
+  .bto__title a {
+    color: inherit;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.24em;
+  }
+  .bto__arrow {
+    font-size: 0.42em;
+    transform: translateY(-0.18em);
+    transition: transform 0.2s var(--ease);
+  }
+  .bto__title a:hover .bto__arrow {
+    transform: translate(0.25em, -0.18em);
+  }
+  .bto__lead {
+    font-size: clamp(0.98rem, 0.92rem + 0.4vw, 1.12rem);
+    line-height: 1.55;
+    max-width: 46ch;
+    opacity: 0.88;
+    margin-bottom: 1.2rem;
+  }
+
+  .bto__stub {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .bto__lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-block: 1rem;
+    border-top: var(--hair) dashed color-mix(in oklab, var(--accent-ink) 34%, transparent);
+    border-bottom: var(--hair) dashed color-mix(in oklab, var(--accent-ink) 34%, transparent);
+    margin-bottom: 1.3rem;
+  }
+  .bto__lines li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+  }
+  .bto__code {
+    display: inline-grid;
+    place-items: center;
+    width: 1.5em;
+    height: 1.5em;
+    flex: none;
+    border: var(--hair) solid color-mix(in oklab, var(--accent-ink) 52%, transparent);
+    border-radius: 2px;
+    font-size: 0.9em;
+    opacity: 0.9;
+  }
+
+  .bto__cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.8rem 1.3rem;
+  }
+  .bto__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0.72em 1.1em;
+    border: var(--hair-strong) solid var(--accent-ink);
+    border-radius: 2px;
+    background: var(--accent-ink);
+    color: var(--accent);
+    transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  }
+  .bto__btn:hover {
+    background: transparent;
+    color: var(--accent-ink);
+  }
+  .bto__alt {
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--accent-ink);
+    opacity: 0.82;
+    border-bottom: var(--hair) solid currentColor;
+    padding-bottom: 0.12em;
+    transition: opacity 0.15s var(--ease);
+  }
+  .bto__alt:hover {
+    opacity: 1;
+  }
+
+  /* focus ring has to invert too, or it vanishes into the block */
+  .bto :global(a:focus-visible) {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 3px;
+  }
+
+  @media (min-width: 860px) {
+    .bto__inner {
+      grid-template-columns: auto 1fr;
+      gap: clamp(1.6rem, 4vw, 3.4rem);
+    }
+    .bto__mark {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1rem;
+      padding-top: 0.3rem;
+    }
+    .bto__marktop {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    .bto__glyph {
+      width: 64px;
+    }
+    /* two columns, three children: the stub sits under the body, not under
+       the narrow mark rail */
+    .bto__body,
+    .bto__stub {
+      grid-column: 2;
+    }
+    .bto__mark {
+      grid-row: 1 / span 2;
+    }
+    .bto__lines {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 0.6rem 1.8rem;
+    }
+  }
+
+  /* Wide: the stub tears off down the right-hand side, along a dashed score
+     line — the layout the rest of the site already uses for a docket. */
+  @media (min-width: 1140px) {
+    .bto__inner {
+      grid-template-columns: auto minmax(0, 1fr) minmax(19rem, 24rem);
+      align-items: stretch;
+    }
+    .bto__body {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: center;
+      padding-right: clamp(1.6rem, 3vw, 3rem);
+    }
+    .bto__mark {
+      grid-row: 1;
+    }
+    .bto__stub {
+      grid-column: 3;
+      grid-row: 1;
+      justify-content: center;
+      gap: 1.4rem;
+      padding-left: clamp(1.6rem, 3vw, 3rem);
+      border-left: var(--hair) dashed color-mix(in oklab, var(--accent-ink) 34%, transparent);
+    }
+    .bto__lines {
+      flex-direction: column;
+      gap: 0.55rem;
+      padding-block: 0;
+      border: 0;
+      margin-bottom: 0;
+    }
+    .bto__cta {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.9rem;
+    }
+  }
+</style>

@@ -31,6 +31,22 @@ export const site = {
     linkedin: "https://www.linkedin.com/in/yash-desai-1aa9b5310/",
     rss: "/rss.xml",
   },
+  /* --- BUILT TO ORDER — the commissioned side of the studio (/build/) --- */
+  build: {
+    /** Section + nav label. */
+    label: "Built to Order",
+    /**
+     * WhatsApp number, international format, digits only (e.g. "919876543210").
+     * LEAVE EMPTY unless it is real. The WhatsApp CTA renders only when this is
+     * set — the site never invents a contact number.
+     */
+    whatsapp: "",
+    /** Where the studio takes work from. Used in SEO/structured data only. */
+    region: "India",
+    /** Shown on the brief so nobody wonders where their message went. */
+    replyWithin: "1 working day",
+  },
+
   // The technical "uses" line for the colophon
   stack: ["Astro", "Vanilla CSS", "CSS 3D transforms", "Vercel", "Google Analytics"],
 } as const;

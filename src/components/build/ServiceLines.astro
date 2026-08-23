@@ -1,0 +1,199 @@
+---
+/* =============================================================================
+   02 / WHAT I DO — two lines of work, presented as two spec sheets.
+
+   The important thing this section has to say is that A and B can be bought
+   separately or together, so the split is literal: two columns, a hairline
+   between them, and a joint at the bottom that says so.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { serviceLines } from "../../data/services.ts";
+---
+
+<section class="section" id="services" aria-labelledby="services-h">
+  <div class="wrap">
+    <SectionHeader
+      index="02"
+      glyph="§"
+      title="What I do"
+      sublabel="TWO LINES OF WORK"
+      kicker="A · B · OR BOTH"
+      id="services-h"
+    />
+
+    <div class="sl">
+      {
+        serviceLines.map((s, i) => (
+          <article class="sl__line" data-reveal style={`--reveal-delay:${i * 0.08}s`}>
+            <header class="sl__head">
+              <span class="sl__code mono">LINE {s.code}</span>
+              <h3 class="sl__name">{s.name}</h3>
+              <p class="sl__summary">{s.summary}</p>
+            </header>
+
+            <div class="sl__body">
+              <div class="sl__col">
+                <h4 class="sl__sub mono">SCOPE</h4>
+                <ul class="sl__items">
+                  {s.items.map((it) => (
+                    <li class="mono">{it}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div class="sl__col">
+                <h4 class="sl__sub mono">WHAT YOU GET</h4>
+                <ul class="sl__gets">
+                  {s.deliverables.map((d) => (
+                    <li>{d}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="sl__joint mono" data-reveal>
+      <span class="sl__jointmark" aria-hidden="true">A + B</span>
+      TAKE EITHER ON ITS OWN, OR BOTH — DESIGN STRAIGHT INTO BUILD, NO HANDOVER
+    </p>
+  </div>
+</section>
+
+<style>
+  .sl {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: var(--hair-strong) solid var(--ink);
+  }
+  .sl__line {
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    padding: clamp(1.4rem, 3vw, 2.2rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+  }
+  .sl__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+  .sl__code {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--accent-text);
+  }
+  .sl__name {
+    font-size: clamp(1.7rem, 1.2rem + 2vw, 2.6rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .sl__summary {
+    color: var(--ink-2);
+    font-size: 1rem;
+    line-height: 1.5;
+    max-width: 46ch;
+  }
+
+  .sl__body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.3rem;
+  }
+  .sl__sub {
+    font-size: 0.54rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--label-aa);
+    padding-bottom: 0.55rem;
+    margin-bottom: 0.7rem;
+    border-bottom: var(--hair) dashed var(--line-2);
+  }
+  .sl__items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
+  }
+  .sl__items li {
+    position: relative;
+    padding-left: 1em;
+    font-size: 0.68rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .sl__items li::before {
+    content: "+";
+    position: absolute;
+    left: 0;
+    color: var(--accent-text);
+  }
+  .sl__gets {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .sl__gets li {
+    position: relative;
+    padding-left: 1.1em;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .sl__gets li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.52em;
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+  }
+
+  .sl__joint {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+    margin-top: 1.4rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    color: var(--ink-2);
+  }
+  .sl__jointmark {
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 0.3em 0.6em;
+    border-radius: 2px;
+    flex: none;
+  }
+
+  @media (min-width: 760px) {
+    .sl__body {
+      grid-template-columns: 1fr 1fr;
+      gap: clamp(1.5rem, 4vw, 3rem);
+    }
+  }
+  @media (min-width: 1000px) {
+    .sl {
+      grid-template-columns: 1fr 1fr;
+      column-gap: clamp(2rem, 5vw, 4rem);
+    }
+    .sl__line:first-child {
+      border-right: var(--hair) solid var(--line);
+      padding-right: clamp(2rem, 5vw, 4rem);
+    }
+    .sl__body {
+      grid-template-columns: 1fr;
+      gap: 1.2rem;
+    }
+  }
+</style>

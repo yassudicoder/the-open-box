@@ -1,0 +1,272 @@
+---
+/* =============================================================================
+   BUILT TO ORDER — hero.
+
+   The catalog ships off the shelf; this is the other half of the studio. The
+   hero answers the three questions a business owner has in the first five
+   seconds: what is this, who is it for, and what do I do next.
+
+   Reuses the site's own vocabulary — a job docket rather than an agency
+   splash: order number, what's being ordered, who it's packed for.
+   ========================================================================== */
+import { site } from "../../data/site.ts";
+
+const mail = `mailto:${site.email}?subject=${encodeURIComponent("Project enquiry — via The Open Box")}`;
+---
+
+<section class="bh" id="top">
+  <div class="wrap bh__grid">
+    <div class="bh__lede">
+      <p class="bh__eyebrow label">
+        <span class="glyph accent" aria-hidden="true">⌀</span>
+        {site.shortName} · COMMISSIONS · OPEN
+      </p>
+
+      <h1 class="bh__title">
+        Built<br />to<br />order<span class="bh__caret" aria-hidden="true"></span>
+      </h1>
+
+      <p class="bh__lead">
+        Websites and digital experiences for real businesses — clinics, cafes,
+        salons, shops, startups. Designed in Figma and built to work, by the
+        same person.
+      </p>
+
+      <p class="bh__sub">
+        The catalog on the home page is what this studio ships for itself.
+        This is what it builds for you.
+      </p>
+
+      <div class="bh__cta">
+        <a class="btn btn--accent" href="#brief">
+          START A PROJECT <span aria-hidden="true">▸</span>
+        </a>
+        <a class="btn btn--ghost" href="#pipeline">SEE HOW IT WORKS</a>
+      </div>
+
+      <dl class="bh__facts">
+        <div>
+          <dt class="label">DESIGN</dt>
+          <dd class="num">FIGMA</dd>
+        </div>
+        <div>
+          <dt class="label">BUILD</dt>
+          <dd class="num">RESPONSIVE</dd>
+        </div>
+        <div>
+          <dt class="label">HANDLED BY</dt>
+          <dd class="num">ONE PERSON</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- the docket: what an order looks like before anything is made -->
+    <aside class="bh__docket" aria-label="What a commission covers">
+      <div class="bh__dockethead mono">
+        <span>WORK ORDER</span>
+        <span>OPEN</span>
+      </div>
+
+      <dl class="bh__rows mono">
+        <div class="bh__row">
+          <dt>ORDER</dt>
+          <dd>ONE WEBSITE, BUILT FOR ONE BUSINESS</dd>
+        </div>
+        <div class="bh__row">
+          <dt>PACKED FOR</dt>
+          <dd>CLINICS · CAFES · SALONS · SHOPS · STARTUPS</dd>
+        </div>
+        <div class="bh__row">
+          <dt>INCLUDES</dt>
+          <dd>UX · FIGMA DESIGN · BUILD · TESTING · DEPLOY</dd>
+        </div>
+        <div class="bh__row">
+          <dt>SEPARATELY</dt>
+          <dd>DESIGN ONLY, OR DEVELOPMENT ONLY</dd>
+        </div>
+        <div class="bh__row">
+          <dt>DELIVERED</dt>
+          <dd>LIVE ON YOUR OWN DOMAIN</dd>
+        </div>
+      </dl>
+
+      <div class="bh__docketfoot">
+        <span class="stamp" data-reveal="stamp">ACCEPTING WORK</span>
+        <a class="bh__mail mono" href={mail}>{site.email}</a>
+      </div>
+    </aside>
+  </div>
+
+  <p class="bh__scrollcue label" aria-hidden="true">
+    <span>WHO IT'S FOR</span>
+    <span class="bh__scrollcue-line"></span>
+  </p>
+</section>
+
+<style>
+  .bh {
+    position: relative;
+    padding-top: clamp(2rem, 6vw, 4.5rem);
+    padding-bottom: clamp(2rem, 5vw, 4rem);
+  }
+  .bh__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+  }
+
+  .bh__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5em;
+    margin-bottom: 1.2rem;
+  }
+  .bh__title {
+    font-family: var(--font-display);
+    font-size: clamp(2.9rem, 1.6rem + 6vw, 6.4rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 0.9;
+    text-transform: none;
+    margin-bottom: 1.2rem;
+  }
+  .bh__caret {
+    display: inline-block;
+    width: 0.5em;
+    height: 0.14em;
+    margin-left: 0.14em;
+    background: var(--accent);
+    vertical-align: baseline;
+    animation: bh-caret 1.1s steps(1) infinite;
+  }
+  @keyframes bh-caret {
+    50% {
+      opacity: 0;
+    }
+  }
+  .bh__lead {
+    font-size: clamp(1.02rem, 0.95rem + 0.5vw, 1.24rem);
+    line-height: 1.5;
+    color: var(--ink);
+    max-width: 40ch;
+    margin-bottom: 0.9rem;
+  }
+  .bh__sub {
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    max-width: 42ch;
+    margin-bottom: 1.8rem;
+  }
+  .bh__cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    margin-bottom: 2rem;
+  }
+  .bh__facts {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+    gap: clamp(1rem, 4vw, 2.4rem);
+    justify-content: start;
+    padding-top: 1.4rem;
+    border-top: var(--hair) solid var(--line);
+    width: fit-content;
+  }
+  .bh__facts dt {
+    margin-bottom: 0.3em;
+  }
+  .bh__facts dd {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  /* ---- the work order docket ---- */
+  .bh__docket {
+    border: var(--hair-strong) solid var(--ink);
+    background: var(--field);
+    border-radius: 2px;
+  }
+  .bh__dockethead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--ink-2);
+    border-bottom: var(--hair) dashed var(--line-2);
+  }
+  .bh__dockethead span:last-child {
+    color: var(--accent-text);
+  }
+  .bh__rows {
+    padding: 0.3rem 0;
+  }
+  .bh__row {
+    display: grid;
+    grid-template-columns: 6.6rem 1fr;
+    gap: 0.8rem;
+    align-items: baseline;
+    padding: 0.55rem 0.9rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+  }
+  .bh__row + .bh__row {
+    border-top: var(--hair) dotted var(--line-2);
+  }
+  .bh__row dt {
+    color: var(--label-aa);
+    font-weight: 500;
+  }
+  .bh__row dd {
+    color: var(--ink);
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  .bh__docketfoot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding: 0.9rem;
+    border-top: var(--hair) dashed var(--line-2);
+  }
+  .bh__mail {
+    font-size: 0.64rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-2);
+    border-bottom: var(--hair) solid var(--line-2);
+    padding-bottom: 0.1em;
+    transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+    word-break: break-all;
+  }
+  .bh__mail:hover {
+    color: var(--accent-text);
+    border-color: var(--accent-text);
+  }
+
+  .bh__scrollcue {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    justify-content: center;
+    margin-top: clamp(1.6rem, 4vw, 3rem);
+    font-size: 0.6rem;
+    color: var(--label-aa);
+  }
+  .bh__scrollcue-line {
+    width: 1px;
+    height: 26px;
+    background: linear-gradient(var(--line-2), transparent);
+  }
+
+  @media (min-width: 900px) {
+    .bh__grid {
+      grid-template-columns: 1.08fr 1fr;
+    }
+  }
+</style>

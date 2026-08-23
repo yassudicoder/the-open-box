@@ -1,0 +1,664 @@
+---
+/* =============================================================================
+   07 / START A PROJECT — the brief.
+
+   This site runs no servers, and the Ledger says so in public
+   ("SERVERS RUN: 0 · 0 BYTES UPLOADED"). A form that POSTs to a backend or a
+   third-party form service would make that line false. So the brief is
+   assembled ENTIRELY IN THE BROWSER and handed off through the channel the
+   client already trusts: their own mail client, or WhatsApp.
+
+   Nothing is stored. Nothing is transmitted by the page. The preview shows
+   exactly what gets sent, before it is sent — which is the same promise the
+   tools in the catalog make.
+
+   Without JavaScript the form still works: it is a real <form> with
+   method="get" wired to a mailto: action, which composes the same message
+   through the browser's native handling. Progressive enhancement only
+   upgrades the body from field=value pairs to a formatted brief.
+
+   The WhatsApp button renders only when site.build.whatsapp holds a real
+   number. No number is invented here.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { site } from "../../data/site.ts";
+import { briefOptions } from "../../data/services.ts";
+
+const wa = site.build.whatsapp.replace(/\D/g, "");
+const hasWhatsApp = wa.length > 0;
+const mailSubject = "Project enquiry — via The Open Box";
+---
+
+<section class="section" id="brief" aria-labelledby="brief-h">
+  <div class="wrap">
+    <SectionHeader
+      index="07"
+      glyph="✺"
+      title="Have a project in mind?"
+      sublabel="START A BRIEF"
+      kicker="NO FORM SERVICE · NOTHING STORED · IT OPENS IN YOUR OWN APP"
+      id="brief-h"
+    />
+
+    <p class="pb__lead">
+      Whether you're opening a clinic, running a cafe, growing a local
+      business, launching a startup, or redesigning an existing website —
+      let's talk about what you actually need.
+    </p>
+
+    <div class="pb">
+      <!-- ---------------------------------------------------------------
+           THE FORM. action is a real mailto: so it functions with JS off.
+           --------------------------------------------------------------- -->
+      <form
+        class="pb__form"
+        id="brief-form"
+        action={`mailto:${site.email}`}
+        method="get"
+        enctype="text/plain"
+        data-mail={site.email}
+      >
+        <input type="hidden" name="subject" value={mailSubject} />
+
+        <div class="pb__grid">
+          <p class="fld fld--full">
+            <label class="fld__label mono" for="bf-name">
+              YOUR NAME <span class="fld__req" aria-hidden="true">*</span>
+            </label>
+            <input
+              class="fld__input"
+              id="bf-name"
+              name="name"
+              type="text"
+              autocomplete="name"
+              required
+              placeholder="Who's writing"
+            />
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-business">BUSINESS / PROJECT</label>
+            <input
+              class="fld__input"
+              id="bf-business"
+              name="business"
+              type="text"
+              autocomplete="organization"
+              placeholder="Name of the place, if it has one"
+            />
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-type">WHAT YOU RUN</label>
+            <select class="fld__input" id="bf-type" name="type">
+              <option value="">Pick one</option>
+              {briefOptions.businessTypes.map((b) => <option value={b}>{b}</option>)}
+            </select>
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-need">WHAT YOU NEED</label>
+            <select class="fld__input" id="bf-need" name="need">
+              <option value="">Pick one</option>
+              {briefOptions.needs.map((n) => <option value={n}>{n}</option>)}
+            </select>
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-when">WHEN</label>
+            <select class="fld__input" id="bf-when" name="timing">
+              <option value="">Pick one</option>
+              {briefOptions.timelines.map((t) => <option value={t}>{t}</option>)}
+            </select>
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-budget">BUDGET</label>
+            <select class="fld__input" id="bf-budget" name="budget">
+              <option value="">Pick one</option>
+              {briefOptions.budgets.map((b) => <option value={b}>{b}</option>)}
+            </select>
+          </p>
+
+          <p class="fld">
+            <label class="fld__label mono" for="bf-site">EXISTING SITE</label>
+            <input
+              class="fld__input"
+              id="bf-site"
+              name="existing"
+              type="text"
+              inputmode="url"
+              placeholder="Link, or leave blank"
+            />
+          </p>
+
+          <p class="fld fld--full">
+            <label class="fld__label mono" for="bf-msg">
+              WHAT THE SITE HAS TO DO <span class="fld__req" aria-hidden="true">*</span>
+            </label>
+            <textarea
+              class="fld__input fld__area"
+              id="bf-msg"
+              name="message"
+              rows="5"
+              required
+              placeholder="A few lines is plenty. What the business is, who it's for, and what you want people to be able to do."
+            ></textarea>
+          </p>
+
+          <p class="fld fld--full">
+            <label class="fld__label mono" for="bf-reply">
+              HOW TO REACH YOU <span class="fld__req" aria-hidden="true">*</span>
+            </label>
+            <input
+              class="fld__input"
+              id="bf-reply"
+              name="reply_to"
+              type="text"
+              autocomplete="email"
+              required
+              placeholder="Email or phone — whichever you prefer"
+            />
+            <span class="fld__hint mono">
+              GOES IN THE MESSAGE SO A REPLY LANDS SOMEWHERE YOU'LL SEE IT.
+            </span>
+          </p>
+        </div>
+
+        <div class="pb__actions">
+          <button class="btn btn--accent" type="submit" data-send="mail">
+            SEND THE BRIEF <span aria-hidden="true">▸</span>
+          </button>
+
+          {
+            hasWhatsApp && (
+              <button class="btn btn--ghost" type="button" data-send="whatsapp" data-wa={wa}>
+                SEND ON WHATSAPP
+              </button>
+            )
+          }
+
+          <button class="btn btn--ghost" type="button" data-send="copy">
+            <span data-copy-label>COPY THE BRIEF</span>
+          </button>
+        </div>
+
+        <p class="pb__status mono" role="status" aria-live="polite" data-status></p>
+
+        <p class="pb__privacy mono">
+          <span class="glyph accent" aria-hidden="true">⌀</span>
+          THIS FORM POSTS NOWHERE. IT OPENS YOUR OWN MAIL APP{hasWhatsApp ? " — OR WHATSAPP —" : " "}
+          WITH THE BRIEF ALREADY WRITTEN. NOTHING IS STORED ON THIS SITE,
+          BECAUSE THIS SITE HAS NOWHERE TO STORE IT.
+        </p>
+      </form>
+
+      <!-- ---------------------------------------------------------------
+           THE PREVIEW — the exact message that will leave, live.
+           --------------------------------------------------------------- -->
+      <aside class="pb__side">
+        <div class="pb__preview" hidden data-preview-wrap>
+          <div class="pb__prevhead mono">
+            <span>OUTGOING BRIEF</span>
+            <span class="pb__prevlive">DRAFT</span>
+          </div>
+          <pre class="pb__prevbody mono" data-preview aria-live="off"></pre>
+          <p class="pb__prevfoot mono">
+            EXACTLY WHAT GETS SENT. NOTHING ELSE IS ATTACHED.
+          </p>
+        </div>
+
+        <div class="pb__direct">
+          <h3 class="pb__directh mono">OR JUST WRITE TO ME</h3>
+          <ul class="pb__channels">
+            <li>
+              <span class="pb__chlabel mono">EMAIL</span>
+              <a class="pb__chvalue" href={`mailto:${site.email}?subject=${encodeURIComponent(mailSubject)}`}>
+                {site.email}
+              </a>
+            </li>
+            {
+              hasWhatsApp && (
+                <li>
+                  <span class="pb__chlabel mono">WHATSAPP</span>
+                  <a
+                    class="pb__chvalue"
+                    href={`https://wa.me/${wa}`}
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    +{wa}
+                  </a>
+                </li>
+              )
+            }
+            <li>
+              <span class="pb__chlabel mono">LINKEDIN</span>
+              <a class="pb__chvalue" href={site.linkedin} target="_blank" rel="noopener">
+                {site.maker}
+              </a>
+            </li>
+          </ul>
+
+          <dl class="pb__terms mono">
+            <div>
+              <dt>REPLY WITHIN</dt>
+              <dd>{site.build.replyWithin.toUpperCase()}</dd>
+            </div>
+            <div>
+              <dt>WORKING FROM</dt>
+              <dd>{site.build.region.toUpperCase()}, REMOTE WORLDWIDE</dd>
+            </div>
+            <div>
+              <dt>FIRST CALL</dt>
+              <dd>FREE — SCOPE AND A PRICE, THEN YOU DECIDE</dd>
+            </div>
+          </dl>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<style>
+  .pb__lead {
+    font-size: clamp(1.02rem, 0.95rem + 0.5vw, 1.22rem);
+    line-height: 1.55;
+    color: var(--ink);
+    max-width: 54ch;
+    margin-bottom: clamp(1.6rem, 4vw, 2.6rem);
+  }
+
+  .pb {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1.6rem, 4vw, 3rem);
+    align-items: start;
+  }
+
+  /* ---- fields ---- */
+  .pb__grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .fld {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+  .fld__label {
+    font-size: 0.54rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--label-aa);
+  }
+  .fld__req {
+    color: var(--accent-text);
+  }
+  .fld__input {
+    width: 100%;
+    max-width: 100%;
+    font-family: inherit;
+    font-size: 0.94rem;
+    color: var(--ink);
+    background: var(--field);
+    border: var(--hair) solid var(--line-2);
+    border-radius: 2px;
+    padding: 0.62em 0.7em;
+    transition:
+      border-color 0.15s var(--ease),
+      background 0.15s var(--ease);
+  }
+  .fld__input::placeholder {
+    color: var(--label-aa);
+    opacity: 1;
+  }
+  .fld__input:hover {
+    border-color: var(--ink-3);
+  }
+  .fld__input:focus-visible {
+    outline: 2px solid var(--accent-text);
+    outline-offset: 1px;
+    border-color: var(--accent-text);
+    background: var(--paper);
+  }
+  select.fld__input {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+      linear-gradient(135deg, currentColor 50%, transparent 50%);
+    background-position:
+      calc(100% - 1.1em) 1.15em,
+      calc(100% - 0.75em) 1.15em;
+    background-size: 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 2.2em;
+  }
+  .fld__area {
+    resize: vertical;
+    line-height: 1.5;
+    min-height: 7.5em;
+  }
+  .fld__hint {
+    font-size: 0.52rem;
+    letter-spacing: 0.14em;
+    color: var(--label-aa);
+    line-height: 1.6;
+  }
+
+  .pb__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.3rem;
+  }
+  .pb__status {
+    margin-top: 0.9rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    color: var(--accent-text);
+    min-height: 1.2em;
+  }
+  .pb__privacy {
+    margin-top: 1.1rem;
+    padding-top: 1rem;
+    border-top: var(--hair) dashed var(--line-2);
+    font-size: 0.55rem;
+    line-height: 1.8;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+    max-width: 62ch;
+  }
+  .pb__privacy .glyph {
+    margin-right: 0.4em;
+  }
+
+  /* ---- side column ---- */
+  .pb__side {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .pb__preview {
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 2px;
+    background: var(--field);
+    overflow: hidden;
+  }
+  .pb__prevhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 0.85rem;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--ink-2);
+    border-bottom: var(--hair) dashed var(--line-2);
+  }
+  .pb__prevlive {
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 0.2em 0.5em;
+    border-radius: 2px;
+  }
+  .pb__prevbody {
+    margin: 0;
+    padding: 0.85rem;
+    font-size: 0.62rem;
+    line-height: 1.75;
+    letter-spacing: 0.02em;
+    color: var(--ink-2);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    max-height: 20rem;
+    overflow: auto;
+  }
+  .pb__prevfoot {
+    padding: 0.6rem 0.85rem;
+    border-top: var(--hair) dashed var(--line-2);
+    font-size: 0.5rem;
+    letter-spacing: 0.16em;
+    color: var(--label-aa);
+  }
+
+  .pb__direct {
+    border: var(--hair) solid var(--line);
+    border-radius: 2px;
+    padding: clamp(1rem, 2.4vw, 1.3rem);
+  }
+  .pb__directh {
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--label-aa);
+    padding-bottom: 0.7rem;
+    margin-bottom: 0.9rem;
+    border-bottom: var(--hair) dashed var(--line-2);
+  }
+  .pb__channels {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1.1rem;
+  }
+  .pb__channels li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+  }
+  .pb__chlabel {
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    color: var(--label-aa);
+  }
+  .pb__chvalue {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+    border-bottom: var(--hair) solid var(--line-2);
+    padding-bottom: 0.1em;
+    width: fit-content;
+    max-width: 100%;
+    transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .pb__chvalue:hover {
+    color: var(--accent-text);
+    border-color: var(--accent-text);
+  }
+  .pb__terms {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding-top: 0.95rem;
+    border-top: var(--hair) dashed var(--line-2);
+  }
+  .pb__terms div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .pb__terms dt {
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    color: var(--label-aa);
+  }
+  .pb__terms dd {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+
+  @media (min-width: 620px) {
+    .pb__grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem clamp(1rem, 3vw, 1.6rem);
+    }
+    .fld--full {
+      grid-column: 1 / -1;
+    }
+  }
+  @media (min-width: 1000px) {
+    .pb {
+      grid-template-columns: 1.25fr 0.85fr;
+    }
+    .pb__side {
+      position: sticky;
+      top: calc(var(--masthead-h, 56px) + 1rem);
+    }
+  }
+</style>
+
+<script>
+  /* ---------------------------------------------------------------------------
+     The brief is composed here, in the page. It is never sent anywhere by this
+     script — the only thing that leaves is what the user's own mail app or
+     WhatsApp sends, after they see it. That is why the preview is live.
+     ------------------------------------------------------------------------ */
+  interface BriefEls {
+    form: HTMLFormElement;
+    preview: HTMLElement | null;
+    previewWrap: HTMLElement | null;
+    status: HTMLElement | null;
+  }
+
+  const MAIL_SUBJECT = "Project enquiry — via The Open Box";
+
+  function field(form: HTMLFormElement, name: string): string {
+    const el = form.elements.namedItem(name) as
+      | HTMLInputElement
+      | HTMLSelectElement
+      | HTMLTextAreaElement
+      | null;
+    return el && "value" in el ? el.value.trim() : "";
+  }
+
+  /** The brief, as plain text. Blank fields are simply left out. */
+  function compose(form: HTMLFormElement): string {
+    const rows: [string, string][] = [
+      ["Name", field(form, "name")],
+      ["Business", field(form, "business")],
+      ["Type", field(form, "type")],
+      ["Needs", field(form, "need")],
+      ["Timing", field(form, "timing")],
+      ["Budget", field(form, "budget")],
+      ["Existing site", field(form, "existing")],
+      ["Reach me at", field(form, "reply_to")],
+    ].filter(([, v]) => v.length > 0) as [string, string][];
+
+    const width = rows.reduce((w, [k]) => Math.max(w, k.length), 0);
+    const head = rows.map(([k, v]) => `${k.padEnd(width)} : ${v}`).join("\n");
+    const msg = field(form, "message");
+
+    const parts = ["PROJECT BRIEF — THE OPEN BOX", ""];
+    if (head) parts.push(head, "");
+    if (msg) parts.push("WHAT THE SITE HAS TO DO", msg, "");
+    parts.push("— Sent from the-open-box brief form");
+    return parts.join("\n");
+  }
+
+  function say(status: HTMLElement | null, text: string) {
+    if (!status) return;
+    status.textContent = text;
+    if (!text) return;
+    window.setTimeout(() => {
+      if (status.textContent === text) status.textContent = "";
+    }, 6000);
+  }
+
+  /** HTML5 validity, with focus moved to whatever is wrong. */
+  function valid(form: HTMLFormElement, status: HTMLElement | null): boolean {
+    if (form.checkValidity()) return true;
+    form.reportValidity();
+    say(status, "FILL THE STARRED FIELDS FIRST.");
+    return false;
+  }
+
+  function initBrief() {
+    const form = document.getElementById("brief-form") as HTMLFormElement | null;
+    if (!form) return;
+
+    const els: BriefEls = {
+      form,
+      preview: form.parentElement?.querySelector<HTMLElement>("[data-preview]") ?? null,
+      previewWrap:
+        form.parentElement?.querySelector<HTMLElement>("[data-preview-wrap]") ?? null,
+      status: form.querySelector<HTMLElement>("[data-status]"),
+    };
+
+    // Live preview — appears as soon as there is anything to preview.
+    const refresh = () => {
+      if (!els.preview || !els.previewWrap) return;
+      const anyValue = ["name", "business", "type", "need", "timing", "budget", "existing", "reply_to", "message"].some(
+        (n) => field(form, n).length > 0,
+      );
+      els.previewWrap.hidden = !anyValue;
+      if (anyValue) els.preview.textContent = compose(form);
+    };
+    form.addEventListener("input", refresh);
+    form.addEventListener("change", refresh);
+    refresh();
+
+    // Mail: build a proper mailto: with the composed body, instead of the
+    // enctype="text/plain" field=value dump the no-JS fallback produces.
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      if (!valid(form, els.status)) return;
+      const href =
+        `mailto:${form.dataset.mail || form.action.replace(/^mailto:/, "")}` +
+        `?subject=${encodeURIComponent(MAIL_SUBJECT)}` +
+        `&body=${encodeURIComponent(compose(form))}`;
+      window.location.href = href;
+      say(els.status, "OPENING YOUR MAIL APP — THE BRIEF IS ALREADY WRITTEN.");
+    });
+
+    form.addEventListener("click", (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-send]");
+      if (!btn) return;
+      const mode = btn.dataset.send;
+
+      if (mode === "whatsapp") {
+        if (!valid(form, els.status)) return;
+        const num = (btn.dataset.wa || "").replace(/\D/g, "");
+        const url = num
+          ? `https://wa.me/${num}?text=${encodeURIComponent(compose(form))}`
+          : "";
+        if (!url) return;
+        window.open(url, "_blank", "noopener");
+        say(els.status, "OPENING WHATSAPP WITH THE BRIEF.");
+        return;
+      }
+
+      if (mode === "copy") {
+        const label = btn.querySelector<HTMLElement>("[data-copy-label]");
+        const text = compose(form);
+        const done = () => {
+          if (label) {
+            const was = label.textContent;
+            label.textContent = "COPIED";
+            window.setTimeout(() => {
+              label.textContent = was;
+            }, 2200);
+          }
+          say(els.status, "BRIEF COPIED — PASTE IT WHEREVER YOU LIKE.");
+        };
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).then(done, () => {
+            say(els.status, "COULDN'T COPY — SELECT THE PREVIEW AND COPY IT MANUALLY.");
+          });
+        } else {
+          say(els.status, "COPYING ISN'T AVAILABLE HERE — SELECT THE PREVIEW INSTEAD.");
+        }
+      }
+    });
+  }
+
+  if (document.readyState !== "loading") initBrief();
+  else document.addEventListener("DOMContentLoaded", initBrief);
+</script>

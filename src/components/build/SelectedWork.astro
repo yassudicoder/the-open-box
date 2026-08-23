@@ -1,0 +1,276 @@
+---
+/* =============================================================================
+   05 / SELECTED WORK
+
+   There is no client work to show yet, and this site does not invent clients,
+   logos, screenshots or results. So while commissions.ts is empty the shelf
+   renders RESERVED slots in the same "sealed, not yet" language the catalog
+   uses for an unshipped volume — honest, on-brand, and it reads as a studio
+   with room on the bench rather than one pretending to have a portfolio.
+
+   Add one entry to src/data/commissions.ts and this section switches to real
+   cards on its own. No layout change needed.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { commissions, reservedSlots } from "../../data/commissions.ts";
+
+const hasWork = commissions.length > 0;
+const span = hasWork ? `01–${String(commissions.length).padStart(2, "0")}` : "OPEN";
+---
+
+<section class="section" id="work" aria-labelledby="work-h">
+  <div class="wrap">
+    <SectionHeader
+      index="05"
+      glyph="⌀"
+      title="Selected work"
+      sublabel={hasWork ? "COMMISSIONS" : "THE SHELF IS NEW"}
+      kicker={`WORK / ${span}`}
+      id="work-h"
+    />
+
+    {
+      hasWork ? (
+        <ul class="sw">
+          {commissions.map((c, i) => (
+            <li class="sw__card" data-reveal style={`--reveal-delay:${(i % 3) * 0.06}s`}>
+              {c.image && (
+                <div class="sw__shot">
+                  <img src={c.image} alt={c.imageAlt ?? `${c.name} — website`} loading="lazy" decoding="async" width="640" height="400" />
+                </div>
+              )}
+              <div class="sw__body">
+                <div class="sw__tags">
+                  <span class="tag mono">{c.category}</span>
+                  {c.services.map((s) => (
+                    <span class="tag mono">{s}</span>
+                  ))}
+                </div>
+                <h3 class="sw__name">{c.name}</h3>
+                <p class="sw__summary">{c.summary}</p>
+                {c.stack && (
+                  <p class="sw__stack mono">{c.stack.join(" · ")}</p>
+                )}
+                <div class="sw__links">
+                  {c.live && (
+                    <a class="sw__link mono" href={c.live} target="_blank" rel="noopener">
+                      LIVE SITE <span aria-hidden="true">▸</span>
+                    </a>
+                  )}
+                  {c.figma && (
+                    <a class="sw__link mono" href={c.figma} target="_blank" rel="noopener">
+                      FIGMA <span aria-hidden="true">▸</span>
+                    </a>
+                  )}
+                  {c.caseStudy && (
+                    <a class="sw__link mono" href={c.caseStudy}>
+                      CASE STUDY <span aria-hidden="true">▸</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <>
+          <p class="sw__honest">
+            This part of the studio is new, so there is no client work on the
+            shelf yet — and nothing invented to fill it. What the catalog on the
+            home page shows is real, shipped, and built by the same hands.
+          </p>
+
+          <ul class="sw sw--reserved" aria-label="Reserved slots for upcoming commissions">
+            {reservedSlots.map((s, i) => (
+              <li class="sw__slot" data-reveal style={`--reveal-delay:${i * 0.07}s`}>
+                <div class="sw__slotmark" aria-hidden="true">
+                  <svg viewBox="0 0 92 58" fill="none">
+                    <rect x="5" y="5" width="82" height="48" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 4" />
+                  </svg>
+                  <span class="sw__slotlabel mono">RESERVED</span>
+                </div>
+                <div class="sw__slotbody">
+                  <span class="tag mono">{s.category}</span>
+                  <p class="sw__slotservices mono">{s.services}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <p class="sw__cta mono">
+            <span class="glyph accent" aria-hidden="true">⌀</span>
+            EARLY WORK GETS MY FULL ATTENTION —
+            <a href="#brief">TAKE ONE OF THESE SLOTS <span aria-hidden="true">▸</span></a>
+          </p>
+        </>
+      )
+    }
+  </div>
+</section>
+
+<style>
+  .sw {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* ---- real commissions ---- */
+  .sw__card {
+    display: flex;
+    flex-direction: column;
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 2px;
+    background: var(--field);
+    overflow: hidden;
+    transition: transform 0.2s var(--ease);
+  }
+  .sw__card:hover {
+    transform: translateY(-3px);
+  }
+  .sw__shot {
+    border-bottom: var(--hair) solid var(--line);
+    background: var(--paper);
+  }
+  .sw__shot img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+  .sw__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 1rem;
+  }
+  .sw__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .sw__name {
+    font-size: 1.2rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .sw__summary {
+    color: var(--ink-2);
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .sw__stack {
+    font-size: 0.56rem;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+  }
+  .sw__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    padding-top: 0.2rem;
+  }
+  .sw__link {
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    border-bottom: var(--hair-strong) solid var(--ink);
+    padding-bottom: 0.12em;
+    transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+  }
+  .sw__link:hover {
+    color: var(--accent-text);
+    border-color: var(--accent-text);
+  }
+
+  /* ---- honest empty state ---- */
+  .sw__honest {
+    color: var(--ink-2);
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 56ch;
+    margin-bottom: 1.6rem;
+  }
+  .sw--reserved {
+    grid-template-columns: 1fr;
+  }
+  .sw__slot {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border: var(--hair) dashed var(--line-2);
+    border-radius: 2px;
+  }
+  .sw__slotmark {
+    position: relative;
+    width: 92px;
+    flex: none;
+    color: var(--line-2);
+  }
+  .sw__slotmark svg {
+    width: 100%;
+    height: auto;
+  }
+  .sw__slotlabel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.48rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    color: var(--label-aa);
+  }
+  .sw__slotbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+  .sw__slotservices {
+    font-size: 0.56rem;
+    letter-spacing: 0.14em;
+    color: var(--label-aa);
+  }
+  .sw__cta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    margin-top: 1.4rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+  }
+  .sw__cta a {
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom: var(--hair-strong) solid var(--accent-text);
+    padding-bottom: 0.1em;
+    transition: color 0.15s var(--ease);
+  }
+  .sw__cta a:hover {
+    color: var(--accent-text);
+  }
+
+  @media (min-width: 760px) {
+    .sw {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .sw--reserved {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .sw__slot {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .sw__slotmark {
+      width: 100%;
+    }
+  }
+  @media (min-width: 1060px) {
+    .sw {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>

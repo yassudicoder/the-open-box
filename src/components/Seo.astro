@@ -10,6 +10,12 @@ interface Props {
   ogImage?: string;
   type?: "website" | "article";
   noJsonLd?: boolean;
+  /**
+   * Page-specific structured data. When given, it replaces the default
+   * per-tool SoftwareApplication list (the Organization node always stays,
+   * so publisher identity is consistent across the site).
+   */
+  jsonld?: unknown[];
 }
 
 const {
@@ -19,6 +25,7 @@ const {
   ogImage = "/og-cover.png",
   type = "website",
   noJsonLd = false,
+  jsonld: pageJsonLd,
 } = Astro.props;
 
 const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.tagline}`;
@@ -61,7 +68,7 @@ const software = tools
     publisher: { "@type": "Organization", name: site.name, url: site.domain },
   }));
 
-const jsonld = [org, ...software];
+const jsonld = pageJsonLd?.length ? [org, ...pageJsonLd] : [org, ...software];
 ---
 
 <title>{fullTitle}</title>

@@ -11,8 +11,10 @@ interface Props {
   path?: string;
   type?: "website" | "article";
   ogImage?: string;
+  /** Page-specific JSON-LD, passed straight through to <Seo>. */
+  jsonld?: unknown[];
 }
-const { title, description, path, type, ogImage } = Astro.props;
+const { title, description, path, type, ogImage, jsonld } = Astro.props;
 ---
 
 <!doctype html>
@@ -64,7 +66,7 @@ const { title, description, path, type, ogImage } = Astro.props;
       })();
     </script>
 
-    <Seo title={title} description={description} path={path} type={type} ogImage={ogImage} />
+    <Seo title={title} description={description} path={path} type={type} ogImage={ogImage} jsonld={jsonld} />
   </head>
   <body>
     <a class="skip-link mono" href="#main">SKIP TO CONTENT</a>

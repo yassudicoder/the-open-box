@@ -1,0 +1,81 @@
+---
+/* =============================================================================
+   04 / HOW I WORK — six steps, deliberately terse. Reuses the doctrine's
+   numbered-rule vocabulary so it reads as the same studio's paperwork.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { process } from "../../data/services.ts";
+---
+
+<section class="section" id="process" aria-labelledby="process-h">
+  <div class="wrap">
+    <SectionHeader
+      index="04"
+      glyph="§"
+      title="How I work"
+      sublabel="SIX STEPS"
+      kicker={`STEP / 01–0${process.length}`}
+      id="process-h"
+    />
+
+    <ol class="pr">
+      {
+        process.map((p, i) => (
+          <li class="pr__step" data-reveal style={`--reveal-delay:${(i % 3) * 0.06}s`}>
+            <span class="pr__n mono" aria-hidden="true">{p.n}</span>
+            <div class="pr__body">
+              <h3 class="pr__name">{p.name}</h3>
+              <p class="pr__text">{p.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+<style>
+  .pr {
+    display: grid;
+    grid-template-columns: 1fr;
+    border-top: var(--hair) solid var(--line);
+  }
+  .pr__step {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 1rem;
+    align-items: start;
+    padding: clamp(1.1rem, 2.5vw, 1.5rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+  }
+  .pr__n {
+    font-size: 0.86rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-text);
+    line-height: 1.4;
+  }
+  .pr__name {
+    font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.3rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.3rem;
+  }
+  .pr__text {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    max-width: 46ch;
+  }
+  @media (min-width: 720px) {
+    .pr {
+      grid-template-columns: 1fr 1fr;
+      column-gap: clamp(2rem, 5vw, 4rem);
+    }
+  }
+  @media (min-width: 1060px) {
+    .pr {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+</style>
