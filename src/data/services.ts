@@ -30,7 +30,7 @@ export interface ClientType {
 export const clientTypes: ClientType[] = [
   {
     key: "01",
-    name: "Clinics & Healthcare",
+    name: "Clinics & Practices",
     line: "For doctors, dentists, physios and clinics — the site a patient checks before they call.",
     sections: [
       { label: "WHO YOU ARE", w: 100 },
@@ -54,7 +54,7 @@ export const clientTypes: ClientType[] = [
   },
   {
     key: "03",
-    name: "Salons & Parlours",
+    name: "Salons & Studios",
     line: "Your service list, your work, and an easy way to book — presented like the room feels.",
     sections: [
       { label: "THE SALON", w: 100 },
@@ -66,8 +66,8 @@ export const clientTypes: ClientType[] = [
   },
   {
     key: "04",
-    name: "Medical Stores",
-    line: "What you stock, how to reach you, and whether you deliver — clear enough to trust.",
+    name: "Pharmacies & Chemists",
+    line: "For a chemist or medical store — what you stock, how to reach you, and whether you deliver.",
     sections: [
       { label: "THE STORE", w: 100 },
       { label: "WHAT WE STOCK", w: 74 },
@@ -78,8 +78,8 @@ export const clientTypes: ClientType[] = [
   },
   {
     key: "05",
-    name: "Local Shops",
-    line: "For businesses that live on walk-ins — a proper online presence, not a social profile.",
+    name: "Independent Shops",
+    line: "For local shops that live on walk-ins — a proper online presence, not a social profile.",
     sections: [
       { label: "THE SHOP", w: 100 },
       { label: "WHAT WE SELL", w: 78 },
@@ -90,7 +90,7 @@ export const clientTypes: ClientType[] = [
   },
   {
     key: "06",
-    name: "Startups & Personal Brands",
+    name: "Startups & Portfolios",
     line: "Landing pages, product sites and portfolios — built to explain the thing and convert.",
     sections: [
       { label: "THE PROPOSITION", w: 100 },
@@ -300,13 +300,13 @@ export const advantages: { title: string; body: string }[] = [
    ------------------------------------------------------------------------ */
 export const briefOptions = {
   businessTypes: [
-    "Clinic / healthcare",
+    "Clinic / medical practice",
     "Cafe / restaurant",
-    "Salon / parlour",
-    "Medical store",
-    "Local shop",
+    "Salon / studio",
+    "Pharmacy / medical store",
+    "Shop / retail",
     "Startup",
-    "Personal brand",
+    "Personal brand / portfolio",
     "Something else",
   ],
   needs: ["Website (design + build)", "UI/UX design only", "Development only", "Redesign of an existing site", "Not sure yet"],

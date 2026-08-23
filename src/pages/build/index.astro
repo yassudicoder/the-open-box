@@ -24,7 +24,7 @@ import { serviceLines, clientTypes } from "../../data/services.ts";
 
 const title = "Freelance Web Developer & UI/UX Designer";
 const description =
-  "Freelance web developer and UI/UX designer. Websites for clinics, cafes, salons, shops and startups — designed in Figma, built responsive, deployed live. Design, development, or both.";
+  "Freelance web developer and UI/UX designer in India. Clinic, cafe, salon, pharmacy, shop and startup websites — designed in Figma, built responsive, deployed live.";
 
 /* Page-level structured data. Everything here is a description of the service
    on offer — no ratings, no review counts, no prices invented. */
@@ -102,7 +102,8 @@ const jsonld = [
         name: "What kinds of businesses is this for?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: clientTypes.map((c) => c.name).join(", ") + ".",
+          text:
+            "It is built for independent businesses: clinics and healthcare practices, cafes and restaurants, salons and parlours, pharmacies and medical stores, local shops, and startups and personal brands.",
         },
       },
       {
