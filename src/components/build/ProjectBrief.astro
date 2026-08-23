@@ -2,23 +2,26 @@
 /* =============================================================================
    07 / START A PROJECT — the brief.
 
-   This site runs no servers, and the Ledger says so in public
-   ("SERVERS RUN: 0 · 0 BYTES UPLOADED"). A form that POSTs to a backend or a
-   third-party form service would make that line false. So the brief is
-   assembled ENTIRELY IN THE BROWSER and handed off through the channel the
-   client already trusts: their own mail client, or WhatsApp.
+   The brief SENDS ITSELF. Clicking "send the brief" posts it to this site's own
+   endpoint (api/brief.js) which emails it to the studio and answers inline —
+   the visitor never leaves the page and never opens a mail client.
 
-   Nothing is stored. Nothing is transmitted by the page. The preview shows
-   exactly what gets sent, before it is sent — which is the same promise the
-   tools in the catalog make.
+   WHY A FIRST-PARTY ENDPOINT, NOT A FORM SERVICE:
+   vercel.json sets `connect-src 'self'` and `form-action 'self'`, so a browser
+   would refuse to send this form to Formspree or Web3Forms without widening
+   that policy. Same-origin needs no CSP change, and the API key stays on the
+   server where the browser never sees it.
 
-   Without JavaScript the form still works: it is a real <form> with
-   method="get" wired to a mailto: action, which composes the same message
-   through the browser's native handling. Progressive enhancement only
-   upgrades the body from field=value pairs to a formatted brief.
+   NOTHING IS LOST IF SENDING IS UNAVAILABLE. If the endpoint is missing, not
+   yet configured, or the network fails, the form falls back to composing the
+   same brief in the visitor's own mail app — the behaviour this section had
+   before. An enquiry is never dropped on the floor.
 
-   The WhatsApp button renders only when site.build.whatsapp holds a real
-   number. No number is invented here.
+   WITHOUT JAVASCRIPT it is still a real form: method="post" action="/api/brief",
+   and the endpoint answers with an HTML confirmation page.
+
+   The WhatsApp CTA renders only when site.build.whatsapp holds a real number.
+   No contact number is invented here.
    ========================================================================== */
 import SectionHeader from "../SectionHeader.astro";
 import { site } from "../../data/site.ts";
@@ -36,7 +39,7 @@ const mailSubject = "Project enquiry — via The Open Box";
       glyph="✺"
       title="Have a project in mind?"
       sublabel="START A BRIEF"
-      kicker="NO FORM SERVICE · NOTHING STORED · IT OPENS IN YOUR OWN APP"
+      kicker="SENDS STRAIGHT TO THE STUDIO · NO FORM SERVICE · NOTHING STORED"
       id="brief-h"
     />
 
@@ -53,12 +56,18 @@ const mailSubject = "Project enquiry — via The Open Box";
       <form
         class="pb__form"
         id="brief-form"
-        action={`mailto:${site.email}`}
-        method="get"
-        enctype="text/plain"
+        action="/api/brief"
+        method="post"
         data-mail={site.email}
       >
-        <input type="hidden" name="subject" value={mailSubject} />
+        {/* Bot traps. Neither is ever seen or focused by a person: the honeypot
+            is hidden from layout AND from assistive tech, and `t` lets the
+            endpoint reject a submission that arrived faster than reading. */}
+        <p class="pb__trap" aria-hidden="true">
+          <label for="bf-company-website">Leave this field empty</label>
+          <input id="bf-company-website" name="company_website" type="text" tabindex="-1" autocomplete="off" />
+        </p>
+        <input type="hidden" name="t" value="" data-stamp />
 
         <div class="pb__grid">
           <p class="fld fld--full">
@@ -167,7 +176,8 @@ const mailSubject = "Project enquiry — via The Open Box";
 
         <div class="pb__actions">
           <button class="btn btn--accent" type="submit" data-send="mail">
-            SEND THE BRIEF <span aria-hidden="true">▸</span>
+            <span data-submit-label>SEND THE BRIEF</span>
+            <span aria-hidden="true">▸</span>
           </button>
 
           {
@@ -187,11 +197,33 @@ const mailSubject = "Project enquiry — via The Open Box";
 
         <p class="pb__privacy mono">
           <span class="glyph accent" aria-hidden="true">⌀</span>
-          THIS FORM POSTS NOWHERE. IT OPENS YOUR OWN MAIL APP{hasWhatsApp ? " — OR WHATSAPP —" : " "}
-          WITH THE BRIEF ALREADY WRITTEN. NOTHING IS STORED ON THIS SITE,
-          BECAUSE THIS SITE HAS NOWHERE TO STORE IT.
+          THE BRIEF GOES STRAIGHT TO {site.email.toUpperCase()} THROUGH THIS
+          SITE'S OWN ENDPOINT — NOT A FORM SERVICE, NOT AN ANALYTICS TOOL, AND
+          NOT A DATABASE. IT IS EMAILED AND THEN IT IS GONE FROM HERE. NOTHING
+          ABOUT YOU IS STORED, LOGGED OR SOLD.
         </p>
       </form>
+
+      {/* The confirmation. In the markup rather than built in JS, because
+          Astro scopes component CSS by attribute — an element created with
+          createElement carries no scope id and would render unstyled. */}
+      <div class="pb__sent" hidden data-sent tabindex="-1" role="status">
+        <p class="pb__senth">
+          <span class="pb__sentmark" aria-hidden="true">
+            <svg width="13" height="10" viewBox="0 0 13 10" fill="none"
+              ><path d="M1 5 L4.6 8.6 L12 1" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          BRIEF SENT
+        </p>
+        <p class="pb__sentbody">
+          It went straight to the studio inbox. You'll get a reply within
+          {" "}{site.build.replyWithin} — check your spam folder if it seems quiet.
+        </p>
+        <p class="pb__sentmeta mono">
+          NOT STORED HERE · NOT PASSED TO A FORM SERVICE · SENT TO {site.email.toUpperCase()}
+        </p>
+      </div>
 
       <!-- ---------------------------------------------------------------
            THE PREVIEW — the exact message that will leave, live.
@@ -276,6 +308,16 @@ const mailSubject = "Project enquiry — via The Open Box";
     align-items: start;
   }
 
+  /* Honeypot. position:absolute + left:-9999px rather than display:none,
+     because some bots skip fields that are display:none. */
+  .pb__trap {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
   /* ---- fields ---- */
   .pb__grid {
     display: grid;
@@ -353,12 +395,63 @@ const mailSubject = "Project enquiry — via The Open Box";
     gap: 0.65rem;
     margin-top: 1.3rem;
   }
+  .pb__form[data-state="sending"] {
+    opacity: 0.62;
+    pointer-events: none;
+  }
+  .pb__sent {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: clamp(1.1rem, 3vw, 1.6rem);
+    border: var(--hair-strong) solid var(--ink);
+    border-radius: 2px;
+    background: var(--field);
+  }
+  .pb__senth {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6em;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+  }
+  .pb__sentmark {
+    display: inline-grid;
+    place-items: center;
+    width: 1.7em;
+    height: 1.7em;
+    flex: none;
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-radius: 2px;
+  }
+  .pb__sentbody {
+    color: var(--ink-2);
+    font-size: 0.94rem;
+    line-height: 1.55;
+    max-width: 46ch;
+  }
+  .pb__sentmeta {
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    color: var(--label-aa);
+    line-height: 1.7;
+  }
+
   .pb__status {
     margin-top: 0.9rem;
     font-size: 0.58rem;
+    line-height: 1.7;
     letter-spacing: 0.14em;
     color: var(--accent-text);
     min-height: 1.2em;
+    max-width: 60ch;
+  }
+  .pb__status[data-tone="warn"] {
+    padding-left: 0.7em;
+    border-left: var(--hair-strong) solid var(--accent-text);
   }
   .pb__privacy {
     margin-top: 1.1rem;
@@ -517,18 +610,18 @@ const mailSubject = "Project enquiry — via The Open Box";
 
 <script>
   /* ---------------------------------------------------------------------------
-     The brief is composed here, in the page. It is never sent anywhere by this
-     script — the only thing that leaves is what the user's own mail app or
-     WhatsApp sends, after they see it. That is why the preview is live.
-     ------------------------------------------------------------------------ */
-  interface BriefEls {
-    form: HTMLFormElement;
-    preview: HTMLElement | null;
-    previewWrap: HTMLElement | null;
-    status: HTMLElement | null;
-  }
+     The brief is composed here and POSTed to this site's own /api/brief, which
+     emails it to the studio. The visitor stays on the page.
 
+     The one rule this file is built around: NEVER LOSE AN ENQUIRY. If the
+     endpoint is absent (404), unconfigured (501), refusing (5xx) or the network
+     is down, we fall back to opening the same brief in the visitor's mail app
+     rather than showing them a dead end.
+     ------------------------------------------------------------------------ */
   const MAIL_SUBJECT = "Project enquiry — via The Open Box";
+  const ENDPOINT = "/api/brief";
+
+  const FIELDS = ["name", "business", "type", "need", "timing", "budget", "existing", "reply_to", "message"];
 
   function field(form: HTMLFormElement, name: string): string {
     const el = form.elements.namedItem(name) as
@@ -541,7 +634,7 @@ const mailSubject = "Project enquiry — via The Open Box";
 
   /** The brief, as plain text. Blank fields are simply left out. */
   function compose(form: HTMLFormElement): string {
-    const rows: [string, string][] = [
+    const rows: [string, string][] = ([
       ["Name", field(form, "name")],
       ["Business", field(form, "business")],
       ["Type", field(form, "type")],
@@ -550,7 +643,7 @@ const mailSubject = "Project enquiry — via The Open Box";
       ["Budget", field(form, "budget")],
       ["Existing site", field(form, "existing")],
       ["Reach me at", field(form, "reply_to")],
-    ].filter(([, v]) => v.length > 0) as [string, string][];
+    ] as [string, string][]).filter(([, v]) => v.length > 0);
 
     const width = rows.reduce((w, [k]) => Math.max(w, k.length), 0);
     const head = rows.map(([k, v]) => `${k.padEnd(width)} : ${v}`).join("\n");
@@ -559,63 +652,132 @@ const mailSubject = "Project enquiry — via The Open Box";
     const parts = ["PROJECT BRIEF — THE OPEN BOX", ""];
     if (head) parts.push(head, "");
     if (msg) parts.push("WHAT THE SITE HAS TO DO", msg, "");
-    parts.push("— Sent from the-open-box brief form");
+    parts.push("— Sent from the brief form at /build/");
     return parts.join("\n");
   }
 
-  function say(status: HTMLElement | null, text: string) {
+  function mailtoHref(form: HTMLFormElement): string {
+    const to = form.dataset.mail || "";
+    return (
+      `mailto:${to}?subject=${encodeURIComponent(MAIL_SUBJECT)}` +
+      `&body=${encodeURIComponent(compose(form))}`
+    );
+  }
+
+  function say(status: HTMLElement | null, text: string, tone: "info" | "warn" = "info") {
     if (!status) return;
     status.textContent = text;
+    if (tone === "warn") status.setAttribute("data-tone", "warn");
+    else status.removeAttribute("data-tone");
     if (!text) return;
     window.setTimeout(() => {
-      if (status.textContent === text) status.textContent = "";
-    }, 6000);
+      if (status.textContent === text) {
+        status.textContent = "";
+        status.removeAttribute("data-tone");
+      }
+    }, 12000);
   }
 
   /** HTML5 validity, with focus moved to whatever is wrong. */
   function valid(form: HTMLFormElement, status: HTMLElement | null): boolean {
     if (form.checkValidity()) return true;
     form.reportValidity();
-    say(status, "FILL THE STARRED FIELDS FIRST.");
+    say(status, "FILL THE STARRED FIELDS FIRST.", "warn");
     return false;
+  }
+
+  /** Swap the form for the confirmation that is already in the page. */
+  function showSent(form: HTMLFormElement) {
+    const panel = document.querySelector<HTMLElement>("[data-sent]");
+    if (!panel) return;
+    form.hidden = true;
+    panel.hidden = false;
+    // mark the preview as sent rather than leaving it reading DRAFT
+    const pill = document.querySelector<HTMLElement>(".pb__prevlive");
+    if (pill) pill.textContent = "SENT";
+    panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    panel.focus();
   }
 
   function initBrief() {
     const form = document.getElementById("brief-form") as HTMLFormElement | null;
     if (!form) return;
 
-    const els: BriefEls = {
-      form,
-      preview: form.parentElement?.querySelector<HTMLElement>("[data-preview]") ?? null,
-      previewWrap:
-        form.parentElement?.querySelector<HTMLElement>("[data-preview-wrap]") ?? null,
-      status: form.querySelector<HTMLElement>("[data-status]"),
-    };
+    const preview = form.parentElement?.querySelector<HTMLElement>("[data-preview]") ?? null;
+    const previewWrap = form.parentElement?.querySelector<HTMLElement>("[data-preview-wrap]") ?? null;
+    const status = form.querySelector<HTMLElement>("[data-status]");
+    const submitLabel = form.querySelector<HTMLElement>("[data-submit-label]");
+    const stamp = form.querySelector<HTMLInputElement>("[data-stamp]");
+
+    // when the form became fillable — the endpoint rejects impossibly fast posts
+    if (stamp) stamp.value = String(Date.now());
 
     // Live preview — appears as soon as there is anything to preview.
     const refresh = () => {
-      if (!els.preview || !els.previewWrap) return;
-      const anyValue = ["name", "business", "type", "need", "timing", "budget", "existing", "reply_to", "message"].some(
-        (n) => field(form, n).length > 0,
-      );
-      els.previewWrap.hidden = !anyValue;
-      if (anyValue) els.preview.textContent = compose(form);
+      if (!preview || !previewWrap) return;
+      const any = FIELDS.some((n) => field(form, n).length > 0);
+      previewWrap.hidden = !any;
+      if (any) preview.textContent = compose(form);
     };
     form.addEventListener("input", refresh);
     form.addEventListener("change", refresh);
     refresh();
 
-    // Mail: build a proper mailto: with the composed body, instead of the
-    // enctype="text/plain" field=value dump the no-JS fallback produces.
-    form.addEventListener("submit", (e) => {
+    /** Last resort: hand the same brief to the visitor's mail app. */
+    const handOff = (why: string) => {
+      say(status, why + " OPENING YOUR MAIL APP WITH THE BRIEF ALREADY WRITTEN.", "warn");
+      window.location.href = mailtoHref(form);
+    };
+
+    let sending = false;
+
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!valid(form, els.status)) return;
-      const href =
-        `mailto:${form.dataset.mail || form.action.replace(/^mailto:/, "")}` +
-        `?subject=${encodeURIComponent(MAIL_SUBJECT)}` +
-        `&body=${encodeURIComponent(compose(form))}`;
-      window.location.href = href;
-      say(els.status, "OPENING YOUR MAIL APP — THE BRIEF IS ALREADY WRITTEN.");
+      if (sending) return;
+      if (!valid(form, status)) return;
+
+      sending = true;
+      form.dataset.state = "sending";
+      if (submitLabel) submitLabel.textContent = "SENDING";
+      say(status, "SENDING THE BRIEF…");
+
+      const payload: Record<string, string> = {};
+      FIELDS.forEach((n) => (payload[n] = field(form, n)));
+      payload.company_website = field(form, "company_website");
+      payload.t = stamp?.value || "";
+
+      let res: Response | null = null;
+      try {
+        res = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        res = null; // network failure
+      }
+
+      sending = false;
+      form.dataset.state = "";
+      if (submitLabel) submitLabel.textContent = "SEND THE BRIEF";
+
+      if (res && res.ok) {
+        showSent(form);
+        return;
+      }
+
+      // 429 is the one refusal the visitor should see and act on themselves.
+      if (res && res.status === 429) {
+        say(status, "TOO MANY BRIEFS FROM THIS CONNECTION JUST NOW. USE COPY THE BRIEF AND EMAIL IT, OR TRY AGAIN IN A FEW MINUTES.", "warn");
+        return;
+      }
+      if (res && res.status === 400) {
+        say(status, "SOMETHING IN THE FORM WASN'T ACCEPTED — CHECK THE STARRED FIELDS.", "warn");
+        return;
+      }
+
+      // 404 not deployed · 501 not configured · 5xx provider down · null network
+      handOff("COULDN'T SEND FROM HERE.");
     });
 
     form.addEventListener("click", (e) => {
@@ -624,14 +786,11 @@ const mailSubject = "Project enquiry — via The Open Box";
       const mode = btn.dataset.send;
 
       if (mode === "whatsapp") {
-        if (!valid(form, els.status)) return;
+        if (!valid(form, status)) return;
         const num = (btn.dataset.wa || "").replace(/\D/g, "");
-        const url = num
-          ? `https://wa.me/${num}?text=${encodeURIComponent(compose(form))}`
-          : "";
-        if (!url) return;
-        window.open(url, "_blank", "noopener");
-        say(els.status, "OPENING WHATSAPP WITH THE BRIEF.");
+        if (!num) return;
+        window.open(`https://wa.me/${num}?text=${encodeURIComponent(compose(form))}`, "_blank", "noopener");
+        say(status, "OPENING WHATSAPP WITH THE BRIEF.");
         return;
       }
 
@@ -646,14 +805,14 @@ const mailSubject = "Project enquiry — via The Open Box";
               label.textContent = was;
             }, 2200);
           }
-          say(els.status, "BRIEF COPIED — PASTE IT WHEREVER YOU LIKE.");
+          say(status, "BRIEF COPIED — PASTE IT WHEREVER YOU LIKE.");
         };
         if (navigator.clipboard?.writeText) {
           navigator.clipboard.writeText(text).then(done, () => {
-            say(els.status, "COULDN'T COPY — SELECT THE PREVIEW AND COPY IT MANUALLY.");
+            say(status, "COULDN'T COPY — SELECT THE PREVIEW AND COPY IT MANUALLY.", "warn");
           });
         } else {
-          say(els.status, "COPYING ISN'T AVAILABLE HERE — SELECT THE PREVIEW INSTEAD.");
+          say(status, "COPYING ISN'T AVAILABLE HERE — SELECT THE PREVIEW INSTEAD.", "warn");
         }
       }
     });
