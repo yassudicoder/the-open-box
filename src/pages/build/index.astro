@@ -6,8 +6,12 @@
    typography, same crease dividers — this is the studio's other half, not a
    different website.
 
-   Order: WHO IT'S FOR → WHAT I DO → FROM FIGMA TO LIVE → HOW I WORK →
-          SELECTED WORK → WHY ME → THE BRIEF
+   Order: WHO IT'S FOR → WHAT I DO → FROM FIGMA TO LIVE → SELECTED WORK →
+          WHY ME → THE BRIEF
+
+   HOW I WORK was cut — it was a static six-step restatement of exactly
+   what FROM FIGMA TO LIVE already demonstrates interactively. One section
+   doing that job beats two, and the demo is the stronger of the two.
    ========================================================================== */
 import Base from "../../layouts/Base.astro";
 import CreaseDivider from "../../components/CreaseDivider.astro";
@@ -15,7 +19,6 @@ import BuildHero from "../../components/build/BuildHero.astro";
 import ClientTypes from "../../components/build/ClientTypes.astro";
 import ServiceLines from "../../components/build/ServiceLines.astro";
 import Pipeline from "../../components/build/Pipeline.astro";
-import Process from "../../components/build/Process.astro";
 import SelectedWork from "../../components/build/SelectedWork.astro";
 import WhyMe from "../../components/build/WhyMe.astro";
 import ProjectBrief from "../../components/build/ProjectBrief.astro";
@@ -141,11 +144,9 @@ const jsonld = [
   <CreaseDivider variant="fold" />
   <Pipeline />
   <CreaseDivider variant="flap" />
-  <Process />
-  <CreaseDivider variant="fold" />
   <SelectedWork />
-  <CreaseDivider variant="flap" />
-  <WhyMe />
   <CreaseDivider variant="fold" />
+  <WhyMe />
+  <CreaseDivider variant="flap" />
   <ProjectBrief />
 </Base>

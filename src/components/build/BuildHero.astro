@@ -26,16 +26,13 @@ const mail = `mailto:${site.email}?subject=${encodeURIComponent("Project enquiry
         Built<br />to<br />order<span class="bh__caret" aria-hidden="true"></span>
       </h1>
 
+      <p class="bh__hook">Before anyone calls you, they check your website.</p>
+
       <p class="bh__lead">
         Websites and web applications for independent businesses — clinics
         people need to find, cafes people need directions to, startups that
         need to explain themselves fast. I design it in Figma, then I build
         it. Same hands, start to finish.
-      </p>
-
-      <p class="bh__sub">
-        The catalog on the home page is what this studio ships for itself.
-        This is what it builds for you.
       </p>
 
       <div class="bh__cta">
@@ -146,17 +143,20 @@ const mail = `mailto:${site.email}?subject=${encodeURIComponent("Project enquiry
       opacity: 0;
     }
   }
+  .bh__hook {
+    font-family: var(--font-display);
+    font-size: clamp(1.3rem, 1rem + 1.4vw, 1.7rem);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    max-width: 22ch;
+    margin-bottom: 1rem;
+  }
   .bh__lead {
     font-size: clamp(1.02rem, 0.95rem + 0.5vw, 1.24rem);
     line-height: 1.5;
-    color: var(--ink);
-    max-width: 40ch;
-    margin-bottom: 0.9rem;
-  }
-  .bh__sub {
     color: var(--ink-2);
-    font-size: 0.95rem;
-    max-width: 42ch;
+    max-width: 40ch;
     margin-bottom: 1.8rem;
   }
   .bh__cta {

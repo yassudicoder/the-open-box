@@ -35,7 +35,6 @@ export const clientTypes: ClientType[] = [
     sections: [
       { label: "WHO YOU ARE", w: 100 },
       { label: "TREATMENTS", w: 72 },
-      { label: "THE DOCTORS", w: 58 },
       { label: "BOOK / CALL", w: 84 },
       { label: "HOURS · LOCATION", w: 66 },
     ],
@@ -47,7 +46,6 @@ export const clientTypes: ClientType[] = [
     sections: [
       { label: "THE PLACE", w: 100 },
       { label: "MENU", w: 88 },
-      { label: "GALLERY", w: 54 },
       { label: "HOURS · LOCATION", w: 70 },
       { label: "RESERVE / ORDER", w: 62 },
     ],
@@ -59,7 +57,6 @@ export const clientTypes: ClientType[] = [
     sections: [
       { label: "THE SALON", w: 100 },
       { label: "SERVICES · RATES", w: 80 },
-      { label: "THE WORK", w: 68 },
       { label: "APPOINTMENT", w: 76 },
       { label: "HOURS · LOCATION", w: 58 },
     ],
@@ -72,7 +69,6 @@ export const clientTypes: ClientType[] = [
       { label: "THE STORE", w: 100 },
       { label: "WHAT WE STOCK", w: 74 },
       { label: "PRESCRIPTION ENQUIRY", w: 66 },
-      { label: "DELIVERY AREA", w: 52 },
       { label: "HOURS · LOCATION", w: 70 },
     ],
   },
@@ -83,7 +79,6 @@ export const clientTypes: ClientType[] = [
     sections: [
       { label: "THE SHOP", w: 100 },
       { label: "WHAT WE SELL", w: 78 },
-      { label: "WHY VISIT", w: 56 },
       { label: "HOURS · LOCATION", w: 72 },
       { label: "CALL / MESSAGE", w: 60 },
     ],
@@ -95,7 +90,6 @@ export const clientTypes: ClientType[] = [
     sections: [
       { label: "THE PROPOSITION", w: 100 },
       { label: "HOW IT WORKS", w: 76 },
-      { label: "WHAT YOU GET", w: 64 },
       { label: "PRICING / SIGN-UP", w: 70 },
       { label: "CONTACT", w: 48 },
     ],
@@ -127,15 +121,12 @@ export const serviceLines: ServiceLine[] = [
       "Landing pages",
       "Web applications",
       "Website redesigns",
-      "Responsive development",
-      "Performance work",
       "Deployment & hosting setup",
     ],
     deliverables: [
       "A live site on your own domain",
       "Works on phone, tablet and desktop",
       "The code, and the keys to it",
-      "A short handover on how to update it",
     ],
   },
   {
@@ -148,14 +139,11 @@ export const serviceLines: ServiceLine[] = [
       "UX structure and user flows",
       "Wireframes",
       "High-fidelity prototypes",
-      "Design systems",
-      "Responsive layouts",
       "Redesign of an existing site",
     ],
     deliverables: [
       "A Figma file you own, not a flattened image",
       "Mobile, tablet and desktop layouts",
-      "Components and styles a developer can use",
       "A clickable prototype to try before it's built",
     ],
   },
@@ -227,41 +215,6 @@ export const pipeline: Stage[] = [
   },
 ];
 
-/* ---------------------------------------------------------------------------
-   HOW I WORK — the client-facing process. Deliberately short.
-   ------------------------------------------------------------------------ */
-export const process: { n: string; name: string; body: string }[] = [
-  {
-    n: "01",
-    name: "Discover",
-    body: "Understand the business, the customers it wants, and what the site is actually for.",
-  },
-  {
-    n: "02",
-    name: "Plan",
-    body: "Agree the pages, the features, the content needed, and the technical direction.",
-  },
-  {
-    n: "03",
-    name: "Design",
-    body: "Design it in Figma and refine it with you before a line of code is written.",
-  },
-  {
-    n: "04",
-    name: "Build",
-    body: "Develop the site responsively, on technology suited to the job.",
-  },
-  {
-    n: "05",
-    name: "Test",
-    body: "Check it on real devices — layout, speed, links, forms, the lot.",
-  },
-  {
-    n: "06",
-    name: "Launch",
-    body: "Deploy it, hand it over, and make sure you can run it afterwards.",
-  },
-];
 
 /* ---------------------------------------------------------------------------
    WHY WORK WITH ME — advantages that are actually true of a solo studio.
@@ -269,20 +222,8 @@ export const process: { n: string; name: string; body: string }[] = [
    ------------------------------------------------------------------------ */
 export const advantages: { title: string; body: string }[] = [
   {
-    title: "Design and development, one person",
-    body: "The person drawing it in Figma is the person building it. Nothing is lost in the handover, because there isn't one.",
-  },
-  {
-    title: "Built around your business",
-    body: "The structure comes from what your customers actually need to do: book, call, find you, read the menu. Not from a template that happened to be lying around.",
-  },
-  {
-    title: "Responsive by default",
-    body: "Most of your customers will open it on a phone. It's designed for that first, not shrunk down afterwards.",
-  },
-  {
-    title: "Technology that fits the job",
-    body: "A five-page site for a cafe and a web application are not the same problem. The stack is chosen per project.",
+    title: "One person, start to finish",
+    body: "The person drawing it in Figma is the person building it. Nothing gets lost in a handover, because there isn't one.",
   },
   {
     title: "You talk to the person building it",
@@ -290,7 +231,7 @@ export const advantages: { title: string; body: string }[] = [
   },
   {
     title: "No features you don't need",
-    body: "A login nobody asked for, a blog nobody will update, an animation for its own sake — if it doesn't earn its place, it doesn't get built. That's one less thing for you to maintain later.",
+    body: "A login nobody asked for, a blog nobody will update — if it doesn't earn its place, it doesn't get built.",
   },
 ];
 
