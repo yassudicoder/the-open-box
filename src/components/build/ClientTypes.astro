@@ -41,6 +41,64 @@ const ICONS: Record<string, string> = {
 };
 
 /* ---------------------------------------------------------------------------
+   ISOMETRIC PROJECTION — ported from the InteractiveMallSimulation prototype
+   (yassudicoder/InteractiveMallSimulation, src/App.tsx). That was React; this
+   is plain Astro, so only the maths came across — it renders at BUILD TIME to
+   static SVG and ships no JavaScript for the drawing itself.
+
+   One projection plus three face builders is the whole engine: every solid in
+   the scene is a top, a front and a side polygon at different depths. The
+   prototype faked light by darkening a per-shop neon hex; here the faces are
+   all currentColor at different opacities instead, so the whole building
+   inverts with the plate and needs no palette of its own — greys on black in
+   light mode, greys on white in dark, one drawing either way.
+   ------------------------------------------------------------------------ */
+type Cam = { hw: number; hh: number; uh: number };
+const CAM: Cam = { hw: 25, hh: 12.5, uh: 33 };
+
+const iso = (c: Cam, x: number, y: number, z: number): [number, number] => [
+  (x - y) * c.hw,
+  (x + y) * c.hh - z * c.uh,
+];
+const poly = (pts: [number, number][]) =>
+  pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+/* Which walls are visible: screen_y = (x + y)·hh - z·uh, so depth grows with
+   x + y and the NEAREST corner of a block is (x+w, y+d). The two walls the
+   viewer can see are therefore the one at x + w and the one at y + d — not
+   the one at y, which is the hidden back wall. */
+const topFace = (c: Cam, x: number, y: number, z: number, w: number, d: number) =>
+  poly([iso(c, x, y, z), iso(c, x + w, y, z), iso(c, x + w, y + d, z), iso(c, x, y + d, z)]);
+const frontFace = (c: Cam, x: number, y: number, z: number, w: number, h: number) =>
+  poly([iso(c, x, y, z), iso(c, x + w, y, z), iso(c, x + w, y, z + h), iso(c, x, y, z + h)]);
+const sideFace = (c: Cam, x: number, y: number, z: number, d: number, h: number) =>
+  poly([iso(c, x, y, z), iso(c, x, y + d, z), iso(c, x, y + d, z + h), iso(c, x, y, z + h)]);
+
+/* Footprint: three across, two deep. Heights are compositional only — a
+   skyline needs variation to read as one — and claim nothing about the
+   businesses. Everything factual comes from clientTypes. */
+/* A roof projects (w + d) wide but only (w) of that sits over the facade, so
+   blocks need clear air between them or near roofs bury far facades. The
+   prototype's 3.6 spacing was tight enough that they collided; these are
+   spaced wider and kept lower. */
+const UNIT = { w: 3, d: 2.2 };
+const COL = 4.1;
+const ROW = [0.5, 4.3];
+const HEIGHTS = [3.0, 2.6, 3.4, 2.8, 3.2, 3.7];
+const PLINTH = 0.45;
+
+const blocks = clientTypes.map((c, i) => ({
+  type: c,
+  i,
+  x: (i % 3) * COL,
+  y: i < 3 ? ROW[0] : ROW[1],
+  h: HEIGHTS[i % HEIGHTS.length],
+}));
+
+/* Painter's algorithm: in this projection depth grows with x + y, so drawing
+   in that order puts far blocks behind near ones. */
+const drawOrder = [...blocks].sort((a, b) => a.x + a.y - (b.x + b.y));
+
+/* ---------------------------------------------------------------------------
    THE FLOOR PLAN, GENERATED FROM DATA.
 
    Each business type already carries its page sections with a width weight.
@@ -118,10 +176,66 @@ const span = String(clientTypes.length).padStart(2, "0");
         <span class="dist__code" data-status>{span} SPACES · TAP ONE TO ENTER</span>
       </div>
 
+      {/* THE BUILDING — static isometric SVG, drawn at build time.
+          NOT aria-hidden: it contains real focusable links, and hiding a
+          container while leaving its links focusable is a keyboard trap
+          (axe: aria-hidden-focus). Each block is named by its <title>, and
+          the directory below is the same six spaces reached another way.
+          Each block is a real <a> so it is focusable and keyboard-operable;
+          the prototype used <g onClick> and was mouse-only. Without
+          JavaScript the anchor still jumps to that space's row below. */}
+      <div class="iso">
+        <svg
+          class="iso__svg"
+          viewBox="-196 -118 510 360"
+          role="group"
+          aria-label="District map. The same six spaces are listed below."
+        >
+          {/* plinth */}
+          <polygon points={sideFace(CAM, COL * 2 + UNIT.w + 0.5, -0.5, 0, ROW[1] + UNIT.d + 1, PLINTH)} class="iso-plinth-s" />
+          <polygon points={frontFace(CAM, -0.5, ROW[1] + UNIT.d + 0.5, 0, COL * 2 + UNIT.w + 1, PLINTH)} class="iso-plinth-f" />
+          <polygon points={topFace(CAM, -0.5, -0.5, PLINTH, COL * 2 + UNIT.w + 1, ROW[1] + UNIT.d + 1)} class="iso-plinth-t" />
+
+          {
+            drawOrder.map((b) => (
+              <a href={`#space-${b.type.key}`} class="iso__block" data-iso={b.type.key}>
+                <title>{b.type.name}</title>
+                <polygon points={sideFace(CAM, b.x + UNIT.w, b.y, PLINTH, UNIT.d, b.h)} class="iso-side" />
+                <polygon points={frontFace(CAM, b.x, b.y + UNIT.d, PLINTH, UNIT.w, b.h)} class="iso-front" />
+                <polygon points={topFace(CAM, b.x, b.y, PLINTH + b.h, UNIT.w, UNIT.d)} class="iso-top" />
+
+                {/* lit windows — brighter than the wall they sit in */}
+                {[0.75, 1.75, 2.75].map((wz) =>
+                  wz + 0.5 < b.h
+                    ? [0.35, 1.3, 2.2].map((wx) => (
+                        <polygon
+                          points={frontFace(CAM, b.x + wx, b.y + UNIT.d, PLINTH + wz, 0.45, 0.4)}
+                          class="iso-win"
+                        />
+                      ))
+                    : null,
+                )}
+
+                {/* roof outline picks the block out of the skyline */}
+                <polygon points={topFace(CAM, b.x, b.y, PLINTH + b.h, UNIT.w, UNIT.d)} class="iso-cap" />
+
+                <text
+                  x={iso(CAM, b.x + UNIT.w / 2 - UNIT.d / 4, b.y + UNIT.d / 4, PLINTH + b.h + 0.42)[0]}
+                  y={iso(CAM, b.x + UNIT.w / 2 - UNIT.d / 4, b.y + UNIT.d / 4, PLINTH + b.h + 0.42)[1]}
+                  class="iso-code"
+                >
+                  {b.type.key}
+                </text>
+              </a>
+            ))
+          }
+        </svg>
+      </div>
+
       <div class="dist__grid" data-grid>
         {
           clientTypes.map((c, i) => (
-            <details class="dist__space" data-space style={`--i:${i}`}>
+            <details class="dist__space" data-space id={`space-${c.key}`} style={`--i:${i}`}>
               <summary class="dist__block">
                 <span class="dist__icon" aria-hidden="true" set:html={ICONS[c.key]} />
                 <span class="dist__n mono">{c.key}</span>
@@ -212,14 +326,99 @@ const span = String(clientTypes.length).padStart(2, "0");
     transition: opacity 0.15s var(--ease);
   }
 
-  .dist__grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+  /* ---- the isometric building ----
+     Faces are all currentColor at different opacities, so the whole scene
+     inverts with the plate: no second palette, no per-block hue. */
+  .iso {
+    padding: clamp(0.5rem, 2vw, 1.2rem) clamp(0.5rem, 2vw, 1rem) 0;
   }
-  @media (min-width: 640px) {
-    .dist__grid {
-      grid-template-columns: repeat(3, 1fr);
-    }
+  .iso__svg {
+    display: block;
+    width: 100%;
+    max-width: 40rem;
+    height: auto;
+    margin-inline: auto;
+    color: var(--interior-ink);
+    overflow: visible;
+  }
+  /* Faces must be OPAQUE. The prototype relied on the painter's algorithm —
+     near blocks physically covering far ones — and semi-transparent fills
+     defeat it: every roof shows through every other block and the skyline
+     reads as sheets of glass. color-mix keeps them opaque while still
+     resolving against the plate, so the scene inverts without a palette. */
+  .iso-plinth-t { fill: color-mix(in oklab, var(--interior-ink) 9%, var(--interior)); }
+  .iso-plinth-f { fill: color-mix(in oklab, var(--interior-ink) 14%, var(--interior)); }
+  .iso-plinth-s { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
+
+  .iso__block { cursor: pointer; }
+  /* Every face also carries a hairline edge. Tonal separation alone is not
+     enough on a near-black ground — without the edges the roof reads as a
+     bright plane floating clear of an invisible facade. */
+  .iso-top,
+  .iso-front,
+  .iso-side {
+    stroke: color-mix(in oklab, var(--interior-ink) 30%, var(--interior));
+    stroke-width: 0.7;
+    transition: fill 0.18s var(--ease), stroke 0.18s var(--ease);
+  }
+  .iso-top   { fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
+  .iso-front { fill: color-mix(in oklab, var(--interior-ink) 20%, var(--interior)); }
+  .iso-side  { fill: color-mix(in oklab, var(--interior-ink) 11%, var(--interior)); }
+  .iso-win   { fill: color-mix(in oklab, var(--interior-ink) 50%, var(--interior)); transition: fill 0.18s var(--ease); }
+  .iso-cap {
+    fill: none;
+    stroke: currentColor;
+    stroke-opacity: 0.42;
+    stroke-width: 0.9;
+    transition: stroke-opacity 0.18s var(--ease);
+  }
+  .iso-code {
+    font-family: var(--font-mono);
+    font-size: 7px;
+    letter-spacing: 0.14em;
+    text-anchor: middle;
+    fill: currentColor;
+    fill-opacity: 0.45;
+    transition: fill-opacity 0.18s var(--ease);
+  }
+
+  .iso__block:hover .iso-top,
+  .iso__block:hover .iso-front,
+  .iso__block:hover .iso-side,
+  .iso__block:focus-visible .iso-top,
+  .iso__block:focus-visible .iso-front,
+  .iso__block:focus-visible .iso-side,
+  .iso__block.is-active .iso-top,
+  .iso__block.is-active .iso-front,
+  .iso__block.is-active .iso-side { stroke: var(--interior-ink); }
+  .iso__block:hover .iso-top,
+  .iso__block:focus-visible .iso-top,
+  .iso__block.is-active .iso-top { fill: color-mix(in oklab, var(--interior-ink) 52%, var(--interior)); }
+  .iso__block:hover .iso-front,
+  .iso__block:focus-visible .iso-front,
+  .iso__block.is-active .iso-front { fill: color-mix(in oklab, var(--interior-ink) 33%, var(--interior)); }
+  .iso__block:hover .iso-side,
+  .iso__block:focus-visible .iso-side,
+  .iso__block.is-active .iso-side { fill: color-mix(in oklab, var(--interior-ink) 19%, var(--interior)); }
+  .iso__block:hover .iso-win,
+  .iso__block:focus-visible .iso-win,
+  .iso__block.is-active .iso-win { fill: color-mix(in oklab, var(--interior-ink) 72%, var(--interior)); }
+  .iso__block:hover .iso-cap,
+  .iso__block:focus-visible .iso-cap { stroke-opacity: 1; }
+  .iso__block:hover .iso-code,
+  .iso__block:focus-visible .iso-code { fill-opacity: 1; }
+  .iso__block:focus-visible { outline: none; }
+
+  /* the block whose space is open stays lit — the building is a live map */
+  .iso__block.is-active .iso-cap { stroke-opacity: 1; }
+  .iso__block.is-active .iso-code { fill-opacity: 1; }
+
+  /* ---- the directory beneath the building ---- */
+  .dist__grid {
+    display: flex;
+    flex-direction: column;
+    border-top: var(--hair) solid var(--interior-line);
+    margin-top: clamp(0.5rem, 2vw, 1rem);
   }
 
   /* ---- closed: a district block ----
@@ -232,20 +431,17 @@ const span = String(clientTypes.length).padStart(2, "0");
      an empty track next to them just stays the page's own background. */
   .dist__space {
     background: var(--interior);
-    border: var(--hair) solid var(--interior-line);
-    margin: 0 calc(-1 * var(--hair)) calc(-1 * var(--hair)) 0;
-    order: var(--i);
+    border-bottom: var(--hair) solid var(--interior-line);
   }
   summary.dist__block {
     list-style: none;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1.4rem 1.6rem 1fr auto;
     align-items: center;
-    gap: 0.5rem;
-    padding: clamp(1.3rem, 4vw, 1.9rem) 0.8rem;
-    text-align: center;
-    transition: background 0.15s var(--ease), opacity 0.2s var(--ease), transform 0.2s var(--ease);
+    gap: 0.75rem;
+    padding: 0.7rem clamp(0.8rem, 2.4vw, 1.2rem);
+    transition: background 0.15s var(--ease);
   }
   summary.dist__block::-webkit-details-marker {
     display: none;
@@ -262,9 +458,9 @@ const span = String(clientTypes.length).padStart(2, "0");
     outline-offset: -2px;
   }
   .dist__icon {
-    width: 30px;
-    height: 30px;
-    opacity: 0.92;
+    width: 1.4rem;
+    height: 1.4rem;
+    opacity: 0.8;
   }
   .dist__icon svg {
     width: 100%;
@@ -273,48 +469,27 @@ const span = String(clientTypes.length).padStart(2, "0");
   .dist__n {
     font-size: 0.56rem;
     letter-spacing: 0.14em;
-    opacity: 0.6;
+    opacity: 0.55;
   }
   .dist__name {
-    font-size: 0.76rem;
+    font-size: 0.84rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-    line-height: 1.25;
-    max-width: 14ch;
+    line-height: 1.3;
   }
 
-  /* when any space is open, the rest step back — dimmed, inert, not gone */
   .dist__grid[data-open] .dist__space:not([open]) summary.dist__block {
-    opacity: 0.32;
-    transform: scale(0.94);
+    opacity: 0.45;
   }
   .dist__grid[data-open] .dist__space:not([open]) summary.dist__block:hover {
-    opacity: 0.6;
-    transform: none;
+    opacity: 1;
   }
 
-  /* ---- open: the space takes the whole frame, moves to the front ---- */
-  .dist__space[open] {
-    grid-column: 1 / -1;
-    order: -1;
-  }
   .dist__space[open] summary.dist__block {
-    flex-direction: row;
-    text-align: left;
-    justify-content: flex-start;
-    gap: 0.9rem;
-    padding: 1rem clamp(1rem, 3vw, 1.5rem);
+    background: var(--interior-line);
     border-bottom: var(--hair) dashed var(--interior-line);
   }
-  .dist__space[open] .dist__icon {
-    width: 22px;
-    height: 22px;
-    flex: none;
-  }
-  .dist__space[open] .dist__name {
-    font-size: 1rem;
-    max-width: none;
-  }
+  .dist__space[open] .dist__icon { opacity: 1; }
 
   .dist__panel {
     padding: clamp(1.1rem, 3vw, 1.6rem);
@@ -458,9 +633,15 @@ const span = String(clientTypes.length).padStart(2, "0");
     const spaces = Array.from(grid.querySelectorAll<HTMLDetailsElement>(".dist__space"));
     const defaultStatus = status?.textContent ?? "";
 
+    const isoBlocks = Array.from(document.querySelectorAll<SVGAElement>("[data-iso]"));
+
     const sync = () => {
       const open = spaces.find((d) => d.open);
       grid.toggleAttribute("data-open", Boolean(open));
+      // the building doubles as a live map: light the block that is open
+      isoBlocks.forEach((a) =>
+        a.classList.toggle("is-active", Boolean(open) && `space-${a.dataset.iso}` === open!.id),
+      );
       if (status) {
         const name = open?.querySelector<HTMLElement>(".dist__name")?.textContent;
         status.textContent = name ? `INSIDE — ${name.toUpperCase()}` : defaultStatus;
@@ -471,6 +652,20 @@ const span = String(clientTypes.length).padStart(2, "0");
       d.addEventListener("toggle", () => {
         if (d.open) spaces.forEach((other) => other !== d && (other.open = false));
         sync();
+      });
+    });
+
+    // Clicking a block opens its space instead of jumping the page. With no
+    // JavaScript the anchor's default still lands on that row, which is
+    // visible and readable whether or not it is expanded.
+    isoBlocks.forEach((a) => {
+      a.addEventListener("click", (e) => {
+        const target = document.getElementById(`space-${a.dataset.iso}`) as HTMLDetailsElement | null;
+        if (!target) return;
+        e.preventDefault();
+        target.open = true;
+        target.querySelector("summary")?.focus({ preventScroll: true });
+        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
       });
     });
 
