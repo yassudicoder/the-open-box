@@ -1,26 +1,46 @@
 ---
 /* =============================================================================
-   01 / WHO IT'S FOR
+   01 / WHO IT'S FOR — THE DISTRICT
 
-   Was a 3-up grid of cards, each with a small hover-triggered graphic — the
-   default shape almost every AI page-builder reaches for, so it read as
-   generic no matter what the copy said. This is a manifest list instead:
-   six real <details> rows inside the same "inspection window" frame the
-   product demos and the pipeline use (.fig — see global.css), so the section
-   reads as one more plate from the same manual rather than a bolted-on
-   marketing grid.
+   A blueprint of a small business district: six numbered spaces, one icon
+   each. Click a space and it takes over the frame — the others step back —
+   showing what a site for that business actually has to contain.
 
-   The name and the one-line description are ALWAYS visible, no interaction
-   required — that's the content carrying the SEO nouns and the "is this
-   me?" self-identification, and it shouldn't cost a click. Expanding a row
-   only reveals the page-skeleton preview, which is illustration, not
-   information. Native <details>/<summary>: keyboard-operable and readable
-   by assistive tech with no ARIA patching, and every row's content — open
-   or closed — stays in the DOM for search engines to read regardless of
-   whether JavaScript ever runs.
+   Built on the same idea as the "inside the box" moment in the hero: this
+   frame is permanently inverted (--interior / --interior-ink), the same
+   pair DemoContinue.astro uses for its own always-dark capsule, regardless
+   of which theme the rest of the page is in. Stepping into the district
+   uses the one inversion trick this site already has, rather than
+   inventing a second one.
+
+   Mechanism is still native <details>/<summary> — same foundation as the
+   manifest list this replaces, so it stays keyboard-operable, readable by
+   assistive tech with no ARIA patching, and every space's full name and
+   description stay in the DOM for search engines whether or not JavaScript
+   ever runs. What's new is on top: a script enforces "one space open at a
+   time" and drives the zoom-in/step-back choreography. Without JavaScript,
+   the mechanism still opens and closes (multiple at once, no animation) —
+   informationally complete either way, since the full description ships
+   as accessible text on every closed block, not just the open one.
    ========================================================================== */
 import SectionHeader from "../SectionHeader.astro";
 import { clientTypes } from "../../data/services.ts";
+
+function icon(path: string) {
+  return `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+}
+
+/* one line-art mark per space — the district's only illustration budget */
+const ICONS: Record<string, string> = {
+  "01": icon('<path d="M16 8v16M8 16h16"/>'), // clinic — a plain cross
+  "02": icon('<path d="M9 13h13v3a6.5 6.5 0 0 1-6.5 6.5H15A6.5 6.5 0 0 1 9 16v-3Z"/><path d="M22 14h2.5a3 3 0 0 1 0 6H22"/><path d="M13 8c0-1.2.8-1.4.8-2.6M17 8c0-1.2.8-1.4.8-2.6"/>'), // cafe — cup + handle + steam
+  "03": icon('<circle cx="10" cy="9" r="2.6"/><circle cx="10" cy="23" r="2.6"/><path d="M12 10.8 24 22M24 10l-9 8.3M12 21.2l3-2.8"/>'), // salon — scissors
+  "04": icon('<rect x="9" y="12" width="8" height="14" rx="4"/><path d="M13 12V9a4 4 0 0 1 8 0v3"/><path d="M13 19h4"/>'), // pharmacy — capsule
+  "05": icon('<path d="M9 12h14l-1.3 13.2a2 2 0 0 1-2 1.8H12.3a2 2 0 0 1-2-1.8L9 12Z"/><path d="M12.5 12V9.5a3.5 3.5 0 0 1 7 0V12"/>'), // shop — bag
+  "06": icon('<rect x="6" y="8" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 21v4"/>'), // startup — screen
+};
+
+const span = String(clientTypes.length).padStart(2, "0");
 ---
 
 <section class="section" id="who" aria-labelledby="who-h">
@@ -30,53 +50,44 @@ import { clientTypes } from "../../data/services.ts";
       glyph="⌀"
       title="Who it's for"
       sublabel="ORDER TYPES"
-      kicker={`TYPES / 01–0${clientTypes.length} · OPEN ONE TO SEE WHAT YOUR SITE WOULD CONTAIN`}
+      kicker={`TYPES / 01–${span} · CLICK A SPACE TO STEP INSIDE`}
       id="who-h"
     />
 
-    <div class="fig">
-      <span class="fig__corner fig__corner--tl" aria-hidden="true"></span>
-      <span class="fig__corner fig__corner--tr" aria-hidden="true"></span>
-      <span class="fig__corner fig__corner--bl" aria-hidden="true"></span>
-      <span class="fig__corner fig__corner--br" aria-hidden="true"></span>
-
-      <div class="fig__bar">
-        <span class="fig__bar-label">FIG. 01 — CONSIGNMENT TYPES</span>
-        <span>{String(clientTypes.length).padStart(2, "0")} ON FILE</span>
+    <div class="dist" data-district>
+      <div class="dist__bar mono">
+        <span>THE OPEN BOX — DISTRICT 01</span>
+        <span class="dist__code" data-status>{span} SPACES · TAP ONE TO ENTER</span>
       </div>
 
-      <div class="wt">
+      <div class="dist__grid" data-grid>
         {
           clientTypes.map((c, i) => (
-            <details class="wt__row" data-reveal style={`--reveal-delay:${i * 0.05}s`} open={i === 0}>
-              <summary class="wt__summary">
-                <span class="wt__n mono">{c.key}</span>
-                <span class="wt__text">
-                  <span class="wt__name">{c.name}</span>
-                  <span class="wt__line">{c.line}</span>
-                </span>
-                <span class="wt__chev" aria-hidden="true" />
+            <details class="dist__space" data-space style={`--i:${i}`}>
+              <summary class="dist__block">
+                <span class="dist__icon" aria-hidden="true" set:html={ICONS[c.key]} />
+                <span class="dist__n mono">{c.key}</span>
+                <span class="dist__name">{c.name}</span>
+                <span class="visually-hidden">{c.line}</span>
               </summary>
 
-              <div class="wt__detail">
-                <span class="wt__detail-label mono">TYPICAL BUILD</span>
-                <ul class="wt__bars">
-                  {c.sections.map((s) => (
-                    <li class="wt__bar" style={`--w:${s.w}%`}>
-                      <span class="wt__barfill" />
-                      <span class="wt__barlabel mono">{s.label}</span>
-                    </li>
-                  ))}
-                </ul>
+              <div class="dist__panel">
+                <p class="dist__line">{c.line}</p>
+                <div class="dist__zones">
+                  <span class="dist__zones-label mono">TYPICAL BUILD</span>
+                  <ul class="dist__zonelist mono">
+                    {c.sections.map((s) => (
+                      <li>{s.label}</li>
+                    ))}
+                  </ul>
+                </div>
+                <button class="dist__back mono" type="button" data-back>
+                  ◂ BACK TO THE DISTRICT
+                </button>
               </div>
             </details>
           ))
         }
-      </div>
-
-      <div class="fig__foot">
-        <span class="fig__status">TAP A LINE TO OPEN IT</span>
-        <span>NO SCRIPT NEEDED</span>
       </div>
     </div>
 
@@ -89,149 +100,189 @@ import { clientTypes } from "../../data/services.ts";
 </section>
 
 <style>
-  .wt {
+  /* ---- the plate: permanently inverted, like the inside of the hero box ---- */
+  .dist {
+    background: var(--interior);
+    color: var(--interior-ink);
+    border: var(--hair-strong) solid var(--interior-ink);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .dist__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.55rem 0.9rem;
+    border-bottom: var(--hair) solid var(--interior-line);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  .dist__code {
+    transition: opacity 0.15s var(--ease);
+  }
+
+  .dist__grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @media (min-width: 640px) {
+    .dist__grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ---- closed: a district block ----
+     Each cell borders itself, rather than the grid showing a background
+     through a gap — an uneven last row (5 closed cells in a 3-col grid,
+     once one has popped out to full width) would otherwise leave one
+     truly empty grid cell, and an empty cell paints the CONTAINER's
+     background with nothing drawn over it: a stray solid block where a
+     7th space should be but isn't. Self-bordered cells can't do that;
+     an empty track next to them just stays the page's own background. */
+  .dist__space {
+    background: var(--interior);
+    border: var(--hair) solid var(--interior-line);
+    margin: 0 calc(-1 * var(--hair)) calc(-1 * var(--hair)) 0;
+    order: var(--i);
+  }
+  summary.dist__block {
+    list-style: none;
+    cursor: pointer;
     display: flex;
     flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: clamp(1.3rem, 4vw, 1.9rem) 0.8rem;
+    text-align: center;
+    transition: background 0.15s var(--ease), opacity 0.2s var(--ease), transform 0.2s var(--ease);
   }
-
-  .wt__row {
-    border-bottom: var(--hair) solid var(--line);
-    transition: background 0.15s var(--ease);
-  }
-  .wt__row:last-child {
-    border-bottom: 0;
-  }
-  .wt__row:hover,
-  .wt__row:focus-within {
-    background: var(--shade);
-  }
-
-  .wt__summary {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.9rem;
-    padding: clamp(0.85rem, 2vw, 1.1rem) clamp(0.9rem, 2.4vw, 1.3rem);
-    cursor: pointer;
-    list-style: none;
-  }
-  .wt__summary::-webkit-details-marker {
+  summary.dist__block::-webkit-details-marker {
     display: none;
   }
-  .wt__summary::marker {
+  summary.dist__block::marker {
     content: "";
   }
-  .wt__summary:focus-visible {
-    outline: 2px solid var(--accent-text);
+  summary.dist__block:hover,
+  summary.dist__block:focus-visible {
+    background: var(--interior-line);
+  }
+  summary.dist__block:focus-visible {
+    outline: 2px solid var(--interior-ink);
     outline-offset: -2px;
   }
-
-  .wt__n {
-    flex: none;
-    padding-top: 0.2em;
-    font-size: 0.62rem;
-    font-weight: 700;
+  .dist__icon {
+    width: 30px;
+    height: 30px;
+    opacity: 0.92;
+  }
+  .dist__icon svg {
+    width: 100%;
+    height: 100%;
+  }
+  .dist__n {
+    font-size: 0.56rem;
     letter-spacing: 0.14em;
-    color: var(--accent-text);
+    opacity: 0.6;
   }
-  .wt__text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-    flex: 1;
-    min-width: 0;
-  }
-  .wt__name {
-    font-size: clamp(0.98rem, 0.9rem + 0.4vw, 1.12rem);
+  .dist__name {
+    font-size: 0.76rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.2;
-  }
-  .wt__line {
-    color: var(--ink-2);
-    font-size: 0.86rem;
-    line-height: 1.48;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    max-width: 14ch;
   }
 
-  /* the plus glyph — rotates 45deg into a cross when the row is open */
-  .wt__chev {
-    position: relative;
-    width: 11px;
-    height: 11px;
+  /* when any space is open, the rest step back — dimmed, inert, not gone */
+  .dist__grid[data-open] .dist__space:not([open]) summary.dist__block {
+    opacity: 0.32;
+    transform: scale(0.94);
+  }
+  .dist__grid[data-open] .dist__space:not([open]) summary.dist__block:hover {
+    opacity: 0.6;
+    transform: none;
+  }
+
+  /* ---- open: the space takes the whole frame, moves to the front ---- */
+  .dist__space[open] {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+  .dist__space[open] summary.dist__block {
+    flex-direction: row;
+    text-align: left;
+    justify-content: flex-start;
+    gap: 0.9rem;
+    padding: 1rem clamp(1rem, 3vw, 1.5rem);
+    border-bottom: var(--hair) dashed var(--interior-line);
+  }
+  .dist__space[open] .dist__icon {
+    width: 22px;
+    height: 22px;
     flex: none;
-    margin-top: 0.45em;
-    transition: transform 0.2s var(--ease);
   }
-  .wt__chev::before,
-  .wt__chev::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    background: var(--label-aa);
-    transition: background 0.15s var(--ease);
-  }
-  .wt__chev::before {
-    width: 11px;
-    height: 1.5px;
-  }
-  .wt__chev::after {
-    width: 1.5px;
-    height: 11px;
-  }
-  .wt__row[open] .wt__chev {
-    transform: rotate(45deg);
-  }
-  .wt__row[open] .wt__chev::before,
-  .wt__row[open] .wt__chev::after {
-    background: var(--accent-text);
+  .dist__space[open] .dist__name {
+    font-size: 1rem;
+    max-width: none;
   }
 
-  /* ---- the page skeleton, revealed on open ---- */
-  .wt__detail {
-    padding: 0 clamp(0.9rem, 2.4vw, 1.3rem) clamp(1rem, 2.4vw, 1.3rem);
-    padding-left: calc(0.62rem + 0.9rem + clamp(0.9rem, 2.4vw, 1.3rem));
+  .dist__panel {
+    padding: clamp(1.1rem, 3vw, 1.6rem);
   }
-  .wt__detail-label {
+  @media (prefers-reduced-motion: no-preference) {
+    .dist__space[open] .dist__panel {
+      animation: dist-in 0.28s var(--ease-out);
+    }
+  }
+  @keyframes dist-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  .dist__line {
+    font-size: 0.94rem;
+    line-height: 1.55;
+    max-width: 52ch;
+    margin: 0 0 1.2rem;
+  }
+  .dist__zones-label {
     display: block;
     font-size: 0.5rem;
     letter-spacing: 0.2em;
-    color: var(--label-aa);
-    margin-bottom: 0.55rem;
+    opacity: 0.6;
+    margin-bottom: 0.6rem;
   }
-  .wt__bars {
+  .dist__zonelist {
     display: flex;
-    flex-direction: column;
-    gap: 0.28rem;
-    max-width: 26rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.3rem;
   }
-  .wt__bar {
-    position: relative;
-    display: flex;
-    align-items: center;
-    height: 15px;
+  .dist__zonelist li {
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.4em 0.7em;
+    font-size: 0.6rem;
+    letter-spacing: 0.06em;
   }
-  .wt__barfill {
-    position: absolute;
-    inset: 0 auto 0 0;
-    width: var(--w);
-    border: var(--hair) solid var(--accent-text);
-    background: color-mix(in oklab, var(--accent) 8%, var(--field));
-    border-radius: 1px;
+  .dist__back {
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    transition: opacity 0.15s var(--ease);
   }
-  .wt__barlabel {
-    position: relative;
-    z-index: 1;
-    font-size: 0.46rem;
-    letter-spacing: 0.14em;
-    color: var(--ink);
-    padding-left: 0.45rem;
-    white-space: nowrap;
-  }
-
-  @media (max-width: 480px) {
-    .wt__detail {
-      padding-left: clamp(0.9rem, 2.4vw, 1.3rem);
-    }
+  .dist__back:hover,
+  .dist__back:focus-visible {
+    opacity: 1;
   }
 
   .wt__note {
@@ -255,3 +306,46 @@ import { clientTypes } from "../../data/services.ts";
     color: var(--accent-text);
   }
 </style>
+
+<script>
+  /* Enforce "one space open at a time" and drive the status line — the pure
+     progressive-enhancement layer. The <details> elements work correctly
+     with none of this: multiple can open at once, no dimming, no status
+     text update. Nothing here is required for the content to be reachable. */
+  function initDistrict() {
+    const grid = document.querySelector<HTMLElement>("[data-grid]");
+    const status = document.querySelector<HTMLElement>("[data-status]");
+    if (!grid) return;
+    const spaces = Array.from(grid.querySelectorAll<HTMLDetailsElement>(".dist__space"));
+    const defaultStatus = status?.textContent ?? "";
+
+    const sync = () => {
+      const open = spaces.find((d) => d.open);
+      grid.toggleAttribute("data-open", Boolean(open));
+      if (status) {
+        const name = open?.querySelector<HTMLElement>(".dist__name")?.textContent;
+        status.textContent = name ? `INSIDE — ${name.toUpperCase()}` : defaultStatus;
+      }
+    };
+
+    spaces.forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (d.open) spaces.forEach((other) => other !== d && (other.open = false));
+        sync();
+      });
+    });
+
+    grid.addEventListener("click", (e) => {
+      const back = (e.target as HTMLElement).closest("[data-back]");
+      if (!back) return;
+      e.preventDefault();
+      const d = back.closest("details") as HTMLDetailsElement | null;
+      if (d) {
+        d.open = false;
+        d.querySelector("summary")?.focus();
+      }
+    });
+  }
+  if (document.readyState !== "loading") initDistrict();
+  else document.addEventListener("DOMContentLoaded", initDistrict);
+</script>
