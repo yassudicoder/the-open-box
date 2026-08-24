@@ -40,6 +40,64 @@ const ICONS: Record<string, string> = {
   "06": icon('<rect x="6" y="8" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 21v4"/>'), // startup — screen
 };
 
+/* ---------------------------------------------------------------------------
+   THE FLOOR PLAN, GENERATED FROM DATA.
+
+   Each business type already carries its page sections with a width weight.
+   That IS a room schedule, so the plan is computed from it rather than drawn
+   by hand: the first section (always w:100 — "THE PLACE", "WHO YOU ARE") is
+   the primary room down the left, the rest stack to the right with heights
+   proportional to their weights. A seventh business type gets a plan for
+   free; nobody has to draw one.
+   ------------------------------------------------------------------------ */
+interface Room {
+  label: string;
+  n: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+/* The viewBox is taller than the building: the strip under the shell is the
+   drawing's title block (ENTRY / FIG. no.), so captions never sit on a wall. */
+const VB = { w: 230, h: 148 };
+const PAD = 9; // room area inset from the viewBox
+const INNER_H = 115; // room area height — the building, not the title block
+const WALL = 2.4; // interior partition thickness
+const SHELL = { x: PAD - 3, y: PAD - 3, w: VB.w - (PAD - 3) * 2, h: INNER_H + 6 };
+const SHELL_B = SHELL.y + SHELL.h; // outer bottom wall — the door sits here
+const CAP_Y = SHELL_B + 12; // title-block baseline, clear of the wall
+
+function floorPlan(sections: { label: string; w: number }[]): Room[] {
+  const innerW = VB.w - PAD * 2;
+  const innerH = INNER_H;
+  const [primary, ...rest] = sections;
+  const num = (i: number) => String(i + 1).padStart(2, "0");
+
+  if (!primary) return [];
+  if (!rest.length) {
+    return [{ label: primary.label, n: num(0), x: PAD, y: PAD, w: innerW, h: innerH }];
+  }
+
+  const leftW = Math.round(innerW * 0.53);
+  const rightW = innerW - leftW - WALL;
+  const rooms: Room[] = [
+    { label: primary.label, n: num(0), x: PAD, y: PAD, w: leftW, h: innerH },
+  ];
+
+  const total = rest.reduce((sum, r) => sum + r.w, 0) || 1;
+  const avail = innerH - WALL * (rest.length - 1);
+  let y = PAD;
+  rest.forEach((r, i) => {
+    const last = i === rest.length - 1;
+    // the last room absorbs rounding so the right column always closes flush
+    const h = last ? PAD + innerH - y : Math.round((avail * r.w) / total);
+    rooms.push({ label: r.label, n: num(i + 1), x: PAD + leftW + WALL, y, w: rightW, h });
+    y += h + WALL;
+  });
+  return rooms;
+}
+
 const span = String(clientTypes.length).padStart(2, "0");
 ---
 
@@ -73,14 +131,44 @@ const span = String(clientTypes.length).padStart(2, "0");
 
               <div class="dist__panel">
                 <p class="dist__line">{c.line}</p>
-                <div class="dist__zones">
-                  <span class="dist__zones-label mono">TYPICAL BUILD</span>
-                  <ul class="dist__zonelist mono">
-                    {c.sections.map((s) => (
-                      <li>{s.label}</li>
+
+                {/* The plan is decorative-but-labelled: its own <text> is
+                    readable, and the linearised list below guarantees the
+                    same information for assistive tech and crawlers. */}
+                <figure class="dist__planwrap">
+                  <svg
+                    class="dist__plan"
+                    viewBox={`0 0 ${VB.w} ${VB.h}`}
+                    role="img"
+                    aria-label={`Typical floor plan for ${c.name}: ${c.sections.map((s) => s.label.toLowerCase()).join(", ")}.`}
+                  >
+                    {/* outer shell */}
+                    <rect x={SHELL.x} y={SHELL.y} width={SHELL.w} height={SHELL.h} class="pl-shell" />
+                    {floorPlan(c.sections).map((r) => (
+                      <g>
+                        <rect x={r.x} y={r.y} width={r.w} height={r.h} class="pl-room" />
+                        <text x={r.x + 4.5} y={r.y + 8.5} class="pl-n">{r.n}</text>
+                        <text x={r.x + 4.5} y={r.y + 15.5} class="pl-label">{r.label}</text>
+                      </g>
                     ))}
-                  </ul>
-                </div>
+                    {/* entry: a gap punched in the bottom wall + a swinging leaf */}
+                    <g class="pl-door">
+                      <line x1="26" y1={SHELL_B} x2="40" y2={SHELL_B} class="pl-gap" />
+                      <line x1="26" y1={SHELL_B} x2="26" y2={SHELL_B - 14} />
+                      <path d={`M26 ${SHELL_B - 14} A 14 14 0 0 1 40 ${SHELL_B}`} />
+                    </g>
+                    {/* title block */}
+                    <text x={SHELL.x} y={CAP_Y} class="pl-note">ENTRY ↑</text>
+                    <text x={SHELL.x + SHELL.w} y={CAP_Y} class="pl-note pl-note--end">
+                      FIG. 01.{c.key} — TYPICAL PLAN
+                    </text>
+                  </svg>
+                </figure>
+
+                <p class="visually-hidden">
+                  Typical build: {c.sections.map((s) => s.label.toLowerCase()).join(", ")}.
+                </p>
+
                 <button class="dist__back mono" type="button" data-back>
                   ◂ BACK TO THE DISTRICT
                 </button>
@@ -248,27 +336,78 @@ const span = String(clientTypes.length).padStart(2, "0");
     max-width: 52ch;
     margin: 0 0 1.2rem;
   }
-  .dist__zones-label {
-    display: block;
-    font-size: 0.5rem;
-    letter-spacing: 0.2em;
-    opacity: 0.6;
-    margin-bottom: 0.6rem;
-  }
-  .dist__zonelist {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    list-style: none;
-    padding: 0;
+  /* ---- the generated floor plan ---- */
+  .dist__planwrap {
     margin: 0 0 1.3rem;
   }
-  .dist__zonelist li {
-    border: var(--hair) solid var(--interior-line);
-    border-radius: 2px;
-    padding: 0.4em 0.7em;
-    font-size: 0.6rem;
+  .dist__plan {
+    display: block;
+    width: 100%;
+    max-width: 38rem;
+    height: auto;
+    overflow: visible;
+    color: var(--interior-ink);
+  }
+  /* Everything is currentColor, so the plan inverts with the plate and needs
+     no second palette — white-on-black in light mode, black-on-white in dark. */
+  .dist__plan .pl-shell {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+  }
+  .dist__plan .pl-room {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 0.7;
+    opacity: 0.55;
+  }
+  .dist__plan .pl-n {
+    font-family: var(--font-mono);
+    font-size: 4.4px;
+    letter-spacing: 0.1em;
+    fill: currentColor;
+    opacity: 0.5;
+  }
+  .dist__plan .pl-label {
+    font-family: var(--font-mono);
+    font-size: 5.2px;
+    font-weight: 600;
     letter-spacing: 0.06em;
+    fill: currentColor;
+  }
+  .dist__plan .pl-door {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 0.8;
+    opacity: 0.75;
+  }
+  /* the doorway itself: erase the shell wall behind the swing */
+  .dist__plan .pl-gap {
+    stroke: var(--interior);
+    stroke-width: 2.2;
+    opacity: 1;
+  }
+  .dist__plan .pl-note {
+    font-family: var(--font-mono);
+    font-size: 4.2px;
+    letter-spacing: 0.16em;
+    fill: currentColor;
+    opacity: 0.5;
+  }
+  .dist__plan .pl-note--end {
+    text-anchor: end;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .dist__space[open] .dist__plan .pl-room {
+      animation: pl-draw 0.4s var(--ease-out) backwards;
+    }
+    .dist__space[open] .dist__plan g:nth-of-type(2) .pl-room { animation-delay: 0.05s; }
+    .dist__space[open] .dist__plan g:nth-of-type(3) .pl-room { animation-delay: 0.1s; }
+    .dist__space[open] .dist__plan g:nth-of-type(4) .pl-room { animation-delay: 0.15s; }
+  }
+  @keyframes pl-draw {
+    from { opacity: 0; }
   }
   .dist__back {
     background: none;
