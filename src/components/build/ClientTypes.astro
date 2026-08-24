@@ -300,6 +300,7 @@ const span = String(clientTypes.length).padStart(2, "0");
         <span class="dist__code" data-status>{span} SPACES · TAP ONE TO ENTER</span>
       </div>
 
+      <div class="dist__stage" data-stage>
       {/* THE BUILDING — static isometric SVG, drawn at build time.
           NOT aria-hidden: it contains real focusable links, and hiding a
           container while leaving its links focusable is a keyboard trap
@@ -308,7 +309,7 @@ const span = String(clientTypes.length).padStart(2, "0");
           Each block is a real <a> so it is focusable and keyboard-operable;
           the prototype used <g onClick> and was mouse-only. Without
           JavaScript the anchor still jumps to that space's row below. */}
-      <div class="iso">
+      <div class="iso" data-city>
         <svg
           class="iso__svg"
           viewBox="-196 -118 510 360"
@@ -368,8 +369,6 @@ const span = String(clientTypes.length).padStart(2, "0");
               </summary>
 
               <div class="dist__panel">
-                <p class="dist__line">{c.line}</p>
-
                 {/* THE INTERIOR — the same room the prototype drew, in tone
                     instead of neon. Decorative: role="img" names it, and the
                     zone list beneath is the actual information. */}
@@ -383,22 +382,27 @@ const span = String(clientTypes.length).padStart(2, "0");
                   />
                 </figure>
 
-                <div class="dist__zones">
-                  <span class="dist__zones-label mono">TYPICAL BUILD</span>
+                {/* the slip that sits under the room — name, what it is,
+                    what the site contains, and the way back */}
+                <div class="dist__info">
+                  <div class="dist__infomain">
+                    <p class="dist__infoname">{c.name}</p>
+                    <p class="dist__line">{c.line}</p>
+                  </div>
                   <ul class="dist__zonelist mono">
                     {c.sections.map((sec) => (
                       <li>{sec.label}</li>
                     ))}
                   </ul>
+                  <button class="dist__back mono" type="button" data-back>
+                    ◂ BACK
+                  </button>
                 </div>
-
-                <button class="dist__back mono" type="button" data-back>
-                  ◂ BACK TO THE DISTRICT
-                </button>
               </div>
             </details>
           ))
         }
+      </div>
       </div>
     </div>
 
@@ -522,137 +526,166 @@ const span = String(clientTypes.length).padStart(2, "0");
   .iso__block.is-active .iso-cap { stroke-opacity: 1; }
   .iso__block.is-active .iso-code { fill-opacity: 1; }
 
-  /* ---- the directory beneath the building ---- */
+  /* ---- THE STAGE ----
+     City and interior occupy the SAME box and cross-fade, so opening a space
+     never changes the page height. All of this is scoped to html.js: without
+     JavaScript the stage is not a stage, it is an ordinary disclosure list
+     that flows down the page as normal. */
   .dist__grid {
     display: flex;
     flex-direction: column;
     border-top: var(--hair) solid var(--interior-line);
-    margin-top: clamp(0.5rem, 2vw, 1rem);
   }
 
-  /* ---- closed: a district block ----
-     Each cell borders itself, rather than the grid showing a background
-     through a gap — an uneven last row (5 closed cells in a 3-col grid,
-     once one has popped out to full width) would otherwise leave one
-     truly empty grid cell, and an empty cell paints the CONTAINER's
-     background with nothing drawn over it: a stray solid block where a
-     7th space should be but isn't. Self-bordered cells can't do that;
-     an empty track next to them just stays the page's own background. */
-  .dist__space {
-    background: var(--interior);
-    border-bottom: var(--hair) solid var(--interior-line);
+  :global(html.js) .dist__stage {
+    position: relative;
+    height: clamp(25rem, 46vw, 34rem);
   }
-  summary.dist__block {
-    list-style: none;
-    cursor: pointer;
+  :global(html.js) .iso {
+    position: absolute;
+    inset: 0;
     display: grid;
-    grid-template-columns: 1.4rem 1.6rem 1fr auto;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.7rem clamp(0.8rem, 2.4vw, 1.2rem);
-    transition: background 0.15s var(--ease);
+    place-items: center;
+    padding: clamp(0.5rem, 2vw, 1rem);
+    transition:
+      opacity 0.34s var(--ease),
+      transform 0.34s var(--ease);
   }
-  summary.dist__block::-webkit-details-marker {
+  :global(html.js) .dist__grid {
+    position: absolute;
+    inset: 0;
+    border-top: 0;
+    /* This layer covers the city, so it must be click-through: only the open
+       space takes pointer events back. Without this the whole building is
+       unclickable — the container swallows every click. */
+    pointer-events: none;
+  }
+  :global(html.js) .dist__space {
+    position: absolute;
+    inset: 0;
+    border-bottom: 0;
+    opacity: 0;
+    transform: scale(1.03);
+    pointer-events: none;
+    transition:
+      opacity 0.34s var(--ease),
+      transform 0.34s var(--ease);
+  }
+  :global(html.js) .dist__space[open] {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+  /* the building steps back as the room comes forward */
+  :global(html.js) .dist__stage[data-open] .iso {
+    opacity: 0;
+    transform: scale(0.96);
+    pointer-events: none;
+  }
+  /* with JS the building blocks are the control, so the row is not needed —
+     removed from layout AND from the tab order, not just hidden */
+  :global(html.js) summary.dist__block {
     display: none;
   }
-  summary.dist__block::marker {
-    content: "";
-  }
-  summary.dist__block:hover,
-  summary.dist__block:focus-visible {
-    background: var(--interior-line);
-  }
-  summary.dist__block:focus-visible {
-    outline: 2px solid var(--interior-ink);
-    outline-offset: -2px;
-  }
-  .dist__icon {
-    width: 1.4rem;
-    height: 1.4rem;
-    opacity: 0.8;
-  }
-  .dist__icon svg {
-    width: 100%;
-    height: 100%;
-  }
-  .dist__n {
-    font-size: 0.56rem;
-    letter-spacing: 0.14em;
-    opacity: 0.55;
-  }
-  .dist__name {
-    font-size: 0.84rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    line-height: 1.3;
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(html.js) .iso,
+    :global(html.js) .dist__space {
+      transition-duration: 0.01ms;
+      transform: none;
+    }
   }
 
-  .dist__grid[data-open] .dist__space:not([open]) summary.dist__block {
-    opacity: 0.45;
-  }
-  .dist__grid[data-open] .dist__space:not([open]) summary.dist__block:hover {
-    opacity: 1;
-  }
-
-  .dist__space[open] summary.dist__block {
-    background: var(--interior-line);
-    border-bottom: var(--hair) dashed var(--interior-line);
-  }
-  .dist__space[open] .dist__icon { opacity: 1; }
-
+  /* ---- the interior: room fills the stage, slip pinned beneath ---- */
   .dist__panel {
-    padding: clamp(1.1rem, 3vw, 1.6rem);
+    display: flex;
+    flex-direction: column;
+    padding: clamp(0.6rem, 2vw, 1rem);
   }
-  @media (prefers-reduced-motion: no-preference) {
-    .dist__space[open] .dist__panel {
-      animation: dist-in 0.28s var(--ease-out);
-    }
+  /* height:100% does NOT work here: <details> does not establish a definite
+     containing block for its content, so the percentage silently resolves to
+     auto and the panel grows to its natural height, pushing the slip out of
+     the stage. Pinning it to the space gives it a real box. */
+  :global(html.js) .dist__panel {
+    position: absolute;
+    inset: 0;
   }
-  @keyframes dist-in {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-  }
-  .dist__line {
-    font-size: 0.94rem;
-    line-height: 1.55;
-    max-width: 52ch;
-    margin: 0 0 1.2rem;
-  }
-  /* ---- the interior cutaway ---- */
   .dist__roomwrap {
-    margin: 0 0 1.2rem;
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    display: grid;
+    place-items: center;
   }
   .dist__room {
     display: block;
+    /* A definite box, not auto: an SVG with height:auto resolves to its full
+       intrinsic height and overruns the stage, taking the slip off-screen
+       with it. Given a real box, preserveAspectRatio letterboxes it to fit. */
     width: 100%;
-    max-width: 34rem;
-    height: auto;
+    height: 100%;
     color: var(--interior-ink);
   }
 
-  .dist__zones-label {
-    display: block;
-    font-size: 0.5rem;
-    letter-spacing: 0.2em;
-    opacity: 0.6;
-    margin-bottom: 0.55rem;
+  .dist__info {
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding-top: 0.75rem;
+    border-top: var(--hair) dashed var(--interior-line);
+  }
+  .dist__infoname {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.2rem;
+  }
+  .dist__line {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.78;
+    max-width: 52ch;
+    margin: 0;
   }
   .dist__zonelist {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    gap: 0.35rem;
     list-style: none;
     padding: 0;
-    margin: 0 0 1.3rem;
+    margin: 0;
   }
   .dist__zonelist li {
     border: var(--hair) solid var(--interior-line);
     border-radius: 2px;
-    padding: 0.38em 0.65em;
+    padding: 0.32em 0.55em;
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+  .dist__back {
+    justify-self: start;
+    background: none;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.45em 0.8em;
+    cursor: pointer;
+    color: inherit;
     font-size: 0.58rem;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.14em;
+    transition: background 0.15s var(--ease);
+  }
+  .dist__back:hover,
+  .dist__back:focus-visible {
+    background: var(--interior-line);
+  }
+
+  @media (min-width: 720px) {
+    .dist__info {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 1.2rem;
+    }
   }
 
   .wt__note {
@@ -691,8 +724,12 @@ const span = String(clientTypes.length).padStart(2, "0");
 
     const isoBlocks = Array.from(document.querySelectorAll<SVGAElement>("[data-iso]"));
 
+    const stage = document.querySelector<HTMLElement>("[data-stage]");
+
     const sync = () => {
       const open = spaces.find((d) => d.open);
+      // the stage carries the state: it is what cross-fades the city out
+      stage?.toggleAttribute("data-open", Boolean(open));
       grid.toggleAttribute("data-open", Boolean(open));
       // the building doubles as a live map: light the block that is open
       isoBlocks.forEach((a) =>
@@ -720,8 +757,8 @@ const span = String(clientTypes.length).padStart(2, "0");
         if (!target) return;
         e.preventDefault();
         target.open = true;
-        target.querySelector("summary")?.focus({ preventScroll: true });
-        target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        // the summary is display:none under JS, so send focus to the way out
+        target.querySelector<HTMLElement>("[data-back]")?.focus({ preventScroll: true });
       });
     });
 
@@ -732,7 +769,7 @@ const span = String(clientTypes.length).padStart(2, "0");
       const d = back.closest("details") as HTMLDetailsElement | null;
       if (d) {
         d.open = false;
-        d.querySelector("summary")?.focus();
+        document.querySelector<SVGAElement>(`[data-iso="${d.id.replace("space-", "")}"]`)?.focus();
       }
     });
   }
