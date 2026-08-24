@@ -83,7 +83,9 @@ const sideFace = (c: Cam, x: number, y: number, z: number, d: number, h: number)
 const UNIT = { w: 3, d: 2.2 };
 const COL = 4.1;
 const ROW = [0.5, 4.3];
-const HEIGHTS = [3.0, 2.6, 3.4, 2.8, 3.2, 3.7];
+/* Kept low on purpose: a tall near block's roof rises over the far row and
+   eats its click target. These heights keep every block's own roof clear. */
+const HEIGHTS = [2.5, 2.1, 2.8, 2.3, 2.6, 3.0];
 const PLINTH = 0.45;
 
 const blocks = clientTypes.map((c, i) => ({
@@ -99,62 +101,184 @@ const blocks = clientTypes.map((c, i) => ({
 const drawOrder = [...blocks].sort((a, b) => a.x + a.y - (b.x + b.y));
 
 /* ---------------------------------------------------------------------------
-   THE FLOOR PLAN, GENERATED FROM DATA.
+   THE INTERIORS — ported from the prototype's six room components.
 
-   Each business type already carries its page sections with a width weight.
-   That IS a room schedule, so the plan is computed from it rather than drawn
-   by hand: the first section (always w:100 — "THE PLACE", "WHO YOU ARE") is
-   the primary room down the left, the rest stack to the right with heights
-   proportional to their weights. A seventh business type gets a plan for
-   free; nobody has to draw one.
+   Same idea, three differences. (1) Tone, not hue: the prototype shaded with
+   dk(neonHex, f); here T(pct) mixes --interior-ink into --interior at the
+   same relative percentages, so the tonal structure survives exactly and the
+   whole room inverts with the plate. (2) Walls on the FAR side. The
+   prototype puts its "back wall" at y = D and "right wall" at x = W, but in
+   this projection depth grows with x + y, so those are the NEAR walls and
+   they sit between the viewer and the furniture; here they are at x = 0 and
+   y = 0 and the room opens toward you. (3) Emitted as SVG strings at build
+   time — no React, no client JS.
    ------------------------------------------------------------------------ */
-interface Room {
-  label: string;
-  n: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
-/* The viewBox is taller than the building: the strip under the shell is the
-   drawing's title block (ENTRY / FIG. no.), so captions never sit on a wall. */
-const VB = { w: 230, h: 148 };
-const PAD = 9; // room area inset from the viewBox
-const INNER_H = 115; // room area height — the building, not the title block
-const WALL = 2.4; // interior partition thickness
-const SHELL = { x: PAD - 3, y: PAD - 3, w: VB.w - (PAD - 3) * 2, h: INNER_H + 6 };
-const SHELL_B = SHELL.y + SHELL.h; // outer bottom wall — the door sits here
-const CAP_Y = SHELL_B + 12; // title-block baseline, clear of the wall
+const RM: Cam = { hw: 33, hh: 16.5, uh: 40 };
+const RW = 6;
+const RD = 5;
+const RH = 3.8;
 
-function floorPlan(sections: { label: string; w: number }[]): Room[] {
-  const innerW = VB.w - PAD * 2;
-  const innerH = INNER_H;
-  const [primary, ...rest] = sections;
-  const num = (i: number) => String(i + 1).padStart(2, "0");
+/** One opaque step between the plate and its ink. The prototype's factors were
+    tuned against saturated neon; the same numbers in pure tone come out far too
+    close to the ground, so they are lifted and spread here — the ordering is
+    preserved, the range is not. */
+const T = (pct: number) =>
+  `color-mix(in oklab, var(--interior-ink) ${Math.min(94, Math.round(pct * 1.45 + 5))}%, var(--interior))`;
 
-  if (!primary) return [];
-  if (!rest.length) {
-    return [{ label: primary.label, n: num(0), x: PAD, y: PAD, w: innerW, h: innerH }];
+const pg = (pts: string, fill: string, extra = "") => `<polygon points="${pts}" fill="${fill}"${extra}/>`;
+const seg = (a: [number, number], b: [number, number], stroke: string, w = 0.7) =>
+  `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${stroke}" stroke-width="${w}"/>`;
+const dot = (pnt: [number, number], r: number, fill: string, extra = "") =>
+  `<circle cx="${pnt[0].toFixed(1)}" cy="${pnt[1].toFixed(1)}" r="${r}" fill="${fill}"${extra}/>`;
+
+/** a solid: its two visible walls plus the top */
+const solid = (x: number, y: number, z: number, w: number, d: number, h: number,
+               top = 30, front = 19, side = 11) =>
+  pg(sideFace(RM, x + w, y, z, d, h), T(side)) +
+  pg(frontFace(RM, x, y + d, z, w, h), T(front)) +
+  pg(topFace(RM, x, y, z + h, w, d), T(top));
+
+/** flat panel hung on the far wall at y = 0 */
+const wallY = (x: number, z: number, w: number, h: number, fill: string, extra = "") =>
+  pg(poly([iso(RM, x, 0, z), iso(RM, x + w, 0, z), iso(RM, x + w, 0, z + h), iso(RM, x, 0, z + h)]), fill, extra);
+/** flat panel hung on the far wall at x = 0 */
+const wallX = (y: number, z: number, d: number, h: number, fill: string, extra = "") =>
+  pg(poly([iso(RM, 0, y, z), iso(RM, 0, y + d, z), iso(RM, 0, y + d, z + h), iso(RM, 0, y, z + h)]), fill, extra);
+
+const shell = () => {
+  let o = pg(topFace(RM, 0, 0, 0, RW, RD), T(6));
+  for (let i = 1; i < RW; i++) o += seg(iso(RM, i, 0, 0), iso(RM, i, RD, 0), T(12), 0.5);
+  for (let i = 1; i < RD; i++) o += seg(iso(RM, 0, i, 0), iso(RM, RW, i, 0), T(12), 0.5);
+  o += wallY(0, 0, RW, RH, T(10));
+  o += wallX(0, 0, RD, RH, T(8));
+  o += wallY(0, 0, RW, 0.1, T(22));
+  o += wallX(0, 0, RD, 0.1, T(18));
+  o += seg(iso(RM, 0, 0, RH), iso(RM, RW, 0, RH), T(28), 0.8);
+  o += seg(iso(RM, 0, 0, RH), iso(RM, 0, RD, RH), T(24), 0.8);
+  o += seg(iso(RM, 0, 0, 0), iso(RM, 0, 0, RH), T(20), 0.6);
+  return o;
+};
+
+const clinicRoom = () => {
+  let o = shell();
+  o += solid(2.9, 1.7, 0, 2.4, 1.15, 0.78);
+  o += solid(4.5, 1.85, 0.78, 0.6, 0.5, 0.14, 52, 40, 30);
+  o += solid(0.45, 0.3, 0, 2.2, 0.85, 0.72);
+  o += pg(frontFace(RM, 0.75, 1.15, 0.72, 0.95, 0.5), T(9));
+  o += pg(frontFace(RM, 0.82, 1.15, 0.77, 0.81, 0.4), T(30));
+  o += solid(0.2, 2.7, 0, 0.75, 1.8, 2.1);
+  for (const z of [0.62, 1.3]) o += pg(frontFace(RM, 0.2, 4.5, z, 0.75, 0.06), T(34));
+  for (const z of [0.72, 1.4]) {
+    for (let k = 0; k < 4; k++) o += pg(frontFace(RM, 0.28 + k * 0.16, 4.5, z, 0.11, 0.2 + (k % 3) * 0.05), T(40 + k * 5));
   }
+  const [cx, cy] = iso(RM, 3.5, 0, 2.4);
+  o += `<rect x="${(cx - 3.4).toFixed(1)}" y="${(cy - 12).toFixed(1)}" width="6.8" height="24" rx="1" fill="${T(34)}"/>`;
+  o += `<rect x="${(cx - 12).toFixed(1)}" y="${(cy - 3.4).toFixed(1)}" width="24" height="6.8" rx="1" fill="${T(34)}"/>`;
+  return o;
+};
 
-  const leftW = Math.round(innerW * 0.53);
-  const rightW = innerW - leftW - WALL;
-  const rooms: Room[] = [
-    { label: primary.label, n: num(0), x: PAD, y: PAD, w: leftW, h: innerH },
-  ];
+const cafeRoom = () => {
+  let o = shell();
+  o += solid(0.35, 0.3, 0, 5.2, 0.85, 1.0);
+  o += solid(1.5, 0.4, 1.0, 1.0, 0.65, 0.72, 44, 30, 20);
+  o += pg(frontFace(RM, 1.65, 1.05, 1.24, 0.7, 0.26), T(46));
+  for (const cx2 of [3.1, 3.45, 3.8]) o += solid(cx2, 0.42, 1.0, 0.2, 0.2, 0.24, 46, 34, 24);
+  for (const [tx, ty] of [[1.6, 2.5], [3.9, 3.2]] as [number, number][]) {
+    o += solid(tx, ty, 0, 1.25, 1.15, 0.68);
+    o += solid(tx - 0.05, ty - 0.85, 0.4, 0.7, 0.55, 0.1, 26, 17, 10);
+    o += solid(tx + 0.3, ty + 1.2, 0.4, 0.7, 0.55, 0.1, 26, 17, 10);
+  }
+  o += wallX(1.2, 0.5, 2.2, 2.3, T(6), ` stroke="${T(28)}" stroke-width="0.9"`);
+  for (let i = 0; i < 4; i++) o += wallX(1.45, 2.35 - i * 0.42, 1.5 - i * 0.16, 0.07, T(30));
+  for (const [lx, ly] of [[2.2, 2.2], [4.2, 2.8]] as [number, number][]) {
+    o += seg(iso(RM, lx, ly, RH), iso(RM, lx, ly, 2.5), T(22), 0.8);
+    o += dot(iso(RM, lx, ly, 2.35), 7, T(30));
+    o += dot(iso(RM, lx, ly, 2.32), 3.2, T(62));
+  }
+  return o;
+};
 
-  const total = rest.reduce((sum, r) => sum + r.w, 0) || 1;
-  const avail = innerH - WALL * (rest.length - 1);
-  let y = PAD;
-  rest.forEach((r, i) => {
-    const last = i === rest.length - 1;
-    // the last room absorbs rounding so the right column always closes flush
-    const h = last ? PAD + innerH - y : Math.round((avail * r.w) / total);
-    rooms.push({ label: r.label, n: num(i + 1), x: PAD + leftW + WALL, y, w: rightW, h });
-    y += h + WALL;
-  });
-  return rooms;
-}
+const salonRoom = () => {
+  let o = shell();
+  for (const sx of [0.4, 2.3, 4.2] as number[]) {
+    o += solid(sx, 0.3, 0, 1.4, 0.8, 0.8);
+    o += wallY(sx + 0.15, 0.95, 1.1, 1.9, T(4), ` stroke="${T(44)}" stroke-width="1.2"`);
+    o += wallY(sx + 0.08, 0.88, 1.24, 2.04, "none", ` stroke="${T(26)}" stroke-width="0.6"`);
+    o += solid(sx + 0.15, 1.5, 0, 1.05, 0.7, 0.5, 40, 28, 17);
+    o += pg(frontFace(RM, sx + 0.17, 2.2, 0.5, 1.01, 0.72), T(24));
+    for (let j = 0; j < 3; j++) o += solid(sx + 0.1 + j * 0.35, 0.4, 0.8, 0.18, 0.18, 0.3 + j * 0.05, 46 + j * 6, 34, 22);
+    o += dot(iso(RM, sx + 0.7, 1.0, RH), 4.2, T(34));
+  }
+  o += solid(0.15, 3.2, 0, 0.7, 1.6, 1.9);
+  for (const z of [0.5, 1.0, 1.5]) o += pg(frontFace(RM, 0.15, 4.8, z, 0.7, 0.06), T(36));
+  return o;
+};
+
+const pharmacyRoom = () => {
+  let o = shell();
+  for (const bx of [0.35, 2.3, 4.25] as number[]) {
+    o += solid(bx, 0.25, 0, 1.6, 0.75, 2.4);
+    for (const z of [0.7, 1.4, 2.05]) o += pg(frontFace(RM, bx, 1.0, z, 1.6, 0.06), T(34));
+    for (const z of [0.78, 1.48]) {
+      for (let k = 0; k < 5; k++) o += pg(frontFace(RM, bx + 0.1 + k * 0.29, 1.0, z, 0.19, 0.28 + (k % 3) * 0.06), T(38 + (k % 4) * 8));
+    }
+  }
+  o += solid(0.4, 3.3, 0, 4.6, 0.95, 0.95);
+  o += pg(frontFace(RM, 0.7, 4.25, 0.95, 1.35, 0.55), T(9));
+  o += pg(frontFace(RM, 0.78, 4.25, 1.02, 1.19, 0.42), T(30));
+  const [rx, ry] = iso(RM, 3.5, 0, 2.55);
+  o += `<text x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" text-anchor="middle" fill="${T(38)}" font-size="17" font-family="var(--font-mono)" font-weight="700">Rx</text>`;
+  return o;
+};
+
+const shopRoom = () => {
+  let o = shell();
+  o += solid(1.7, 1.9, 0, 2.9, 1.9, 0.72);
+  for (const [tx, ty, i] of [[2.0, 2.2, 0], [2.8, 2.6, 1], [3.5, 2.1, 2], [3.9, 2.9, 3]] as [number, number, number][]) {
+    o += solid(tx, ty, 0.72, 0.36, 0.36, 0.3, 42 + i * 7, 30, 20);
+  }
+  for (const bx of [0.5, 3.1] as number[]) {
+    o += wallY(bx, 0.4, 2.1, 2.5, T(5), ` stroke="${T(24)}" stroke-width="0.7"`);
+    for (const z of [0.9, 1.55, 2.2]) o += wallY(bx, z, 2.1, 0.06, T(30));
+    for (const z of [0.98, 1.63]) {
+      for (let k = 0; k < 5; k++) o += wallY(bx + 0.12 + k * 0.38, z, 0.24, 0.28, T(36 + (k % 3) * 9));
+    }
+  }
+  o += seg(iso(RM, 0, 1.0, 2.5), iso(RM, 0, 3.4, 2.5), T(34), 1.6);
+  for (const hy of [1.2, 1.6, 2.0, 2.45, 2.9] as number[]) {
+    o += seg(iso(RM, 0, hy, 2.5), iso(RM, 0, hy, 1.7), T(24), 0.7);
+    o += wallX(hy - 0.09, 1.35, 0.2, 0.34, T(30));
+  }
+  o += solid(0.4, 3.9, 0, 2.2, 0.8, 0.85);
+  o += solid(0.65, 4.05, 0.85, 0.6, 0.45, 0.38, 46, 34, 24);
+  return o;
+};
+
+const startupRoom = () => {
+  let o = shell();
+  for (const sx of [0.5, 2.4, 4.3] as number[]) {
+    o += solid(sx, 0.35, 0, 1.35, 0.85, 0.68);
+    o += pg(frontFace(RM, sx + 0.35, 1.2, 0.68, 0.62, 0.46), T(8));
+    o += pg(frontFace(RM, sx + 0.4, 1.2, 0.72, 0.52, 0.37), T(32));
+    o += solid(sx + 0.42, 1.14, 0.68, 0.5, 0.06, 0.03, 34, 24, 16);
+    o += solid(sx + 0.25, 0.45, 0.68, 0.5, 0.3, 0.04, 26, 18, 12);
+    o += dot(iso(RM, sx + 0.67, 0.8, RH), 3.6, T(30));
+  }
+  o += wallY(1.1, 1.4, 3.6, 1.9, T(5), ` stroke="${T(34)}" stroke-width="1"`);
+  for (let i = 0; i < 4; i++) o += wallY(1.4, 2.85 - i * 0.34, 2.7 - i * 0.28, 0.07, T(26));
+  o += solid(0.2, 3.9, 0, 0.5, 0.5, 0.28, 20, 13, 8);
+  o += solid(0.28, 3.98, 0.28, 0.34, 0.34, 0.55, 26, 17, 11);
+  return o;
+};
+
+const ROOMS: Record<string, () => string> = {
+  "01": clinicRoom,
+  "02": cafeRoom,
+  "03": salonRoom,
+  "04": pharmacyRoom,
+  "05": shopRoom,
+  "06": startupRoom,
+};
 
 const span = String(clientTypes.length).padStart(2, "0");
 ---
@@ -246,42 +370,27 @@ const span = String(clientTypes.length).padStart(2, "0");
               <div class="dist__panel">
                 <p class="dist__line">{c.line}</p>
 
-                {/* The plan is decorative-but-labelled: its own <text> is
-                    readable, and the linearised list below guarantees the
-                    same information for assistive tech and crawlers. */}
-                <figure class="dist__planwrap">
+                {/* THE INTERIOR — the same room the prototype drew, in tone
+                    instead of neon. Decorative: role="img" names it, and the
+                    zone list beneath is the actual information. */}
+                <figure class="dist__roomwrap">
                   <svg
-                    class="dist__plan"
-                    viewBox={`0 0 ${VB.w} ${VB.h}`}
+                    class="dist__room"
+                    viewBox="-177 -164 388 358"
                     role="img"
-                    aria-label={`Typical floor plan for ${c.name}: ${c.sections.map((s) => s.label.toLowerCase()).join(", ")}.`}
-                  >
-                    {/* outer shell */}
-                    <rect x={SHELL.x} y={SHELL.y} width={SHELL.w} height={SHELL.h} class="pl-shell" />
-                    {floorPlan(c.sections).map((r) => (
-                      <g>
-                        <rect x={r.x} y={r.y} width={r.w} height={r.h} class="pl-room" />
-                        <text x={r.x + 4.5} y={r.y + 8.5} class="pl-n">{r.n}</text>
-                        <text x={r.x + 4.5} y={r.y + 15.5} class="pl-label">{r.label}</text>
-                      </g>
-                    ))}
-                    {/* entry: a gap punched in the bottom wall + a swinging leaf */}
-                    <g class="pl-door">
-                      <line x1="26" y1={SHELL_B} x2="40" y2={SHELL_B} class="pl-gap" />
-                      <line x1="26" y1={SHELL_B} x2="26" y2={SHELL_B - 14} />
-                      <path d={`M26 ${SHELL_B - 14} A 14 14 0 0 1 40 ${SHELL_B}`} />
-                    </g>
-                    {/* title block */}
-                    <text x={SHELL.x} y={CAP_Y} class="pl-note">ENTRY ↑</text>
-                    <text x={SHELL.x + SHELL.w} y={CAP_Y} class="pl-note pl-note--end">
-                      FIG. 01.{c.key} — TYPICAL PLAN
-                    </text>
-                  </svg>
+                    aria-label={`Cutaway of a typical ${c.name.toLowerCase()} space.`}
+                    set:html={ROOMS[c.key]?.() ?? ""}
+                  />
                 </figure>
 
-                <p class="visually-hidden">
-                  Typical build: {c.sections.map((s) => s.label.toLowerCase()).join(", ")}.
-                </p>
+                <div class="dist__zones">
+                  <span class="dist__zones-label mono">TYPICAL BUILD</span>
+                  <ul class="dist__zonelist mono">
+                    {c.sections.map((sec) => (
+                      <li>{sec.label}</li>
+                    ))}
+                  </ul>
+                </div>
 
                 <button class="dist__back mono" type="button" data-back>
                   ◂ BACK TO THE DISTRICT
@@ -511,92 +620,39 @@ const span = String(clientTypes.length).padStart(2, "0");
     max-width: 52ch;
     margin: 0 0 1.2rem;
   }
-  /* ---- the generated floor plan ---- */
-  .dist__planwrap {
-    margin: 0 0 1.3rem;
+  /* ---- the interior cutaway ---- */
+  .dist__roomwrap {
+    margin: 0 0 1.2rem;
   }
-  .dist__plan {
+  .dist__room {
     display: block;
     width: 100%;
-    max-width: 38rem;
+    max-width: 34rem;
     height: auto;
-    overflow: visible;
     color: var(--interior-ink);
   }
-  /* Everything is currentColor, so the plan inverts with the plate and needs
-     no second palette — white-on-black in light mode, black-on-white in dark. */
-  .dist__plan .pl-shell {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.4;
-  }
-  .dist__plan .pl-room {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 0.7;
-    opacity: 0.55;
-  }
-  .dist__plan .pl-n {
-    font-family: var(--font-mono);
-    font-size: 4.4px;
-    letter-spacing: 0.1em;
-    fill: currentColor;
-    opacity: 0.5;
-  }
-  .dist__plan .pl-label {
-    font-family: var(--font-mono);
-    font-size: 5.2px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    fill: currentColor;
-  }
-  .dist__plan .pl-door {
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 0.8;
-    opacity: 0.75;
-  }
-  /* the doorway itself: erase the shell wall behind the swing */
-  .dist__plan .pl-gap {
-    stroke: var(--interior);
-    stroke-width: 2.2;
-    opacity: 1;
-  }
-  .dist__plan .pl-note {
-    font-family: var(--font-mono);
-    font-size: 4.2px;
-    letter-spacing: 0.16em;
-    fill: currentColor;
-    opacity: 0.5;
-  }
-  .dist__plan .pl-note--end {
-    text-anchor: end;
-  }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .dist__space[open] .dist__plan .pl-room {
-      animation: pl-draw 0.4s var(--ease-out) backwards;
-    }
-    .dist__space[open] .dist__plan g:nth-of-type(2) .pl-room { animation-delay: 0.05s; }
-    .dist__space[open] .dist__plan g:nth-of-type(3) .pl-room { animation-delay: 0.1s; }
-    .dist__space[open] .dist__plan g:nth-of-type(4) .pl-room { animation-delay: 0.15s; }
+  .dist__zones-label {
+    display: block;
+    font-size: 0.5rem;
+    letter-spacing: 0.2em;
+    opacity: 0.6;
+    margin-bottom: 0.55rem;
   }
-  @keyframes pl-draw {
-    from { opacity: 0; }
-  }
-  .dist__back {
-    background: none;
-    border: 0;
+  .dist__zonelist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    list-style: none;
     padding: 0;
-    cursor: pointer;
-    font-size: 0.62rem;
-    letter-spacing: 0.1em;
-    opacity: 0.7;
-    transition: opacity 0.15s var(--ease);
+    margin: 0 0 1.3rem;
   }
-  .dist__back:hover,
-  .dist__back:focus-visible {
-    opacity: 1;
+  .dist__zonelist li {
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.38em 0.65em;
+    font-size: 0.58rem;
+    letter-spacing: 0.06em;
   }
 
   .wt__note {
