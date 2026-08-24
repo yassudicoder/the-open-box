@@ -28,6 +28,7 @@ import {
   SLOTS, FILLERS, DRAW_ORDER, ribsOf, ribPoints, quadPoints, cardTransform,
   czOf, hazeOf, solveF, vbwOf, sAt, sx, sy,
   rayEnd, dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
+  STYLES, FILLER_STYLES, SHOP_H, SIGN_H, flankRibs, type Style,
 } from "../../lib/street.ts";
 
 function icon(path: string) {
@@ -110,91 +111,143 @@ const BAKE_VBW = vbwOf(BAKE_W, 486);
 const BAKE_F = solveF(BAKE_VBW);
 const BAKE_CZ = czOf(0);
 
-/* ---- one facade elevation, authored flat --------------------------------
-   Local coordinates: u runs from the road-side edge outward and is SIGNED by
-   which kerb the building stands on, so the same builder produces both hands
-   without a mirroring transform — a scale(-1,1) would flip the sign text too.
-   v runs downward from the roof line. Both are world units; the card's own
-   transform supplies the scale.
+/* ---- the six buildings ---------------------------------------------------
+   A shop faces the ROAD, not the far end of the street. That plane — the one
+   at X = ±KERB running from zf to zb — spans depth, so every mark on it is a
+   rib and gets its points rewritten; none of it can be a card. That is the
+   whole reason the shopfronts were on the end face to begin with, and it was
+   the wrong trade: it made each building read as a cube with a picture on the
+   front rather than as a building on a street.
 
-   Authored as a flat orthographic elevation on purpose. The interiors are
-   2:1 dimetric and the street is perspective; mixing the two projections in
-   one drawing is a visual bug, so the only place they meet is the moment at
-   the door, where the cross-fade covers the seam. */
-const facade = (key: string, side: -1 | 1, h: number) => {
+   The sign is the exception. Text lying on a foreshortened wall is close to
+   unreadable at a dwell, so it goes on a projecting bracket at right angles
+   to the shopfront, facing down the street — which is what a real shop does
+   with a sign for exactly the same reason. Being constant-Z it is a card, so
+   it stays upright and costs one transform write.
+
+   Detail is tiered by depth. Full articulation on the buildings you are
+   actually next to, bands only in the middle distance, bare plane far off —
+   past about 55 units a window is a fraction of a pixel and only costs. */
+
+/* ---- the end return ------------------------------------------------------
+   The face at zf, seen head-on while you approach. A blank party wall would
+   be more honest for a terrace, but you spend most of the drive looking at
+   it, so it wraps the shopfront round the corner the way a corner building
+   does. It carries no sign: that is the bracket's job. */
+const endFace = (side: -1 | 1, h: number, st: Style, w: number) => {
   const u = (n: number) => n * side;
-  const x0 = Math.min(0, u(NAMED_W));
-  const w = NAMED_W;
+  const x0 = Math.min(0, u(w));
   const ln = (a: number, b: number, c: number, d: number, sw = 0.07) =>
     `<line x1="${u(a).toFixed(2)}" y1="${b.toFixed(2)}" x2="${u(c).toFixed(2)}" y2="${d.toFixed(2)}" stroke-width="${sw}"/>`;
-  const bx = (a: number, b: number, ww: number, hh: number, sw = 0.06) =>
-    `<rect x="${Math.min(u(a), u(a + ww)).toFixed(2)}" y="${b.toFixed(2)}" width="${ww.toFixed(2)}" height="${hh.toFixed(2)}" stroke-width="${sw}" fill="none"/>`;
+  const bx = (a: number, b: number, ww: number, hh: number, cls = "", sw = 0.06) =>
+    `<rect${cls ? ` class="${cls}"` : ""} x="${Math.min(u(a), u(a + ww)).toFixed(2)}" y="${b.toFixed(2)}" width="${ww.toFixed(2)}" height="${hh.toFixed(2)}" stroke-width="${sw}"${cls ? "" : ' fill="none"'}/>`;
+  /* the diagonal flicks the references use to say "this is glass" */
+  const sheen = (a: number, b: number, ww: number, hh: number) =>
+    ln(a + ww * 0.16, b + hh * 0.82, a + ww * 0.52, b + hh * 0.14, 0.05) +
+    ln(a + ww * 0.42, b + hh * 0.86, a + ww * 0.74, b + hh * 0.28, 0.045);
 
-  /* An OPAQUE front. Without it the card is strokes only, the building is
-     see-through, and the whole street behind it draws through the shopfront —
-     the painter's order is correct but there is nothing to paint over. It
-     doubles as the hit area, so the click target costs one transform write
-     per frame rather than a rib rewrite, and is solid rather than hairlines. */
   let o = `<rect class="st-face" x="${x0.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${h.toFixed(2)}" stroke-width="0.1"/>`;
-  /* shopfront band, then the floors above it */
-  o += ln(0, h - 3.2, NAMED_W, h - 3.2, 0.08);
-  o += ln(0, h - 3.9, NAMED_W, h - 3.9, 0.05);
-  const floors = Math.max(1, Math.floor((h - 3.9) / 2.1));
-  for (let i = 1; i <= floors; i++) {
-    const v = h - 3.9 - i * ((h - 3.9) / (floors + 1));
-    for (let k = 0; k < 5; k++) o += bx(1.0 + k * 2.1, v - 0.62, 1.35, 1.24);
+  const top = h - SHOP_H - SIGN_H - 0.45;
+  o += ln(0, h - SHOP_H, w, h - SHOP_H, 0.08);
+  o += ln(0, h - SHOP_H - SIGN_H, w, h - SHOP_H - SIGN_H, 0.05);
+
+  if (st.win === "curtain") {
+    o += bx(0.5, 0.5, w - 1, top - 0.7, "st-glasscard");
+    const cw = (w - 1) / st.cols;
+    for (let k = 1; k < st.cols; k++) o += ln(0.5 + k * cw, 0.5, 0.5 + k * cw, top - 0.2, 0.06);
+    o += sheen(0.5, 0.5, w - 1, top - 0.7);
+  } else {
+    const fh = (top - 0.6) / st.floors;
+    for (let f = 0; f < st.floors; f++) {
+      const y = 0.55 + f * fh;
+      const cw = (w - 1.4) / st.cols;
+      const ww = st.win === "tall" ? cw * 0.42 : st.win === "ribbon" ? cw * 0.86 : cw * 0.6;
+      for (let k = 0; k < st.cols; k++) {
+        const a = 0.7 + k * cw + (cw - ww) / 2;
+        const hh = fh * (st.win === "tall" ? 0.78 : 0.6);
+        o += bx(a, y, ww, hh, "st-glasscard");
+        if (f === 0) o += sheen(a, y, ww, hh);
+      }
+      if (f > 0) o += ln(0, y - 0.22, w, y - 0.22, 0.045);
+    }
   }
-  /* the shopfront itself: door on the road side, then glazing bays */
-  o += bx(0.6, h - 2.9, 1.3, 2.9, 0.08);
-  o += ln(1.05, h - 1.75, 1.35, h - 1.6, 0.06);
-  for (let k = 0; k < 3; k++) o += bx(2.4 + k * 2.3, h - 2.7, 1.9, 2.3);
-  /* kerb step */
-  o += ln(0, h - 0.14, NAMED_W, h - 0.14, 0.05);
-  /* The sign: the mark and the key become the literal shop sign.
-     It must fit inside the identity band — X in [3.9, 7.2], so u <= 3.3.
-     solveF only guarantees THAT strip is on-frame at every aspect; anything
-     wider clips off the side of a portrait phone. */
-  o += bx(0.35, h - 3.82, 2.9, 0.62, 0.05);
-  o += `<svg x="${Math.min(u(0.55), u(1.15)).toFixed(2)}" y="${(h - 3.74).toFixed(2)}" width="0.46" height="0.46" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>`;
-  o += `<text x="${u(2.15).toFixed(2)}" y="${(h - 3.3).toFixed(2)}" text-anchor="middle" font-family="var(--font-mono)" font-size="0.52" letter-spacing="0.06" stroke="none" fill="currentColor">${key}</text>`;
+  /* the shopfront returning round the corner, with its own entrance */
+  const bays = Math.max(2, st.bays - 1);
+  for (let k = 0; k < bays; k++) {
+    const bw = (w - 1.2) / bays;
+    o += bx(0.6 + k * bw + 0.12, h - SHOP_H + 0.25, bw - 0.34, SHOP_H - 0.55, "st-glasscard");
+  }
+  o += bx(w - 1.75, h - SHOP_H + 0.1, 1.15, SHOP_H - 0.1, "", 0.08);
+  o += ln(w - 1.5, h - 1.5, w - 1.28, h - 1.36, 0.06);
+  if (st.awning) {
+    o += bx(0.5, h - SHOP_H - 0.28, w - 2.4, 0.26, "st-plate", 0.05);
+    for (let k = 1; k < 5; k++) o += ln(0.5 + ((w - 2.4) * k) / 5, h - SHOP_H - 0.28, 0.5 + ((w - 2.4) * k) / 5, h - SHOP_H - 0.02, 0.04);
+  }
+  /* what tops it — a flat parapet, a moulded cornice, or a stepped gable */
+  if (st.cap === "cornice") { o += ln(-0.12, 0.34, w + 0.12, 0.34, 0.1); o += ln(0, 0.62, w, 0.62, 0.05); }
+  else if (st.cap === "stepped") {
+    o += ln(0, 0.62, w, 0.62, 0.08);
+    o += ln(w * 0.22, 0.28, w * 0.78, 0.28, 0.08);
+    o += ln(w * 0.22, 0.28, w * 0.22, 0.62, 0.06);
+    o += ln(w * 0.78, 0.28, w * 0.78, 0.62, 0.06);
+  } else o += ln(0, 0.24, w, 0.24, 0.07);
+  o += ln(0, h - 0.14, w, h - 0.14, 0.05);
   return o;
 };
 
-/* An anonymous infill block: no name, no key, no copy, no data. It exists so
-   six buildings on a road read as a district rather than as a gate. */
-const fillerFacade = (h: number, side: -1 | 1) => {
+/** The projecting sign: a bracket at right angles to the shopfront, hanging
+    over the pavement and facing down the street, carrying the mark and the
+    key. Constant-Z, so it is a card and the type stays upright. */
+const signCard = (key: string, side: -1 | 1) => {
+  const u = (n: number) => -n * side; // out over the road
+  const W = 2.0;
+  const x0 = Math.min(u(0.18), u(0.18 + W));
+  return (
+    `<line x1="0" y1="0.36" x2="${u(0.2).toFixed(2)}" y2="0.36" stroke-width="0.07"/>` +
+    `<rect class="st-plate" x="${x0.toFixed(2)}" y="0" width="${W.toFixed(2)}" height="${SIGN_H.toFixed(2)}" stroke-width="0.06"/>` +
+    `<svg x="${Math.min(u(0.42), u(0.86)).toFixed(2)}" y="0.14" width="0.44" height="0.44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>` +
+    `<text x="${u(1.42).toFixed(2)}" y="0.53" text-anchor="middle" font-family="var(--font-mono)" font-size="0.5" letter-spacing="0.05" stroke="none" fill="currentColor">${key}</text>`
+  );
+};
+
+/** The static elevations have no perspective and so no bracket to hang a sign
+    from; there the mark and key sit flat on the fascia instead. */
+const elevationSign = (key: string, side: -1 | 1, h: number) => {
   const u = (n: number) => n * side;
-  const x0 = Math.min(0, u(FILLER_W));
-  let o = `<rect class="st-face" x="${x0.toFixed(2)}" y="0" width="${FILLER_W.toFixed(2)}" height="${h.toFixed(2)}" stroke-width="0.09"/>`;
-  const floors = Math.max(1, Math.floor(h / 2.0));
-  for (let i = 1; i <= floors; i++) {
-    const v = (h * i) / (floors + 1);
-    for (let k = 0; k < 3; k++) {
-      const a = 1.1 + k * 2.1;
-      o += `<rect x="${Math.min(u(a), u(a + 1.3)).toFixed(2)}" y="${(v - 0.5).toFixed(2)}" width="1.30" height="1.00" stroke-width="0.05" fill="none"/>`;
-    }
-  }
-  o += `<line x1="${u(0).toFixed(2)}" y1="${(h - 0.12).toFixed(2)}" x2="${u(FILLER_W).toFixed(2)}" y2="${(h - 0.12).toFixed(2)}" stroke-width="0.05"/>`;
-  return o;
+  const y = h - SHOP_H - SIGN_H;
+  return (
+    `<rect class="st-plate" x="${Math.min(u(0.5), u(3.4)).toFixed(2)}" y="${(y + 0.08).toFixed(2)}" width="2.90" height="${(SIGN_H - 0.16).toFixed(2)}" stroke-width="0.05"/>` +
+    `<svg x="${Math.min(u(0.72), u(1.18)).toFixed(2)}" y="${(y + 0.16).toFixed(2)}" width="0.44" height="0.44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>` +
+    `<text x="${u(2.4).toFixed(2)}" y="${(y + 0.55).toFixed(2)}" text-anchor="middle" font-family="var(--font-mono)" font-size="0.5" letter-spacing="0.05" stroke="none" fill="currentColor">${key}</text>`
+  );
 };
 
 /* ---- the baked first frame ---------------------------------------------- */
-const bakeRibs = (b: { side: -1 | 1; zf: number; zb: number; h: number }, w: number) => {
+const bakeRibs = (b: { side: -1 | 1; zf: number; zb: number; h: number }, w: number, st: Style, named: boolean) => {
   const R = ribsOf(b, w);
   const p = (k: "flank" | "base") => {
     const [ax, ay, bx2, by, zA, zB] = R[k];
     return ribPoints(ax, ay, bx2, by, zA, zB, BAKE_CZ, 0, BAKE_F);
   };
+  const xi = KERB * b.side;
+  const marks = flankRibs(b, st, named);
   return {
     flank: p("flank"),
     base: p("base"),
-    card: cardTransform(KERB * b.side, b.h, b.zf, BAKE_CZ, 0, BAKE_F),
+    /* every mark on the road-facing wall, baked at the reference camera */
+    marks: marks.map((m) => ({
+      c: m.c,
+      lod: m.lod,
+      d: ribPoints(xi, m.y0, xi, m.y1, m.z0, m.z1, BAKE_CZ, 0, BAKE_F),
+    })),
+    card: cardTransform(xi, b.h, b.zf, BAKE_CZ, 0, BAKE_F),
+    sign: cardTransform(xi, SHOP_H + SIGN_H, b.zf + 1.5, BAKE_CZ, 0, BAKE_F),
     haze: hazeOf(b.zf - BAKE_CZ),
   };
 };
 
-const bakedNamed = SLOTS.map((s) => ({ slot: s, ...bakeRibs(s, NAMED_W) }));
-const bakedFill = FILLERS.map((s, i) => ({ i, slot: s, ...bakeRibs(s, FILLER_W) }));
+const bakedNamed = SLOTS.map((s) => ({ slot: s, ...bakeRibs(s, NAMED_W, STYLES[s.key], true) }));
+const bakedFill = FILLERS.map((s, i) => ({ i, slot: s, ...bakeRibs(s, FILLER_W, FILLER_STYLES[i], false) }));
 
 /* The ground is invariant under a pure-Z dolly with panX = 0, so it is drawn
    once and never touched again — which also keeps it out of the damage rect
@@ -887,13 +940,25 @@ const span = String(clientTypes.length).padStart(2, "0");
                 ? bakedNamed.find((n) => n.slot.key === named)!
                 : bakedFill.find((n) => n.slot === b)!;
               const type = named ? clientTypes.find((c) => c.key === named) : null;
+              const st = named ? STYLES[named] : FILLER_STYLES[bakedFill.findIndex((f) => f.slot === b)];
               const inner = (
                 <>
-                  {rec.flank && <polygon points={rec.flank} class="st-flank" />}
                   {rec.base && <polygon points={rec.base} class="st-base" />}
+                  {rec.flank && <polygon points={rec.flank} class="st-flank" />}
+                  {/* the shopfront, facing the road */}
+                  <g class="st-marks">
+                    {rec.marks.map((m, mi) => (
+                      m.d
+                        ? <polygon points={m.d} class={m.c} data-m={mi} data-lod={m.lod} />
+                        : <polygon class={m.c} data-m={mi} data-lod={m.lod} style="visibility:hidden" />
+                    ))}
+                  </g>
                   {rec.card && (
                     <g class="st-card" data-card style={`transform:${rec.card}`}
-                       set:html={named ? facade(named, b.side, b.h) : fillerFacade(b.h, b.side)} />
+                       set:html={endFace(b.side, b.h, st, named ? NAMED_W : FILLER_W)} />
+                  )}
+                  {named && rec.sign && (
+                    <g class="st-sign" data-sign style={`transform:${rec.sign}`} set:html={signCard(named, b.side)} />
                   )}
                 </>
               );
@@ -911,7 +976,7 @@ const span = String(clientTypes.length).padStart(2, "0");
                   {inner}
                 </a>
               ) : (
-                <g class="st-b st-b--filler" data-fill data-zf={b.zf} data-side={b.side} data-h={b.h}
+                <g class="st-b st-b--filler" data-fill={bakedFill.findIndex((f) => f.slot === b)} data-zf={b.zf} data-side={b.side} data-h={b.h}
                    style={`opacity:${rec.haze}`} aria-hidden="true">
                   {inner}
                 </g>
@@ -935,7 +1000,7 @@ const span = String(clientTypes.length).padStart(2, "0");
                       viewBox={`${Math.min(0, NAMED_W * sl.side) - 0.4} -0.4 ${NAMED_W + 0.8} ${sl.h + 0.8}`}
                       role="img"
                       aria-label={`Shopfront elevation for ${type.name.toLowerCase()}.`}
-                      set:html={facade(sl.key, sl.side, sl.h)}
+                      set:html={endFace(sl.side, sl.h, STYLES[sl.key], NAMED_W) + elevationSign(sl.key, sl.side, sl.h)}
                     />
                     <span class="st__elevname">{type.name}</span>
                   </a>
@@ -1101,6 +1166,35 @@ const span = String(clientTypes.length).padStart(2, "0");
     stroke-width: 0.8;
     stroke-linejoin: round;
   }
+  /* ---- the shopfront, on the wall that faces the road ---------------------
+     These sit on the flank plane and are the reason a building reads as a
+     building rather than a cuboid. Glass is lighter than its wall, masonry
+     bands darker — the same rule the interiors follow. */
+  .st-glass   { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
+  .st-pane    { fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior)); }
+  .st-door    { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-doorlite{ fill: color-mix(in oklab, var(--interior-ink) 8%, var(--interior)); }
+  .st-signband{ fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
+  .st-awning  { fill: color-mix(in oklab, var(--interior-ink) 44%, var(--interior)); }
+  .st-course  { fill: color-mix(in oklab, var(--interior-ink) 38%, var(--interior)); }
+  .st-pier    { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-marks polygon {
+    stroke: color-mix(in oklab, var(--interior-ink) 52%, var(--interior));
+    stroke-width: 0.55;
+    stroke-linejoin: round;
+  }
+  /* the bracket sign, hanging out over the pavement */
+  .st-sign {
+    fill: none;
+    stroke: color-mix(in oklab, var(--interior-ink) 66%, var(--interior));
+    will-change: transform;
+  }
+  .st-sign :global(.st-plate) { fill: var(--interior); }
+  .st-sign text { fill: var(--interior-ink); stroke: none; }
+  .st-card :global(.st-glasscard) {
+    fill: color-mix(in oklab, var(--interior-ink) 5%, var(--interior));
+  }
+
   .st-card {
     fill: none;
     stroke: color-mix(in oklab, var(--interior-ink) 62%, var(--interior));
@@ -1447,7 +1541,10 @@ const span = String(clientTypes.length).padStart(2, "0");
     NEAR, VBH, VB_TOP, KERB, NAMED_W, FILLER_W, ribsOf, ribPoints,
     cardTransform, czOf, hazeOf, solveF, vbwOf, widthOf, MIN_TAP, ease,
     dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
+    STYLES, FILLER_STYLES, SHOP_H, SIGN_H, flankRibs,
   } from "../../lib/street.ts";
+  /* SHOP_H + SIGN_H = 3.62: the height the bracket hangs at, kept in step
+     with the frontmatter's own constants. */
 
   /* The <details> layer works with none of this: every category is a visible
      chip, opens natively, and reaches its interior. The camera is added on
@@ -1524,11 +1621,14 @@ const span = String(clientTypes.length).padStart(2, "0");
         el: el as SVGGraphicsElement,
         key, side, zf, zb, h,
         ribs: ribsOf({ side, zf, zb, h }, w),
+      marksGeom: flankRibs({ zf, zb, h }, key ? STYLES[key] : FILLER_STYLES[Number((el as HTMLElement).dataset.fill) || 0], Boolean(key)),
         poly: {
           flank: el.querySelector(".st-flank"),
           base: el.querySelector(".st-base"),
         },
+        marks: Array.from(el.querySelectorAll<SVGPolygonElement>("[data-m]")),
         card: el.querySelector(".st-card"),
+        sign: el.querySelector<SVGGElement>(".st-sign"),
         shown: true,
         live: true,
       };
@@ -1596,6 +1696,33 @@ const span = String(clientTypes.length).padStart(2, "0");
           setPts(s.poly[k], ribPoints(a[0], a[1], a[2], a[3], a[4], a[5], cz, panX, F));
         };
         rib("flank"); rib("base");
+
+        /* The shopfront. Detail is tiered by depth, and the tiers are tight:
+           full articulation costs ~25 rib rewrites per building, and letting
+           three buildings hold it at once took a throttled phone from 0.7ms a
+           frame to 8.5. At 22 units a window is already small; at 40 it is a
+           couple of pixels. The quality guard drops a tier again under load,
+           so a struggling device sheds ornament before it sheds frames. */
+        const near = quality >= 1 ? 14 : 22;
+        const mid = quality >= 1 ? 26 : 40;
+        const tier = d < near ? 2 : d < mid ? 1 : 0;
+        const xi = KERB * s.side;
+        for (let mi = 0; mi < s.marks.length; mi++) {
+          const g = s.marksGeom[mi];
+          if (!g || g.lod > tier) { s.marks[mi].style.visibility = "hidden"; continue; }
+          const pts = ribPoints(xi, g.y0, xi, g.y1, g.z0, g.z1, cz, panX, F);
+          if (pts === null) { s.marks[mi].style.visibility = "hidden"; continue; }
+          s.marks[mi].style.visibility = "";
+          s.marks[mi].setAttribute("points", pts);
+        }
+        if (s.sign) {
+          /* Beyond about 40 units the plate is a few pixels of grey with
+             illegible type in it — six of those down the street is litter,
+             not signage. */
+          const t2 = d < 34 ? cardTransform(xi, 3.62, s.zf + 1.5, cz, panX, F) : null;
+          if (t2) { s.sign.style.visibility = ""; s.sign.style.transform = t2; }
+          else s.sign.style.visibility = "hidden";
+        }
 
         /* going through the door: the shell of the target falls away so the
            opening is what fills the frame */

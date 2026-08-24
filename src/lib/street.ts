@@ -37,24 +37,32 @@ export const vbwOf = (w: number, h: number) => Math.round((VBH * w) / Math.max(1
 
 /* Focal length, derived — do not hand-tune without redoing both bounds.
 
-   At the dwell depth of 13 the tallest building (9.6) must clear the top edge:
-     (9.6 - EYE) * s <= 0.82 * 330   ->  s <= 34.0  ->  F <= 442
-   and the identity band X in [3.9, 7.2] must stay on-frame:
-     7.2 * s <= 0.96 * (vbw / 2)     ->  F <= 0.867 * vbw
+   Buildings are NOT required to fit vertically any more. A street where every
+   roofline is inside the frame is a model village; the references all run
+   their towers off the top, and that crop is most of what makes them read as
+   tall. What must stay on frame is the part carrying the meaning — shopfront,
+   sign band, and a floor above:
+     (7.6 - EYE) * s <= 0.82 * 330   ->  s <= 45.5   ->  F <= 546 at d = 12
+   and the identity band — the bracket sign, which hangs out over the road
+   between X = 1.3 and the kerb — must be laterally on frame:
+     3.5 * s <= 0.96 * (vbw / 2)     ->  F <= 1.645 * vbw
 
-   The vertical cap binds above vbw ~= 510; the horizontal cap binds on
-   portrait phones, which is exactly where a fixed F would push the shopfront
-   off the side of the frame. */
-export const solveF = (vbw: number) => Math.min(442, 0.867 * vbw);
+   The vertical cap binds on anything wider than about 330 viewBox units; the
+   lateral cap binds only on very narrow portrait frames. */
+export const solveF = (vbw: number) => Math.min(546, 1.645 * vbw);
 
 /* ---- the street ---------------------------------------------------------
    Right-handed metres. X lateral (right +), Y up (ground Y = 0), Z into the
    distance. Buildings stand on both kerbs; the camera drives down the middle. */
 
-export const ROAD_HALF = 3.2;
-export const KERB = 3.9;
-export const NAMED_W = 12;
-export const FILLER_W = 8;
+export const ROAD_HALF = 2.9;
+export const KERB = 3.5;
+/* How far a building reaches back from the kerb — the width of its END face.
+   Kept narrow on purpose: a block 12 across and 8 tall reads as a cuboid with
+   a picture on it. Narrow and tall reads as a building on a street, and it
+   puts the long shopfronted side where you actually look. */
+export const NAMED_W = 8;
+export const FILLER_W = 6;
 
 export type Side = -1 | 1;
 export type Slot = { key: string; side: Side; zf: number; zb: number; h: number };
@@ -62,12 +70,12 @@ export type Slot = { key: string; side: Side; zf: number; zb: number; h: number 
 /* Pairs are staggered by 4 units so a pair reads as a street rather than a
    gate. Heights are compositional and claim nothing about the businesses. */
 export const SLOTS: Slot[] = [
-  { key: "01", side: -1, zf: 26, zb: 40, h: 8.4 },
-  { key: "02", side: 1, zf: 30, zb: 44, h: 7.2 },
-  { key: "03", side: -1, zf: 52, zb: 66, h: 9.0 },
-  { key: "04", side: 1, zf: 56, zb: 70, h: 7.6 },
-  { key: "05", side: -1, zf: 78, zb: 92, h: 8.8 },
-  { key: "06", side: 1, zf: 82, zb: 96, h: 9.6 },
+  { key: "01", side: -1, zf: 26, zb: 42, h: 11.2 },
+  { key: "02", side: 1, zf: 30, zb: 46, h: 9.4 },
+  { key: "03", side: -1, zf: 52, zb: 68, h: 14.5 },
+  { key: "04", side: 1, zf: 56, zb: 72, h: 10.2 },
+  { key: "05", side: -1, zf: 78, zb: 94, h: 12.0 },
+  { key: "06", side: 1, zf: 82, zb: 98, h: 16.0 },
 ];
 
 /* Anonymous infill so six buildings on a road read as a district. They carry
@@ -82,10 +90,10 @@ export const SLOTS: Slot[] = [
    job: they carry the street past the last shopfront instead of stopping it
    dead at the vanishing point. */
 export const FILLERS: { side: Side; zf: number; zb: number; h: number }[] = [
-  { side: -1, zf: 100, zb: 108, h: 6.4 },
-  { side: 1, zf: 104, zb: 112, h: 5.6 },
-  { side: -1, zf: 116, zb: 124, h: 6.8 },
-  { side: 1, zf: 120, zb: 128, h: 5.2 },
+  { side: -1, zf: 102, zb: 114, h: 9.5 },
+  { side: 1, zf: 106, zb: 118, h: 13.0 },
+  { side: -1, zf: 122, zb: 134, h: 11.0 },
+  { side: 1, zf: 126, zb: 138, h: 8.0 },
 ];
 
 /** Draw order is a build-time constant: same-side Z extents are disjoint, and
@@ -254,6 +262,108 @@ export const paintHaze = (d: number) => {
     endless road. */
 export const dashZ = (i: number, cz: number) =>
   Math.floor((cz + NEAR) / DASH_PITCH) * DASH_PITCH + i * DASH_PITCH;
+
+export type Cap = "flat" | "cornice" | "stepped";
+export type Win = "grid" | "ribbon" | "tall" | "curtain";
+export type Style = { win: Win; floors: number; cols: number; bays: number; awning: boolean; cap: Cap };
+
+/* Variation is the point: six identical grids read as one building repeated. */
+export const STYLES: Record<string, Style> = {
+  "01": { win: "ribbon", floors: 2, cols: 4, bays: 4, awning: false, cap: "cornice" },
+  "02": { win: "grid", floors: 2, cols: 5, bays: 3, awning: true, cap: "cornice" },
+  "03": { win: "tall", floors: 3, cols: 5, bays: 3, awning: false, cap: "flat" },
+  "04": { win: "grid", floors: 2, cols: 4, bays: 4, awning: true, cap: "stepped" },
+  "05": { win: "grid", floors: 2, cols: 3, bays: 2, awning: true, cap: "cornice" },
+  "06": { win: "curtain", floors: 3, cols: 6, bays: 4, awning: false, cap: "flat" },
+};
+export const FILLER_STYLES: Style[] = [
+  { win: "grid", floors: 2, cols: 3, bays: 0, awning: false, cap: "cornice" },
+  { win: "tall", floors: 2, cols: 4, bays: 0, awning: false, cap: "flat" },
+  { win: "ribbon", floors: 2, cols: 3, bays: 0, awning: false, cap: "flat" },
+  { win: "grid", floors: 3, cols: 3, bays: 0, awning: false, cap: "stepped" },
+];
+
+export const SHOP_H = 2.9;
+export const SIGN_H = 0.72;
+
+/** One mark on the road-facing wall: a band of wall between two heights,
+    across a stretch of depth. `lod` is the depth tier it survives to. */
+export type FRib = { c: string; y0: number; y1: number; z0: number; z1: number; lod: 0 | 1 | 2 };
+
+export const flankRibs = (b: { zf: number; zb: number; h: number }, st: Style, named: boolean): FRib[] => {
+  const out: FRib[] = [];
+  const m = 0.35;
+  const z0 = b.zf + m;
+  const z1 = b.zb - m;
+  const span = z1 - z0;
+  const put = (c: string, y0: number, y1: number, za: number, zb2: number, lod: 0 | 1 | 2) =>
+    out.push({ c, y0, y1, z0: za, z1: zb2, lod });
+
+  if (named) {
+    /* the glazed ground floor, its bays, and the door */
+    put("st-glass", 0.18, SHOP_H, z0, z1, 0);
+    const bw = span / st.bays;
+    for (let k = 0; k < st.bays; k++) {
+      const a = z0 + k * bw + 0.16;
+      put("st-pane", 0.42, SHOP_H - 0.22, a, a + bw - 0.32, 1);
+    }
+    put("st-door", 0, 2.35, b.zf + 0.55, b.zf + 1.8, 1);
+    put("st-doorlite", 0.7, 2.1, b.zf + 0.72, b.zf + 1.63, 2);
+    put("st-signband", SHOP_H, SHOP_H + SIGN_H, b.zf, b.zb, 0);
+    if (st.awning) put("st-awning", SHOP_H - 0.34, SHOP_H - 0.06, z0 + 0.4, z1 - 0.4, 1);
+    put("st-course", SHOP_H + SIGN_H, SHOP_H + SIGN_H + 0.16, b.zf, b.zb, 0);
+  } else {
+    put("st-course", 0, 0.5, b.zf, b.zb, 0);
+  }
+
+  /* the floors above */
+  const top = b.h - (st.cap === "flat" ? 0.22 : 0.5);
+  const base = named ? SHOP_H + SIGN_H + 0.45 : 0.8;
+  const zone = top - base - 0.25;
+  if (zone > 0.6) {
+    if (st.win === "curtain") {
+      /* full-height glazing split by mullions — one plane, then the piers */
+      put("st-glass", base, top - 0.15, z0, z1, 0);
+      const cw = span / st.cols;
+      for (let k = 1; k < st.cols; k++) put("st-pier", base, top - 0.15, z0 + k * cw - 0.07, z0 + k * cw + 0.07, 1);
+      for (let f = 1; f < st.floors; f++) {
+        const y = base + (zone * f) / st.floors;
+        put("st-pier", y - 0.07, y + 0.07, z0, z1, 1);
+      }
+    } else {
+      const fh = zone / st.floors;
+      for (let f = 0; f < st.floors; f++) {
+        const y = base + f * fh;
+        if (st.win === "ribbon") {
+          put("st-glass", y + fh * 0.16, y + fh * 0.74, z0, z1, 1);
+          const cw = span / st.cols;
+          for (let k = 1; k < st.cols; k++) put("st-pier", y + fh * 0.16, y + fh * 0.74, z0 + k * cw - 0.06, z0 + k * cw + 0.06, 2);
+        } else {
+          const cw = span / st.cols;
+          const ww = st.win === "tall" ? cw * 0.42 : cw * 0.58;
+          const wy0 = y + fh * (st.win === "tall" ? 0.1 : 0.2);
+          const wy1 = y + fh * (st.win === "tall" ? 0.86 : 0.74);
+          for (let k = 0; k < st.cols; k++) {
+            const a = z0 + k * cw + (cw - ww) / 2;
+            put("st-glass", wy0, wy1, a, a + ww, 2);
+          }
+        }
+        if (f > 0) put("st-course", y - 0.09, y + 0.09, b.zf, b.zb, 2);
+      }
+    }
+  }
+
+  /* what tops it off */
+  if (st.cap === "cornice") {
+    put("st-course", b.h - 0.42, b.h - 0.18, b.zf - 0.1, b.zb + 0.1, 0);
+  } else if (st.cap === "stepped") {
+    put("st-course", b.h - 0.5, b.h - 0.24, b.zf, b.zb, 0);
+    put("st-course", b.h - 0.24, b.h, b.zf + span * 0.28, b.zb - span * 0.28, 1);
+  } else {
+    put("st-course", b.h - 0.2, b.h, b.zf, b.zb, 1);
+  }
+  return out;
+};
 
 /* ---- depth cues ---------------------------------------------------------- */
 
