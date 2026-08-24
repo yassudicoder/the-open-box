@@ -23,20 +23,30 @@
    ========================================================================== */
 import SectionHeader from "../SectionHeader.astro";
 import { clientTypes } from "../../data/services.ts";
+import {
+  EYE, VBH, VB_TOP, KERB, ROAD_HALF, NAMED_W, FILLER_W,
+  SLOTS, FILLERS, DRAW_ORDER, ribsOf, ribPoints, quadPoints, cardTransform,
+  czOf, hazeOf, solveF, vbwOf, sAt, sx, sy,
+} from "../../lib/street.ts";
 
 function icon(path: string) {
   return `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
 }
 
-/* one line-art mark per space — the district's only illustration budget */
-const ICONS: Record<string, string> = {
-  "01": icon('<path d="M16 8v16M8 16h16"/>'), // clinic — a plain cross
-  "02": icon('<path d="M9 13h13v3a6.5 6.5 0 0 1-6.5 6.5H15A6.5 6.5 0 0 1 9 16v-3Z"/><path d="M22 14h2.5a3 3 0 0 1 0 6H22"/><path d="M13 8c0-1.2.8-1.4.8-2.6M17 8c0-1.2.8-1.4.8-2.6"/>'), // cafe — cup + handle + steam
-  "03": icon('<circle cx="10" cy="9" r="2.6"/><circle cx="10" cy="23" r="2.6"/><path d="M12 10.8 24 22M24 10l-9 8.3M12 21.2l3-2.8"/>'), // salon — scissors
-  "04": icon('<rect x="9" y="12" width="8" height="14" rx="4"/><path d="M13 12V9a4 4 0 0 1 8 0v3"/><path d="M13 19h4"/>'), // pharmacy — capsule
-  "05": icon('<path d="M9 12h14l-1.3 13.2a2 2 0 0 1-2 1.8H12.3a2 2 0 0 1-2-1.8L9 12Z"/><path d="M12.5 12V9.5a3.5 3.5 0 0 1 7 0V12"/>'), // shop — bag
-  "06": icon('<rect x="6" y="8" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 21v4"/>'), // startup — screen
+/* one line-art mark per space — the district's only illustration budget.
+   The raw paths are kept separately because the street reuses them at a
+   different stroke weight, as the literal sign over each shopfront. */
+const ICON_PATHS: Record<string, string> = {
+  "01": '<path d="M16 8v16M8 16h16"/>', // clinic — a plain cross
+  "02": '<path d="M9 13h13v3a6.5 6.5 0 0 1-6.5 6.5H15A6.5 6.5 0 0 1 9 16v-3Z"/><path d="M22 14h2.5a3 3 0 0 1 0 6H22"/><path d="M13 8c0-1.2.8-1.4.8-2.6M17 8c0-1.2.8-1.4.8-2.6"/>', // cafe — cup + handle + steam
+  "03": '<circle cx="10" cy="9" r="2.6"/><circle cx="10" cy="23" r="2.6"/><path d="M12 10.8 24 22M24 10l-9 8.3M12 21.2l3-2.8"/>', // salon — scissors
+  "04": '<rect x="9" y="12" width="8" height="14" rx="4"/><path d="M13 12V9a4 4 0 0 1 8 0v3"/><path d="M13 19h4"/>', // pharmacy — capsule
+  "05": '<path d="M9 12h14l-1.3 13.2a2 2 0 0 1-2 1.8H12.3a2 2 0 0 1-2-1.8L9 12Z"/><path d="M12.5 12V9.5a3.5 3.5 0 0 1 7 0V12"/>', // shop — bag
+  "06": '<rect x="6" y="8" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 21v4"/>', // startup — screen
 };
+const ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(ICON_PATHS).map(([k, v]) => [k, icon(v)]),
+);
 
 /* ---------------------------------------------------------------------------
    ISOMETRIC PROJECTION — ported from the InteractiveMallSimulation prototype
@@ -71,32 +81,136 @@ const frontFace = (c: Cam, x: number, y: number, z: number, w: number, h: number
 const sideFace = (c: Cam, x: number, y: number, z: number, d: number, h: number) =>
   poly([iso(c, x, y, z), iso(c, x, y + d, z), iso(c, x, y + d, z + h), iso(c, x, y, z + h)]);
 
-/* Footprint: three across, two deep. Heights are compositional only — a
-   skyline needs variation to read as one — and claim nothing about the
-   businesses. Everything factual comes from clientTypes. */
-/* A roof projects (w + d) wide but only (w) of that sits over the facade, so
-   blocks need clear air between them or near roofs bury far facades. The
-   prototype's 3.6 spacing was tight enough that they collided; these are
-   spaced wider and kept lower. */
-const UNIT = { w: 3, d: 2.2 };
-const COL = 4.1;
-const ROW = [0.5, 4.3];
-/* Kept low on purpose: a tall near block's roof rises over the far row and
-   eats its click target. These heights keep every block's own roof clear. */
-const HEIGHTS = [2.5, 2.1, 2.8, 2.3, 2.6, 3.0];
-const PLINTH = 0.45;
+/* ---------------------------------------------------------------------------
+   THE STREET — one-point perspective, replacing the isometric city.
 
-const blocks = clientTypes.map((c, i) => ({
-  type: c,
-  i,
-  x: (i % 3) * COL,
-  y: i < 3 ? ROW[0] : ROW[1],
-  h: HEIGHTS[i % HEIGHTS.length],
-}));
+   The maths lives in src/lib/street.ts because the client script needs the
+   identical functions: this file bakes the first frame at build time, the
+   script drives every frame after it, and if the two ever disagree the
+   handover shows as a jump at exactly one aspect ratio.
 
-/* Painter's algorithm: in this projection depth grows with x + y, so drawing
-   in that order puts far blocks behind near ones. */
-const drawOrder = [...blocks].sort((a, b) => a.x + a.y - (b.x + b.y));
+   Two element forms and no others. Anything sharing one Z is a CARD — it
+   collapses to a uniform scale about the vanishing point, so it is authored
+   once here in local coordinates and moved with a single transform write.
+   Anything spanning depth is a RIB — a trapezoid converging on the vanishing
+   point, which is not affine and must have its points rewritten each frame.
+   Ribs are restricted to exactly two distinct Z values, which is what makes
+   the near-plane clip a simple interpolation.
+   ------------------------------------------------------------------------ */
+
+
+/* The baked frame is drawn for a reference 16:9-ish desktop band. It exists
+   so the JS path has no blank flash before the first update() and so a
+   crawler sees a composed street; the runtime immediately re-solves it for
+   the real frame. */
+const BAKE_W = 928;
+const BAKE_H = VBH;
+const BAKE_VBW = vbwOf(BAKE_W, 486);
+const BAKE_F = solveF(BAKE_VBW);
+const BAKE_CZ = czOf(0);
+
+/* ---- one facade elevation, authored flat --------------------------------
+   Local coordinates: u runs from the road-side edge outward and is SIGNED by
+   which kerb the building stands on, so the same builder produces both hands
+   without a mirroring transform — a scale(-1,1) would flip the sign text too.
+   v runs downward from the roof line. Both are world units; the card's own
+   transform supplies the scale.
+
+   Authored as a flat orthographic elevation on purpose. The interiors are
+   2:1 dimetric and the street is perspective; mixing the two projections in
+   one drawing is a visual bug, so the only place they meet is the moment at
+   the door, where the cross-fade covers the seam. */
+const facade = (key: string, side: -1 | 1, h: number) => {
+  const u = (n: number) => n * side;
+  const x0 = Math.min(0, u(NAMED_W));
+  const w = NAMED_W;
+  const ln = (a: number, b: number, c: number, d: number, sw = 0.07) =>
+    `<line x1="${u(a).toFixed(2)}" y1="${b.toFixed(2)}" x2="${u(c).toFixed(2)}" y2="${d.toFixed(2)}" stroke-width="${sw}"/>`;
+  const bx = (a: number, b: number, ww: number, hh: number, sw = 0.06) =>
+    `<rect x="${Math.min(u(a), u(a + ww)).toFixed(2)}" y="${b.toFixed(2)}" width="${ww.toFixed(2)}" height="${hh.toFixed(2)}" stroke-width="${sw}" fill="none"/>`;
+
+  /* An OPAQUE front. Without it the card is strokes only, the building is
+     see-through, and the whole street behind it draws through the shopfront —
+     the painter's order is correct but there is nothing to paint over. It
+     doubles as the hit area, so the click target costs one transform write
+     per frame rather than a rib rewrite, and is solid rather than hairlines. */
+  let o = `<rect class="st-face" x="${x0.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${h.toFixed(2)}" stroke-width="0.1"/>`;
+  /* shopfront band, then the floors above it */
+  o += ln(0, h - 3.2, NAMED_W, h - 3.2, 0.08);
+  o += ln(0, h - 3.9, NAMED_W, h - 3.9, 0.05);
+  const floors = Math.max(1, Math.floor((h - 3.9) / 2.1));
+  for (let i = 1; i <= floors; i++) {
+    const v = h - 3.9 - i * ((h - 3.9) / (floors + 1));
+    for (let k = 0; k < 5; k++) o += bx(1.0 + k * 2.1, v - 0.62, 1.35, 1.24);
+  }
+  /* the shopfront itself: door on the road side, then glazing bays */
+  o += bx(0.6, h - 2.9, 1.3, 2.9, 0.08);
+  o += ln(1.05, h - 1.75, 1.35, h - 1.6, 0.06);
+  for (let k = 0; k < 3; k++) o += bx(2.4 + k * 2.3, h - 2.7, 1.9, 2.3);
+  /* kerb step */
+  o += ln(0, h - 0.14, NAMED_W, h - 0.14, 0.05);
+  /* The sign: the mark and the key become the literal shop sign.
+     It must fit inside the identity band — X in [3.9, 7.2], so u <= 3.3.
+     solveF only guarantees THAT strip is on-frame at every aspect; anything
+     wider clips off the side of a portrait phone. */
+  o += bx(0.35, h - 3.82, 2.9, 0.62, 0.05);
+  o += `<svg x="${Math.min(u(0.55), u(1.15)).toFixed(2)}" y="${(h - 3.74).toFixed(2)}" width="0.46" height="0.46" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>`;
+  o += `<text x="${u(2.15).toFixed(2)}" y="${(h - 3.3).toFixed(2)}" text-anchor="middle" font-family="var(--font-mono)" font-size="0.52" letter-spacing="0.06" stroke="none" fill="currentColor">${key}</text>`;
+  return o;
+};
+
+/* An anonymous infill block: no name, no key, no copy, no data. It exists so
+   six buildings on a road read as a district rather than as a gate. */
+const fillerFacade = (h: number, side: -1 | 1) => {
+  const u = (n: number) => n * side;
+  const x0 = Math.min(0, u(FILLER_W));
+  let o = `<rect class="st-face" x="${x0.toFixed(2)}" y="0" width="${FILLER_W.toFixed(2)}" height="${h.toFixed(2)}" stroke-width="0.09"/>`;
+  const floors = Math.max(1, Math.floor(h / 2.0));
+  for (let i = 1; i <= floors; i++) {
+    const v = (h * i) / (floors + 1);
+    for (let k = 0; k < 3; k++) {
+      const a = 1.1 + k * 2.1;
+      o += `<rect x="${Math.min(u(a), u(a + 1.3)).toFixed(2)}" y="${(v - 0.5).toFixed(2)}" width="1.30" height="1.00" stroke-width="0.05" fill="none"/>`;
+    }
+  }
+  o += `<line x1="${u(0).toFixed(2)}" y1="${(h - 0.12).toFixed(2)}" x2="${u(FILLER_W).toFixed(2)}" y2="${(h - 0.12).toFixed(2)}" stroke-width="0.05"/>`;
+  return o;
+};
+
+/* ---- the baked first frame ---------------------------------------------- */
+const bakeRibs = (b: { side: -1 | 1; zf: number; zb: number; h: number }, w: number) => {
+  const R = ribsOf(b, w);
+  const p = (k: "flank" | "base") => {
+    const [ax, ay, bx2, by, zA, zB] = R[k];
+    return ribPoints(ax, ay, bx2, by, zA, zB, BAKE_CZ, 0, BAKE_F);
+  };
+  return {
+    flank: p("flank"),
+    base: p("base"),
+    card: cardTransform(KERB * b.side, b.h, b.zf, BAKE_CZ, 0, BAKE_F),
+    haze: hazeOf(b.zf - BAKE_CZ),
+  };
+};
+
+const bakedNamed = SLOTS.map((s) => ({ slot: s, ...bakeRibs(s, NAMED_W) }));
+const bakedFill = FILLERS.map((s, i) => ({ i, slot: s, ...bakeRibs(s, FILLER_W) }));
+
+/* The ground is invariant under a pure-Z dolly with panX = 0, so it is drawn
+   once and never touched again — which also keeps it out of the damage rect
+   on every animated frame. */
+const GROUND_Y = (VBH + VB_TOP) * 0.78;
+const KERB_L = `${(-BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`;
+const KERB_R = `${(BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`;
+
+/* 16 cross-rungs recycled modulo one spacing: receding rungs are a technical
+   drawing, a dashed centre line is a highway. */
+const RUNG_N = 16;
+const RUNG_SPACING = 26 / RUNG_N;
+const bakedRungs = Array.from({ length: RUNG_N }, (_, i) => {
+  const z = BAKE_CZ + 2 + i * RUNG_SPACING;
+  const s = sAt(z, BAKE_CZ, BAKE_F);
+  return { i, t: `translate(0px,${sy(s, 0).toFixed(1)}px) scale(${s.toFixed(4)})` };
+});
 
 /* ---------------------------------------------------------------------------
    THE INTERIORS — ported from the prototype's six room components.
@@ -706,85 +820,142 @@ const toneVars = [...TONES]
 const span = String(clientTypes.length).padStart(2, "0");
 ---
 
-<section class="section" id="who" aria-labelledby="who-h">
+<section class="section" id="who" aria-labelledby="who-h" style={toneVars}>
   <div class="wrap">
     <SectionHeader
       index="01"
       glyph="⌀"
       title="Who it's for"
       sublabel="ORDER TYPES"
-      kicker={`TYPES / 01–${span} · CLICK A SPACE TO STEP INSIDE`}
+      kicker={`TYPES / 01–${span} · DRIVE THE STREET, OR PICK ONE BELOW`}
       id="who-h"
     />
 
-    <div class="dist" data-district style={toneVars}>
-      <div class="dist__bar mono">
-        <span>THE OPEN BOX — DISTRICT 01</span>
-        <span class="dist__code" data-status>{span} SPACES · TAP ONE TO ENTER</span>
-      </div>
+    {/* The track is only tall when the street can actually run — the height
+        is added inside the same query that turns the camera on, so the page
+        never reserves scroll for a mechanism that will not start. */}
+    <div class="st__track" data-track>
+      <div class="st__frame" data-frame>
+        <div class="st__bar mono">
+          <span>THE OPEN BOX — DISTRICT 01</span>
+          <span class="st__code" data-status>{span} SPACES · PICK ONE TO STEP INSIDE</span>
+        </div>
 
-      <div class="dist__stage" data-stage>
-      {/* THE BUILDING — static isometric SVG, drawn at build time.
-          NOT aria-hidden: it contains real focusable links, and hiding a
-          container while leaving its links focusable is a keyboard trap
-          (axe: aria-hidden-focus). Each block is named by its <title>, and
-          the directory below is the same six spaces reached another way.
-          Each block is a real <a> so it is focusable and keyboard-operable;
-          the prototype used <g onClick> and was mouse-only. Without
-          JavaScript the anchor still jumps to that space's row below. */}
-      <div class="iso" data-city>
+        {/* Ends the drive; never skips the section. An exit that removes the
+            answer is worse than the scroll it saves, so this lands on the
+            last pair with the directory still in frame. */}
+        <button class="st__skip mono" type="button" data-skip>
+          END THE DRIVE <span aria-hidden="true">▸</span>
+        </button>
+
+        {/* THE STREET. Not aria-hidden: it holds real focusable links, and
+            hiding a container while leaving its links focusable is a keyboard
+            trap. The directory below is the same six spaces reached another
+            way, and is what a screen reader is meant to use. */}
         <svg
-          class="iso__svg"
-          viewBox="-196 -118 510 360"
+          class="st__svg"
+          data-svg
+          viewBox={`${(-BAKE_VBW / 2).toFixed(0)} ${VB_TOP} ${BAKE_VBW} ${VBH}`}
+          preserveAspectRatio="xMidYMid meet"
           role="group"
-          aria-label="District map. The same six spaces are listed below."
+          aria-label="District street. The same six spaces are listed below."
         >
-          {/* plinth */}
-          <polygon points={sideFace(CAM, COL * 2 + UNIT.w + 0.5, -0.5, 0, ROW[1] + UNIT.d + 1, PLINTH)} class="iso-plinth-s" />
-          <polygon points={frontFace(CAM, -0.5, ROW[1] + UNIT.d + 0.5, 0, COL * 2 + UNIT.w + 1, PLINTH)} class="iso-plinth-f" />
-          <polygon points={topFace(CAM, -0.5, -0.5, PLINTH, COL * 2 + UNIT.w + 1, ROW[1] + UNIT.d + 1)} class="iso-plinth-t" />
+          {/* the ground: invariant under a pure-Z dolly, so it is drawn once
+              and never enters the damage rect on an animated frame */}
+          <g class="st-ground">
+            <polygon points={`${(-BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} ${(BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`} class="st-road" />
+            <line x1={0} y1={0} x2={(-BAKE_VBW / 2).toFixed(0)} y2={GROUND_Y.toFixed(0)} class="st-kerb" />
+            <line x1={0} y1={0} x2={(BAKE_VBW / 2).toFixed(0)} y2={GROUND_Y.toFixed(0)} class="st-kerb" />
+            <line x1={(-BAKE_VBW / 2).toFixed(0)} y1={0} x2={(BAKE_VBW / 2).toFixed(0)} y2={0} class="st-horizon" />
+            <circle cx={0} cy={0} r={2.5} class="st-vp" />
+          </g>
 
+          {/* recycled cross-rungs — receding rungs read as a technical
+              drawing where a dashed centre line would read as a highway */}
+          <g class="st-rungs" data-rungs>
+            {bakedRungs.map((r) => (
+              <g data-rung={r.i} style={`transform:${r.t}`}>
+                <line x1={-ROAD_HALF} y1={0} x2={ROAD_HALF} y2={0} />
+              </g>
+            ))}
+          </g>
+
+          {/* far to near — the order is a build-time constant because
+              same-side Z extents are disjoint and panX is 0 while driving */}
           {
-            drawOrder.map((b) => (
-              <a href={`#space-${b.type.key}`} class="iso__block" data-iso={b.type.key}>
-                <title>{b.type.name}</title>
-                <polygon points={sideFace(CAM, b.x + UNIT.w, b.y, PLINTH, UNIT.d, b.h)} class="iso-side" />
-                <polygon points={frontFace(CAM, b.x, b.y + UNIT.d, PLINTH, UNIT.w, b.h)} class="iso-front" />
-                <polygon points={topFace(CAM, b.x, b.y, PLINTH + b.h, UNIT.w, UNIT.d)} class="iso-top" />
-
-                {/* lit windows — brighter than the wall they sit in */}
-                {[0.75, 1.75, 2.75].map((wz) =>
-                  wz + 0.5 < b.h
-                    ? [0.35, 1.3, 2.2].map((wx) => (
-                        <polygon
-                          points={frontFace(CAM, b.x + wx, b.y + UNIT.d, PLINTH + wz, 0.45, 0.4)}
-                          class="iso-win"
-                        />
-                      ))
-                    : null,
-                )}
-
-                {/* roof outline picks the block out of the skyline */}
-                <polygon points={topFace(CAM, b.x, b.y, PLINTH + b.h, UNIT.w, UNIT.d)} class="iso-cap" />
-
-                <text
-                  x={iso(CAM, b.x + UNIT.w / 2 - UNIT.d / 4, b.y + UNIT.d / 4, PLINTH + b.h + 0.42)[0]}
-                  y={iso(CAM, b.x + UNIT.w / 2 - UNIT.d / 4, b.y + UNIT.d / 4, PLINTH + b.h + 0.42)[1]}
-                  class="iso-code"
+            DRAW_ORDER.map((b) => {
+              const named = "key" in b ? (b as any).key as string : null;
+              const rec = named
+                ? bakedNamed.find((n) => n.slot.key === named)!
+                : bakedFill.find((n) => n.slot === b)!;
+              const type = named ? clientTypes.find((c) => c.key === named) : null;
+              const inner = (
+                <>
+                  {rec.flank && <polygon points={rec.flank} class="st-flank" />}
+                  {rec.base && <polygon points={rec.base} class="st-base" />}
+                  {rec.card && (
+                    <g class="st-card" data-card style={`transform:${rec.card}`}
+                       set:html={named ? facade(named, b.side, b.h) : fillerFacade(b.h, b.side)} />
+                  )}
+                </>
+              );
+              return named ? (
+                <a
+                  href={`#space-${named}`}
+                  class="st-b"
+                  data-b={named}
+                  data-zf={b.zf}
+                  data-side={b.side}
+                  data-h={b.h}
+                  style={`opacity:${rec.haze}`}
                 >
-                  {b.type.key}
-                </text>
-              </a>
-            ))
+                  <title>{type?.name}</title>
+                  {inner}
+                </a>
+              ) : (
+                <g class="st-b st-b--filler" data-fill data-zf={b.zf} data-side={b.side} data-h={b.h}
+                   style={`opacity:${rec.haze}`} aria-hidden="true">
+                  {inner}
+                </g>
+              );
+            })
           }
         </svg>
-      </div>
 
-      <div class="dist__grid" data-grid>
+        {/* THE STATIC PRESENTATION — no JavaScript, reduced motion, or a
+            browser that cannot run the camera. Same <symbol>-free facade
+            artwork, drawn flat, so nothing here is duplicated content and
+            there is no perspective viewBox to mis-fit at any width. */}
+        <ul class="st__strip">
+          {
+            SLOTS.map((sl) => {
+              const type = clientTypes.find((c) => c.key === sl.key)!;
+              return (
+                <li>
+                  <a href={`#space-${sl.key}`} class="st__elev">
+                    <svg
+                      viewBox={`${Math.min(0, NAMED_W * sl.side) - 0.4} -0.4 ${NAMED_W + 0.8} ${sl.h + 0.8}`}
+                      role="img"
+                      aria-label={`Shopfront elevation for ${type.name.toLowerCase()}.`}
+                      set:html={facade(sl.key, sl.side, sl.h)}
+                    />
+                    <span class="st__elevname">{type.name}</span>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ul>
+
+        {/* The directory. These summaries are visible in EVERY mode — that is
+            what makes a scroll-gated street defensible, because all six
+            categories are reachable at scroll position zero. */}
+        <div class="st__index" data-index>
+          <div class="st__chips">
         {
           clientTypes.map((c, i) => (
-            <details class="dist__space" data-space id={`space-${c.key}`} style={`--i:${i}`}>
-              <summary class="dist__block">
+            <details class="st__space" data-space id={`space-${c.key}`} style={`--i:${i}`}>
+              <summary class="st__chip">
                 <span class="dist__icon" aria-hidden="true" set:html={ICONS[c.key]} />
                 <span class="dist__n mono">{c.key}</span>
                 <span class="dist__name">{c.name}</span>
@@ -825,7 +996,8 @@ const span = String(clientTypes.length).padStart(2, "0");
             </details>
           ))
         }
-      </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -838,26 +1010,58 @@ const span = String(clientTypes.length).padStart(2, "0");
 </section>
 
 <style>
-  /* ---- the plate ----
-     Everything inside the district — the tone scale on the rooms, the block
-     faces, the slip's rules — is written against --interior / --interior-ink,
-     so which way round the plate runs is decided here and nowhere else.
-     It used to run inverted, like the inside of the hero box. It doesn't now:
-     a black panel dropped into a white page fought the rest of the section,
-     and the drawings read better as ink on paper anyway. Redefining the pair
-     locally re-points all of it at the page's own palette; every tonal step
-     keeps its relative weight and simply lands the other way up. */
-  .dist {
+  /* The band is self-framed by its own border, so it does not need a text
+     section's breathing room above and below. Trimming it here buys back
+     about 110px of the scroll the drive costs, without touching any other
+     section's rhythm. */
+  #who.section {
+    padding-block: clamp(2rem, 4vw, 3.5rem);
+    /* The district's palette is decided HERE and nowhere else. It must sit on
+       the same element that carries the baked --tNN tone scale (the inline
+       style attribute on this section), because those values are written in
+       terms of --interior / --interior-ink and resolve where they are
+       declared. Put this pair on a descendant instead and the tones quietly
+       fall back to the global inverted pair — the rooms come back black. */
     --interior: var(--paper);
     --interior-ink: var(--ink);
     --interior-line: var(--line-2);
+  }
+
+  /* ---- the plate ----------------------------------------------------------
+     Everything inside the district is written against --interior /
+     --interior-ink, so which way round it runs is decided in ONE place. The
+     pair is re-pointed at the page's own palette on the section, not on a
+     wrapper: the frame needs to be sticky, and an overflow:hidden ANCESTOR
+     captures a sticky descendant's scrollport and silently kills the pin.
+     (Overflow on the sticky element itself is fine — only ancestors clip.) */
+  /* The masthead is fixed, so every anchor target in this section needs to
+     clear it or the jump lands under the bar. */
+  #who,
+  .st__space { scroll-margin-top: 70px; }
+
+  .st__track {
+    --band: clamp(25rem, 54svh, 34rem);
+    /* svh, never vh or dvh: a collapsing mobile URL bar must not resize the
+       pinned frame halfway through the drive. */
+    --run: clamp(520px, 86svh, 860px);
+    position: relative;
+  }
+  @media (max-width: 760px), (pointer: coarse) {
+    .st__track { --run: 50svh; }
+  }
+
+  .st__frame {
+    position: relative;
     background: var(--interior);
     color: var(--interior-ink);
     border: var(--hair-strong) solid var(--interior-ink);
     border-radius: 3px;
-    overflow: hidden;
+    overflow: clip;
+    min-height: var(--band);
+    display: flex;
+    flex-direction: column;
   }
-  .dist__bar {
+  .st__bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -868,172 +1072,217 @@ const span = String(clientTypes.length).padStart(2, "0");
     letter-spacing: 0.14em;
     text-transform: uppercase;
     opacity: 0.85;
+    flex: none;
   }
-  .dist__code {
-    transition: opacity 0.15s var(--ease);
+  .st__code { transition: opacity 0.15s var(--ease); }
+
+  /* ---- the street ---------------------------------------------------------
+     Hidden by default. It is switched ON below, inside the same query that
+     gives the track its height, so a browser that cannot run the camera never
+     reserves scroll for it. */
+  .st__svg { display: none; }
+  .st__skip { display: none; }
+
+  .st-road { fill: color-mix(in oklab, var(--interior-ink) 4%, var(--interior)); }
+  .st-kerb { stroke: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); stroke-width: 1.1; }
+  .st-horizon { stroke: color-mix(in oklab, var(--interior-ink) 18%, var(--interior)); stroke-width: 0.7; }
+  .st-vp { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-rungs line { stroke: color-mix(in oklab, var(--interior-ink) 22%, var(--interior)); stroke-width: 0.07; }
+  .st-rungs g { will-change: transform; }
+
+  /* Faces carry tone; the card carries the line art. Strokes are NOT
+     non-scaling: letting them thin with distance is the depth cue, and it is
+     the one thing a CSS-3D plane could not have done. */
+  .st-flank { fill: color-mix(in oklab, var(--interior-ink) 17%, var(--interior)); }
+  .st-base  { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-flank, .st-base {
+    stroke: color-mix(in oklab, var(--interior-ink) 46%, var(--interior));
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+  }
+  .st-card {
+    fill: none;
+    stroke: color-mix(in oklab, var(--interior-ink) 62%, var(--interior));
+    will-change: transform;
+  }
+  .st-card text { fill: var(--interior-ink); stroke: none; }
+  /* the opaque front of the building — and the click target */
+  .st-card :global(.st-face) {
+    fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior));
   }
 
-  /* ---- the isometric building ----
-     Faces are all one ink at different strengths, so the whole scene tracks
-     the plate and the theme: no second palette, no per-block hue. */
-  .iso {
-    padding: clamp(0.5rem, 2vw, 1.2rem) clamp(0.5rem, 2vw, 1rem) 0;
+  .st-b { cursor: pointer; }
+  .st-b--filler { pointer-events: none; }
+  .st-b:hover .st-card,
+  .st-b:focus-visible .st-card { stroke: var(--interior-ink); }
+  .st-b:hover .st-flank,
+  .st-b:focus-visible .st-flank { fill: color-mix(in oklab, var(--interior-ink) 26%, var(--interior)); }
+  .st-b.is-active .st-card { stroke: var(--interior-ink); }
+
+  .st__skip {
+    position: absolute;
+    right: 0.7rem;
+    top: 2.4rem;
+    z-index: 4;
+    background: var(--interior);
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    padding: 0.42em 0.7em;
+    transition: background 0.15s var(--ease);
   }
-  .iso__svg {
+  .st__skip:hover,
+  .st__skip:focus-visible { background: var(--interior-line); }
+
+  /* ---- the static presentation -------------------------------------------
+     What ships with no JavaScript, under reduced motion, and anywhere the
+     camera cannot run. The same facade artwork, drawn flat — so it is not
+     duplicated content, and there is no perspective viewBox to mis-fit at
+     any width. */
+  .st__strip {
+    list-style: none;
+    margin: 0;
+    padding: clamp(0.7rem, 2vw, 1.1rem);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(0.6rem, 1.6vw, 1rem);
+  }
+  @media (min-width: 560px) { .st__strip { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .st__strip { grid-template-columns: repeat(3, 1fr); } }
+  .st__elev {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .st__elev:hover { background: color-mix(in oklab, var(--interior-ink) 5%, var(--interior)); }
+  .st__elev svg {
     display: block;
     width: 100%;
-    /* Width cap plus a height cap: height:auto alone would let a wide plate
-       scale the model straight out of the stage. Whichever binds first wins
-       and the aspect holds either way. */
-    max-width: 52rem;
-    max-height: 100%;
     height: auto;
-    margin-inline: auto;
-    color: var(--interior-ink);
-    overflow: visible;
-  }
-  /* Faces must be OPAQUE. The prototype relied on the painter's algorithm —
-     near blocks physically covering far ones — and semi-transparent fills
-     defeat it: every roof shows through every other block and the skyline
-     reads as sheets of glass. color-mix keeps them opaque while still
-     resolving against the plate, so the scene inverts without a palette. */
-  .iso-plinth-t { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
-  .iso-plinth-f { fill: color-mix(in oklab, var(--interior-ink) 14%, var(--interior)); }
-  .iso-plinth-s { fill: color-mix(in oklab, var(--interior-ink) 20%, var(--interior)); }
-
-  .iso__block { cursor: pointer; }
-  /* Every face also carries a hairline edge. Tonal separation alone is not
-     enough at these strengths — without the edges the roof reads as a plane
-     floating clear of a facade that has dissolved into the ground. */
-  .iso-top,
-  .iso-front,
-  .iso-side {
-    stroke: color-mix(in oklab, var(--interior-ink) 30%, var(--interior));
-    stroke-width: 0.7;
-    transition: fill 0.18s var(--ease), stroke 0.18s var(--ease);
-  }
-  /* Same relighting as the room solids: on paper the roof is the lightest
-     face of a block and the shaded side the darkest. */
-  .iso-top   { fill: color-mix(in oklab, var(--interior-ink) 11%, var(--interior)); }
-  .iso-front { fill: color-mix(in oklab, var(--interior-ink) 20%, var(--interior)); }
-  .iso-side  { fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
-  .iso-win   { fill: color-mix(in oklab, var(--interior-ink) 50%, var(--interior)); transition: fill 0.18s var(--ease); }
-  .iso-cap {
     fill: none;
-    stroke: currentColor;
-    stroke-opacity: 0.42;
-    stroke-width: 0.9;
-    transition: stroke-opacity 0.18s var(--ease);
+    stroke: color-mix(in oklab, var(--interior-ink) 60%, var(--interior));
   }
-  .iso-code {
-    font-family: var(--font-mono);
-    font-size: 7px;
-    letter-spacing: 0.14em;
-    text-anchor: middle;
-    fill: currentColor;
-    fill-opacity: 0.7;
-    transition: fill-opacity 0.18s var(--ease);
-  }
+  .st__elev svg text { fill: var(--interior-ink); stroke: none; }
+  .st__elevname { font-size: 0.86rem; font-weight: 600; letter-spacing: -0.01em; }
 
-  .iso__block:hover .iso-top,
-  .iso__block:hover .iso-front,
-  .iso__block:hover .iso-side,
-  .iso__block:focus-visible .iso-top,
-  .iso__block:focus-visible .iso-front,
-  .iso__block:focus-visible .iso-side,
-  .iso__block.is-active .iso-top,
-  .iso__block.is-active .iso-front,
-  .iso__block.is-active .iso-side { stroke: var(--interior-ink); }
-  .iso__block:hover .iso-top,
-  .iso__block:focus-visible .iso-top,
-  .iso__block.is-active .iso-top { fill: color-mix(in oklab, var(--interior-ink) 21%, var(--interior)); }
-  .iso__block:hover .iso-front,
-  .iso__block:focus-visible .iso-front,
-  .iso__block.is-active .iso-front { fill: color-mix(in oklab, var(--interior-ink) 33%, var(--interior)); }
-  .iso__block:hover .iso-side,
-  .iso__block:focus-visible .iso-side,
-  .iso__block.is-active .iso-side { fill: color-mix(in oklab, var(--interior-ink) 55%, var(--interior)); }
-  .iso__block:hover .iso-win,
-  .iso__block:focus-visible .iso-win,
-  .iso__block.is-active .iso-win { fill: color-mix(in oklab, var(--interior-ink) 72%, var(--interior)); }
-  .iso__block:hover .iso-cap,
-  .iso__block:focus-visible .iso-cap { stroke-opacity: 1; }
-  .iso__block:hover .iso-code,
-  .iso__block:focus-visible .iso-code { fill-opacity: 1; }
-  .iso__block:focus-visible { outline: none; }
-
-  /* the block whose space is open stays lit — the building is a live map */
-  .iso__block.is-active .iso-cap { stroke-opacity: 1; }
-  .iso__block.is-active .iso-code { fill-opacity: 1; }
-
-  /* ---- THE STAGE ----
-     City and interior occupy the SAME box and cross-fade, so opening a space
-     never changes the page height. All of this is scoped to html.js: without
-     JavaScript the stage is not a stage, it is an ordinary disclosure list
-     that flows down the page as normal. */
-  .dist__grid {
+  /* ---- the directory ------------------------------------------------------
+     These summaries are visible in EVERY mode. They used to be display:none
+     whenever JavaScript ran, which dropped six real sentences out of the
+     accessibility tree; never re-add that rule. The strip is also what makes
+     a scroll-gated street defensible, because every category is reachable at
+     scroll position zero. */
+  .st__index { margin-top: auto; }
+  .st__chips {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    width: 100%;
+    padding: clamp(0.6rem, 2vw, 0.9rem);
     border-top: var(--hair) solid var(--interior-line);
   }
-
-  :global(html.js) .dist__stage {
-    position: relative;
-    height: clamp(25rem, 46vw, 34rem);
+  .st__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    list-style: none;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.4em 0.62em;
+    font-size: 0.76rem;
+    line-height: 1.1;
+    transition: background 0.15s var(--ease);
   }
-  :global(html.js) .iso {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-items: center;
-    padding: clamp(0.5rem, 2vw, 1rem);
-    transition:
-      opacity 0.34s var(--ease),
-      transform 0.34s var(--ease);
-  }
-  :global(html.js) .dist__grid {
-    position: absolute;
-    inset: 0;
-    border-top: 0;
-    /* This layer covers the city, so it must be click-through: only the open
-       space takes pointer events back. Without this the whole building is
-       unclickable — the container swallows every click. */
-    pointer-events: none;
-  }
-  :global(html.js) .dist__space {
-    position: absolute;
-    inset: 0;
-    border-bottom: 0;
-    opacity: 0;
-    transform: scale(1.03);
-    pointer-events: none;
-    transition:
-      opacity 0.34s var(--ease),
-      transform 0.34s var(--ease);
-  }
-  :global(html.js) .dist__space[open] {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-  /* the building steps back as the room comes forward */
-  :global(html.js) .dist__stage[data-open] .iso {
-    opacity: 0;
-    transform: scale(0.96);
-    pointer-events: none;
-  }
-  /* with JS the building blocks are the control, so the row is not needed —
-     removed from layout AND from the tab order, not just hidden */
-  :global(html.js) summary.dist__block {
-    display: none;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    :global(html.js) .iso,
-    :global(html.js) .dist__space {
-      transition-duration: 0.01ms;
-      transform: none;
+  /* On a phone the six chips wrapped to five rows and took nearly half the
+     frame. The names stay — they are the whole accessibility argument — but
+     the mark goes and the type tightens, which fits them in two. */
+  @media (max-width: 620px) {
+    .st__chips { gap: 0.3rem; padding: 0.5rem 0.55rem; }
+    .st__chip {
+      gap: 0.3rem;
+      padding: 0.34em 0.46em;
+      font-size: 0.66rem;
     }
+    .st__chip .dist__icon { display: none; }
+  }
+  .st__chip::-webkit-details-marker { display: none; }
+  .st__chip:hover { background: color-mix(in oklab, var(--interior-ink) 7%, var(--interior)); }
+  .st__space[open] > .st__chip { background: var(--interior-ink); color: var(--interior); }
+  .dist__icon { display: block; width: 1.05em; height: 1.05em; flex: none; }
+  .dist__icon :global(svg) { display: block; width: 100%; height: 100%; }
+  .dist__n { font-size: 0.62em; letter-spacing: 0.12em; opacity: 0.7; }
+  .dist__name { font-weight: 600; letter-spacing: -0.01em; }
+
+  /* ---- the drive ----------------------------------------------------------
+     Positive gating: the tall track, the pin and the camera all appear here
+     together, so they can never disagree about whether the street is running.
+     Anything that reserves layout for motion belongs inside this query. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .st__track { height: calc(var(--band) + var(--run)); }
+    :global(html.js) .st__frame {
+      position: sticky;
+      /* the masthead is 54px; one grid unit clears it. The camera reads the
+         same offset from JS, so pin and drive stay in phase. */
+      top: 62px;
+      height: var(--band);
+      min-height: 0;
+    }
+    :global(html.js) .st__svg { display: block; flex: 1; min-height: 0; width: 100%; }
+    :global(html.js) .st__skip { display: inline-flex; }
+    :global(html.js) .st__strip { display: none; }
+
+    /* The directory floats over the street rather than stacking under it, so
+       the frame height stays exactly today's stage envelope.
+
+       This layer is inset:0 and the visual bar is the child, NOT the other way
+       round. An absolutely-positioned bottom bar becomes the containing block
+       for everything inside it, and the open interior then resolves inset:0
+       against a 50px chip strip instead of the frame — it renders, it is just
+       squashed into the bar and unclickable. */
+    :global(html.js) .st__index {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      display: flex;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+    /* No backdrop-filter, and no position either. Both make an element a
+       containing block for absolutely-positioned DESCENDANTS, which puts the
+       open interior back inside the chip bar — the same squashed-panel bug as
+       anchoring this layer with bottom:0, arriving by a different route. A
+       near-opaque plate does the legibility job without that side effect. */
+    :global(html.js) .st__chips {
+      pointer-events: auto;
+      background: color-mix(in oklab, var(--interior) 94%, transparent);
+    }
+    :global(html.js) .st__space { position: static; }
+    /* Panels resolve against .st__index, which IS the frame. */
+    :global(html.js) .st__space > .dist__panel {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      background: var(--interior);
+      opacity: 0;
+      transform: scale(1.02);
+      pointer-events: none;
+      transition: opacity 0.34s var(--ease), transform 0.34s var(--ease);
+    }
+    :global(html.js) .st__space[open] > .dist__panel {
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+    :global(html.js) .st__frame[data-open] .st__svg,
+    :global(html.js) .st__frame[data-open] .st__skip { opacity: 0; }
+    :global(html.js) .st__svg { transition: opacity 0.34s var(--ease); }
   }
 
   /* ---- the interior: room fills the stage, slip pinned beneath ---- */
@@ -1184,67 +1433,330 @@ const span = String(clientTypes.length).padStart(2, "0");
 </style>
 
 <script>
-  /* Enforce "one space open at a time" and drive the status line — the pure
-     progressive-enhancement layer. The <details> elements work correctly
-     with none of this: multiple can open at once, no dimming, no status
-     text update. Nothing here is required for the content to be reachable. */
+  import {
+    NEAR, VBH, VB_TOP, KERB, NAMED_W, FILLER_W, ribsOf, ribPoints,
+    cardTransform, czOf, hazeOf, solveF, vbwOf, sAt, sy, widthOf, MIN_TAP, ease,
+  } from "../../lib/street.ts";
+
+  /* The <details> layer works with none of this: every category is a visible
+     chip, opens natively, and reaches its interior. The camera is added on
+     top and is bound only when it can actually run. */
   function initDistrict() {
-    const grid = document.querySelector<HTMLElement>("[data-grid]");
-    const status = document.querySelector<HTMLElement>("[data-status]");
-    if (!grid) return;
-    const spaces = Array.from(grid.querySelectorAll<HTMLDetailsElement>(".dist__space"));
+    const section = document.getElementById("who");
+    if (!section) return;
+    /* Scoped to the section on purpose: four other components use the
+       [data-status] hook, and a document-wide query resolves correctly today
+       only by accident of document order. */
+    const status = section.querySelector<HTMLElement>("[data-status]");
+    const spaces = Array.from(section.querySelectorAll<HTMLDetailsElement>(".st__space"));
+    const frame = section.querySelector<HTMLElement>("[data-frame]");
     const defaultStatus = status?.textContent ?? "";
+    if (!spaces.length || !frame) return;
 
-    const isoBlocks = Array.from(document.querySelectorAll<SVGAElement>("[data-iso]"));
-
-    const stage = document.querySelector<HTMLElement>("[data-stage]");
+    const nameOf = (d: HTMLDetailsElement) =>
+      d.querySelector<HTMLElement>(".dist__name")?.textContent ?? "";
 
     const sync = () => {
       const open = spaces.find((d) => d.open);
-      // the stage carries the state: it is what cross-fades the city out
-      stage?.toggleAttribute("data-open", Boolean(open));
-      grid.toggleAttribute("data-open", Boolean(open));
-      // the building doubles as a live map: light the block that is open
-      isoBlocks.forEach((a) =>
-        a.classList.toggle("is-active", Boolean(open) && `space-${a.dataset.iso}` === open!.id),
-      );
+      frame.toggleAttribute("data-open", Boolean(open));
       if (status) {
-        const name = open?.querySelector<HTMLElement>(".dist__name")?.textContent;
-        status.textContent = name ? `INSIDE — ${name.toUpperCase()}` : defaultStatus;
+        status.textContent = open ? `INSIDE — ${nameOf(open).toUpperCase()}` : defaultStatus;
       }
+      return open;
     };
 
     spaces.forEach((d) => {
       d.addEventListener("toggle", () => {
-        if (d.open) spaces.forEach((other) => other !== d && (other.open = false));
+        if (d.open) spaces.forEach((o) => o !== d && (o.open = false));
         sync();
       });
     });
 
-    // Clicking a block opens its space instead of jumping the page. With no
-    // JavaScript the anchor's default still lands on that row, which is
-    // visible and readable whether or not it is expanded.
-    isoBlocks.forEach((a) => {
-      a.addEventListener("click", (e) => {
-        const target = document.getElementById(`space-${a.dataset.iso}`) as HTMLDetailsElement | null;
-        if (!target) return;
-        e.preventDefault();
-        target.open = true;
-        // the summary is display:none under JS, so send focus to the way out
-        target.querySelector<HTMLElement>("[data-back]")?.focus({ preventScroll: true });
+    /* ---- the camera ------------------------------------------------------
+       Everything below is enhancement. Reduced motion gets the static street
+       and the same six chips, and binds no listener at all. */
+    const svg = section.querySelector<SVGSVGElement>("[data-svg]");
+    const track = section.querySelector<HTMLElement>("[data-track]");
+    const skip = section.querySelector<HTMLButtonElement>("[data-skip]");
+    if (!svg || !track) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const PIN_TOP = 62;
+    const RUNG_SP = 26 / 16;
+
+    type Solid = {
+      el: SVGGraphicsElement;
+      key: string | null;
+      side: -1 | 1;
+      zf: number;
+      zb: number;
+      h: number;
+      ribs: ReturnType<typeof ribsOf>;
+      poly: Record<string, SVGPolygonElement | null>;
+      card: SVGGElement | null;
+      shown: boolean;
+      live: boolean;
+    };
+
+    const read = (el: Element): Solid => {
+      const side = Number((el as HTMLElement).dataset.side) as -1 | 1;
+      const zf = Number((el as HTMLElement).dataset.zf);
+      const h = Number((el as HTMLElement).dataset.h);
+      const key = (el as HTMLElement).dataset.b ?? null;
+      const w = key ? NAMED_W : FILLER_W;
+      const zb = zf + (key ? 14 : 8);
+      return {
+        el: el as SVGGraphicsElement,
+        key, side, zf, zb, h,
+        ribs: ribsOf({ side, zf, zb, h }, w),
+        poly: {
+          flank: el.querySelector(".st-flank"),
+          base: el.querySelector(".st-base"),
+        },
+        card: el.querySelector(".st-card"),
+        shown: true,
+        live: true,
+      };
+    };
+
+    const solids = Array.from(svg.querySelectorAll("[data-b],[data-fill]")).map(read);
+    const named = solids.filter((s) => s.key);
+    const rungs = Array.from(svg.querySelectorAll<SVGGElement>("[data-rung]"));
+
+    /* Facade anchors are focusable by default so the no-JS path can use them.
+       Under JS the chips are the keyboard control, and two tab stops per
+       category is noise — but the href stays, always. */
+    named.forEach((s) => s.el.setAttribute("tabindex", "-1"));
+
+    let F = 442;
+    let vbw = 1717;
+    let frameW = 0;
+    const measure = () => {
+      const fr = frame.getBoundingClientRect();
+      const sr = svg.getBoundingClientRect();
+      frameW = fr.width || 1;
+      vbw = vbwOf(frameW, sr.height || fr.height || 1);
+      F = solveF(vbw);
+      svg.setAttribute("viewBox", `${(-vbw / 2).toFixed(0)} ${VB_TOP} ${vbw} ${VBH}`);
+    };
+
+    const cam = { cz: czOf(0), panX: 0, zoom: 0, target: null as Solid | null };
+    let quality = 0; // 0 full, 1 fewer solids, 2 half rate
+
+    const setPts = (el: SVGPolygonElement | null, pts: string | null) => {
+      if (!el) return;
+      if (pts === null) { el.style.visibility = "hidden"; return; }
+      el.style.visibility = "";
+      el.setAttribute("points", pts);
+    };
+
+    const draw = () => {
+      const { cz, panX, zoom, target } = cam;
+      for (const s of solids) {
+        const d = s.zf - cz;
+        let o = hazeOf(d);
+        if (zoom > 0) {
+          /* Everything that is not the target dissolves into the paper first.
+             Once it is gone the static draw order stops mattering, which is
+             what lets panX leave the road without near geometry cutting
+             across the building being entered. */
+          o = s === target ? 1 : o * Math.max(0, 1 - zoom / 0.18);
+        }
+        if (!s.key && quality >= 1) o = 0;
+        if (o <= 0.02 || d < NEAR) {
+          if (s.shown) {
+            /* visibility, never opacity:0 — a focusable but invisible link is
+               the worst failure available here. */
+            s.el.style.visibility = "hidden";
+            s.shown = false;
+          }
+          continue;
+        }
+        if (!s.shown) { s.el.style.visibility = "visible"; s.shown = true; }
+        s.el.style.opacity = o.toFixed(3);
+
+        const R = s.ribs;
+        const rib = (k: "flank" | "base") => {
+          const a = R[k];
+          setPts(s.poly[k], ribPoints(a[0], a[1], a[2], a[3], a[4], a[5], cz, panX, F));
+        };
+        rib("flank"); rib("base");
+
+        /* going through the door: the shell of the target falls away so the
+           opening is what fills the frame */
+        if (zoom > 0 && s === target) {
+          const shell = Math.max(0, 1 - zoom / 0.5).toFixed(3);
+          for (const k of ["flank", "base"]) {
+            if (s.poly[k]) (s.poly[k] as SVGPolygonElement).style.opacity = shell;
+          }
+        } else if (zoom === 0) {
+          for (const k of ["flank", "base"]) {
+            if (s.poly[k]) (s.poly[k] as SVGPolygonElement).style.opacity = "";
+          }
+        }
+
+        const t = cardTransform(KERB * s.side, s.h, s.zf, cz, panX, F);
+        if (t && s.card) s.card.style.transform = t;
+
+        if (s.key) {
+          /* A target under 44px is not a tap target and must not swallow
+             taps meant for the road. The href is never removed. */
+          const live = zoom === 0 && widthOf(d, F, frameW, vbw) >= MIN_TAP;
+          if (live !== s.live) {
+            s.el.style.pointerEvents = live ? "auto" : "none";
+            s.live = live;
+          }
+        }
+      }
+
+      const n = quality >= 1 ? 8 : rungs.length;
+      const z0 = Math.floor((cz + 2) / RUNG_SP) * RUNG_SP;
+      for (let i = 0; i < rungs.length; i++) {
+        if (i >= n) { rungs[i].style.visibility = "hidden"; continue; }
+        rungs[i].style.visibility = "";
+        const z = z0 + (i + 1) * RUNG_SP * (quality >= 1 ? 2 : 1);
+        const s = sAt(z, cz, F);
+        rungs[i].style.transform = `translate(0px,${sy(s, 0).toFixed(1)}px) scale(${s.toFixed(4)})`;
+        rungs[i].style.opacity = hazeOf(z - cz).toFixed(3);
+      }
+      frame.dataset.cz = cam.cz.toFixed(2);
+    };
+
+    const pOf = () => {
+      const span = track.offsetHeight - frame.offsetHeight;
+      if (span <= 0) return 0;
+      const top = track.getBoundingClientRect().top + window.scrollY;
+      const v = (window.scrollY - (top - PIN_TOP)) / span;
+      return v < 0 ? 0 : v > 1 ? 1 : v;
+    };
+
+    /* ---- frame pump ------------------------------------------------------ */
+    let raf = 0;
+    let lastP = -1;
+    let parity = 0;
+    const times: number[] = [];
+    let mark = 0;
+
+    const budget = (now: number) => {
+      if (mark) {
+        times.push(now - mark);
+        if (times.length > 45) {
+          times.sort((a, b) => a - b);
+          const med = times[22];
+          times.length = 0;
+          if (med > 20 && quality < 2) quality += 1;
+          else if (med < 12 && quality > 0) quality -= 1;
+        }
+      }
+      mark = now;
+    };
+
+    const pump = (now: number) => {
+      raf = 0;
+      budget(now);
+      if (quality >= 2 && (parity ^= 1)) { schedule(); return; }
+      if (cam.zoom === 0) {
+        const p = pOf();
+        if (p !== lastP) { lastP = p; cam.cz = czOf(p); draw(); }
+      }
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(pump); };
+
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", () => { measure(); lastP = -1; schedule(); }, { passive: true });
+
+    /* ---- the door -------------------------------------------------------- */
+    let anim = 0;
+    const tween = (ms: number, step: (t: number) => void, done?: () => void) => {
+      cancelAnimationFrame(anim);
+      const t0 = performance.now();
+      const run = (n: number) => {
+        const t = Math.min(1, (n - t0) / ms);
+        step(ease(t));
+        if (t < 1) anim = requestAnimationFrame(run);
+        else done?.();
+      };
+      anim = requestAnimationFrame(run);
+    };
+
+    const enter = (s: Solid) => {
+      if (!s.key) return;
+      const d = spaces.find((x) => x.id === `space-${s.key}`);
+      if (!d) return;
+      const cz0 = cam.cz, F0 = F, px0 = cam.panX;
+      const czE = s.zf - 3.2;
+      const pxE = Math.max(-6, Math.min(6, 5.4 * s.side));
+      cam.target = s;
+      let opened = false;
+      tween(620, (t) => {
+        cam.zoom = t;
+        cam.cz = cz0 + (czE - cz0) * t;
+        cam.panX = px0 + (pxE - px0) * t;
+        F = F0 + (1240 - F0) * t;
+        draw();
+        if (!opened && t >= 0.55) {
+          opened = true;
+          d.open = true;
+          d.querySelector<HTMLElement>("[data-back]")?.focus({ preventScroll: true });
+        }
+      }, () => {
+        svg.style.visibility = "hidden";
       });
+    };
+
+    const leave = (d: HTMLDetailsElement) => {
+      svg.style.visibility = "";
+      const cz0 = cam.cz, F0 = F, px0 = cam.panX, z0 = cam.zoom;
+      let closed = false;
+      tween(520, (t) => {
+        const k = 1 - t;
+        cam.zoom = z0 * k;
+        /* the live scroll position is the target, so if the page moved while
+           the room was open the camera lands where the scroll now says */
+        const czNow = czOf(pOf());
+        cam.cz = czNow + (cz0 - czNow) * k;
+        cam.panX = px0 * k;
+        F = solveF(vbw) + (F0 - solveF(vbw)) * k;
+        if (!closed && k < 0.5) { closed = true; d.open = false; }
+        draw();
+      }, () => {
+        cam.zoom = 0;
+        cam.target = null;
+        F = solveF(vbw);
+        lastP = -1;
+        schedule();
+      });
+    };
+
+    svg.addEventListener("click", (e) => {
+      const a = (e.target as Element).closest<SVGGraphicsElement>("[data-b]");
+      if (!a) return;
+      e.preventDefault();
+      const s = named.find((x) => x.el === a);
+      if (s) enter(s);
     });
 
-    grid.addEventListener("click", (e) => {
+    section.addEventListener("click", (e) => {
       const back = (e.target as HTMLElement).closest("[data-back]");
       if (!back) return;
       e.preventDefault();
       const d = back.closest("details") as HTMLDetailsElement | null;
-      if (d) {
-        d.open = false;
-        document.querySelector<SVGAElement>(`[data-iso="${d.id.replace("space-", "")}"]`)?.focus();
-      }
+      if (!d) return;
+      leave(d);
+      /* back to that category's own chip — never a facade, which may be
+         hidden or already passed */
+      d.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
     });
+
+    skip?.addEventListener("click", () => {
+      const top = track.getBoundingClientRect().top + window.scrollY;
+      const span = track.offsetHeight - frame.offsetHeight;
+      scrollTo({ top: top - PIN_TOP + span, behavior: "smooth" });
+    });
+
+    measure();
+    lastP = -1;
+    schedule();
   }
   if (document.readyState !== "loading") initDistrict();
   else document.addEventListener("DOMContentLoaded", initDistrict);
