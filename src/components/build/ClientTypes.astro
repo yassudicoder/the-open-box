@@ -110,8 +110,10 @@ const drawOrder = [...blocks].sort((a, b) => a.x + a.y - (b.x + b.y));
    prototype puts its "back wall" at y = D and "right wall" at x = W, but in
    this projection depth grows with x + y, so those are the NEAR walls and
    they sit between the viewer and the furniture; here they are at x = 0 and
-   y = 0 and the room opens toward you. (3) Emitted as SVG strings at build
-   time — no React, no client JS.
+   y = 0 and the room opens toward you. (3) Draw order is computed, not
+   authored — see `paint` below; the prototype emits furniture in source
+   order and lets near props paint over far ones. (4) Emitted as SVG strings
+   at build time — no React, no client JS.
    ------------------------------------------------------------------------ */
 const RM: Cam = { hw: 33, hh: 16.5, uh: 40 };
 const RW = 6;
@@ -121,9 +123,18 @@ const RH = 3.8;
 /** One opaque step between the plate and its ink. The prototype's factors were
     tuned against saturated neon; the same numbers in pure tone come out far too
     close to the ground, so they are lifted and spread here — the ordering is
-    preserved, the range is not. */
-const T = (pct: number) =>
-  `color-mix(in oklab, var(--interior-ink) ${Math.min(94, Math.round(pct * 1.45 + 5))}%, var(--interior))`;
+    preserved, the range is not.
+
+    Returns a custom property, not the colour: spelled out, the same six rooms
+    put 1,800 copies of a 65-character color-mix() into the document. Declared
+    once on the plate and inherited, they cost eleven characters each — 90 KB
+    less markup for the browser to parse, for the same pixels. */
+const TONES = new Set<number>();
+const T = (pct: number) => {
+  const n = Math.min(94, Math.max(4, Math.round(pct * 1.45 + 5)));
+  TONES.add(n);
+  return `var(--t${n})`;
+};
 
 const pg = (pts: string, fill: string, extra = "") => `<polygon points="${pts}" fill="${fill}"${extra}/>`;
 const seg = (a: [number, number], b: [number, number], stroke: string, w = 0.7) =>
@@ -131,145 +142,539 @@ const seg = (a: [number, number], b: [number, number], stroke: string, w = 0.7) 
 const dot = (pnt: [number, number], r: number, fill: string, extra = "") =>
   `<circle cx="${pnt[0].toFixed(1)}" cy="${pnt[1].toFixed(1)}" r="${r}" fill="${fill}"${extra}/>`;
 
-/** a solid: its two visible walls plus the top */
-const solid = (x: number, y: number, z: number, w: number, d: number, h: number,
-               top = 30, front = 19, side = 11) =>
-  pg(sideFace(RM, x + w, y, z, d, h), T(side)) +
-  pg(frontFace(RM, x, y + d, z, w, h), T(front)) +
-  pg(topFace(RM, x, y, z + h, w, d), T(top));
+/* ---- draw order inside a room -------------------------------------------
+   Every prop is an axis-aligned box, and A can only hide B when A sits
+   wholly on the near side of B along one axis. That is a partial order, not
+   a sort key — a wide counter and a stool standing in front of it share the
+   same x + y, and no single number separates them. So each prop declares its
+   box, `after` compares two boxes, and a stable topological walk emits them
+   far to near. Pairs that can never overlap on screen keep the order they
+   were written in.
 
-/** flat panel hung on the far wall at y = 0 */
-const wallY = (x: number, z: number, w: number, h: number, fill: string, extra = "") =>
+   The prototype has no such pass: it emits furniture in source order, which
+   is why its desks paint over the units behind them. Free here — it all runs
+   once, at build time.
+
+   `paint` also shouts if two props share a volume, because the sort assumes
+   solids that touch but never interpenetrate. That check has caught every
+   layout slip in this file; leave it in. */
+type Box = { x: number; y: number; z: number; w: number; d: number; h: number };
+type Item = { b: Box; s: string };
+
+const after = (a: Box, b: Box) =>
+  a.x >= b.x + b.w || a.y >= b.y + b.d || a.z >= b.z + b.h;
+
+const hits = (a: Box, b: Box) => {
+  const e = 1e-6;
+  return (
+    a.x + e < b.x + b.w && b.x + e < a.x + a.w &&
+    a.y + e < b.y + b.d && b.y + e < a.y + a.d &&
+    a.z + e < b.z + b.h && b.z + e < a.z + a.h
+  );
+};
+
+const paint = (items: Item[], room = "") => {
+  const n = items.length;
+  const succ: number[][] = items.map(() => []);
+  const indeg: number[] = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (room && hits(items[i].b, items[j].b)) {
+        console.warn(`[district] ${room}: props ${i} and ${j} share a volume`, items[i].b, items[j].b);
+      }
+      const ij = after(items[i].b, items[j].b);
+      const ji = after(items[j].b, items[i].b);
+      if (ij === ji) continue; // both or neither — nothing to enforce
+      const first = ij ? j : i;
+      const next = ij ? i : j;
+      succ[first].push(next);
+      indeg[next]++;
+    }
+  }
+  const out: string[] = [];
+  const drawn: boolean[] = new Array(n).fill(false);
+  for (let k = 0; k < n; k++) {
+    let pick = -1;
+    for (let i = 0; i < n && pick < 0; i++) if (!drawn[i] && indeg[i] === 0) pick = i;
+    /* Cycle guard: a pathological ring of boxes can leave every survivor
+       waiting on another. Take the earliest rather than spin. */
+    for (let i = 0; i < n && pick < 0; i++) if (!drawn[i]) pick = i;
+    drawn[pick] = true;
+    out.push(items[pick].s);
+    for (const nx of succ[pick]) indeg[nx]--;
+  }
+  return out.join("");
+};
+
+const I = (b: Box, s: string): Item => ({ b, s });
+/** marks that belong to a prop — same box, drawn straight after it */
+const on = (it: Item, ...more: string[]): Item => ({ b: it.b, s: it.s + more.join("") });
+
+/** A solid: its two visible walls plus the top. The hairline on every face is
+    what stops one grey box dissolving into the grey box behind it — without
+    it a room full of props reads as a single lump. */
+const blk = (x: number, y: number, z: number, w: number, d: number, h: number,
+             top = 30, front = 19, side = 11, edge = true): Item => {
+  const e = edge ? ` stroke="${T(top + 13)}" stroke-width="0.45" stroke-linejoin="round"` : "";
+  return {
+    b: { x, y, z, w, d, h },
+    s:
+      pg(sideFace(RM, x + w, y, z, d, h), T(side), e) +
+      pg(frontFace(RM, x, y + d, z, w, h), T(front), e) +
+      pg(topFace(RM, x, y, z + h, w, d), T(top), e),
+  };
+};
+
+/** flat panel on the far wall at y = 0 */
+const panY = (x: number, z: number, w: number, h: number, fill: string, extra = "") =>
   pg(poly([iso(RM, x, 0, z), iso(RM, x + w, 0, z), iso(RM, x + w, 0, z + h), iso(RM, x, 0, z + h)]), fill, extra);
-/** flat panel hung on the far wall at x = 0 */
-const wallX = (y: number, z: number, d: number, h: number, fill: string, extra = "") =>
+/** flat panel on the far wall at x = 0 */
+const panX = (y: number, z: number, d: number, h: number, fill: string, extra = "") =>
   pg(poly([iso(RM, 0, y, z), iso(RM, 0, y + d, z), iso(RM, 0, y + d, z + h), iso(RM, 0, y, z + h)]), fill, extra);
+
+const wallY = (x: number, z: number, w: number, h: number, fill: string, extra = ""): Item =>
+  I({ x, y: 0, z, w, d: 0, h }, panY(x, z, w, h, fill, extra));
+const wallX = (y: number, z: number, d: number, h: number, fill: string, extra = ""): Item =>
+  I({ x: 0, y, z, w: 0, d, h }, panX(y, z, d, h, fill, extra));
+
+/* ---- repeated props -----------------------------------------------------
+   Legs matter more than they sound: a tabletop floating on four posts reads
+   as furniture, where the same volume drawn solid reads as a crate. */
+
+const legs = (x: number, y: number, w: number, d: number, h: number, t = 0.08) =>
+  ([[x + 0.05, y + 0.05], [x + w - t - 0.05, y + 0.05],
+    [x + 0.05, y + d - t - 0.05], [x + w - t - 0.05, y + d - t - 0.05]] as [number, number][])
+    .map(([lx, ly]) => blk(lx, ly, 0, t, t, h, 15, 10, 7, false));
+
+const table = (x: number, y: number, w: number, d: number, h: number,
+               top = 32, front = 22, side = 14): Item => ({
+  b: { x, y, z: 0, w, d, h },
+  s: paint([...legs(x, y, w, d, h - 0.09), blk(x, y, h - 0.09, w, d, 0.09, top, front, side)]),
+});
+
+/** seat pad on legs with a back on the near side, so it faces the viewer */
+const seat = (x: number, y: number, w = 0.6, d = 0.58, bh = 0.58): Item => ({
+  b: { x, y, z: 0, w, d, h: 0.44 + bh },
+  s: paint([
+    ...legs(x, y, w, d, 0.36, 0.07),
+    blk(x, y, 0.36, w, d, 0.08, 32, 22, 14),
+    blk(x, y + d - 0.08, 0.44, w, 0.08, bh, 38, 26, 17),
+  ]),
+});
+
+const stool = (x: number, y: number, s = 0.42, h = 0.62): Item => ({
+  b: { x, y, z: 0, w: s, d: s, h },
+  s: paint([
+    blk(x + s / 2 - 0.05, y + s / 2 - 0.05, 0, 0.1, 0.1, h - 0.08, 15, 10, 7, false),
+    blk(x, y, h - 0.08, s, s, 0.08, 36, 25, 16),
+  ]),
+});
+
+/** pot plus a loose crown of leaves — the only organic thing in the room */
+const plant = (x: number, y: number, s = 0.62): Item => {
+  const c = iso(RM, x + s / 2, y + s / 2, s * 0.62);
+  const leaf = (dx: number, dy: number, r: number, t: number) =>
+    dot([c[0] + dx, c[1] + dy], r, T(t), ` stroke="${T(t + 14)}" stroke-width="0.45"`);
+  return {
+    b: { x, y, z: 0, w: s, d: s, h: s * 2.6 },
+    s:
+      blk(x + s * 0.16, y + s * 0.16, 0, s * 0.68, s * 0.68, s * 0.62, 26, 17, 11).s +
+      seg([c[0], c[1]], [c[0], c[1] - 24], T(24), 1) +
+      leaf(0, -18, 10, 18) + leaf(-10, -8, 8, 26) + leaf(10, -11, 7, 22) + leaf(1, -29, 6, 30),
+  };
+};
+
+/** pendant on a cord */
+const pend = (x: number, y: number, drop = 1.3): Item => ({
+  b: { x: x - 0.12, y: y - 0.12, z: RH - drop, w: 0.24, d: 0.24, h: drop },
+  s:
+    seg(iso(RM, x, y, RH), iso(RM, x, y, RH - drop), T(22), 0.8) +
+    dot(iso(RM, x, y, RH - drop - 0.15), 7, T(30)) +
+    dot(iso(RM, x, y, RH - drop - 0.18), 3.2, T(62)),
+});
+
+/** recessed ceiling light */
+const down = (x: number, y: number, r = 4): Item =>
+  I({ x: x - 0.1, y: y - 0.1, z: RH - 0.05, w: 0.2, d: 0.2, h: 0.05 }, dot(iso(RM, x, y, RH), r, T(30)));
+
+/** A mat — zero height, so anything standing on it draws after. Lighter than
+    the floor, never darker: a dark patch on a dark floor reads as a hole in it. */
+const mat = (x: number, y: number, w: number, d: number): Item =>
+  I({ x, y, z: 0, w, d, h: 0 },
+    pg(topFace(RM, x, y, 0.01, w, d), T(11), ` stroke="${T(24)}" stroke-width="0.6"`) +
+    pg(topFace(RM, x + 0.14, y + 0.14, 0.02, w - 0.28, d - 0.28), "none", ` stroke="${T(19)}" stroke-width="0.4"`));
+
+/** a bench or low seat: a slab on four legs, no back */
+const bench = (x: number, y: number, w: number, d: number, h = 0.5): Item => ({
+  b: { x, y, z: 0, w, d, h },
+  s: paint([...legs(x, y, w, d, h - 0.09, 0.07), blk(x, y, h - 0.09, w, d, 0.09, 30, 20, 13)]),
+});
+
+/** glass on a wall: lighter than the wall, framed, with one band of sheen */
+const glassY = (x: number, z: number, w: number, h: number, fill = 13): Item =>
+  on(wallY(x, z, w, h, T(fill), ` stroke="${T(46)}" stroke-width="1.1"`),
+     panY(x + w * 0.14, z, w * 0.13, h, T(fill + 11)),
+     panY(x + w * 0.42, z, w * 0.06, h, T(fill + 7)));
+
+const glassX = (y: number, z: number, d: number, h: number, fill = 13): Item =>
+  on(wallX(y, z, d, h, T(fill), ` stroke="${T(46)}" stroke-width="1.1"`),
+     panX(y + d * 0.14, z, d * 0.13, h, T(fill + 11)),
+     panX(y + d * 0.42, z, d * 0.06, h, T(fill + 7)));
+
+const clockY = (x: number, z: number): Item => {
+  const c = iso(RM, x, 0, z);
+  return I({ x: x - 0.25, y: 0, z: z - 0.25, w: 0.5, d: 0, h: 0.5 },
+    dot(c, 8, T(8), ` stroke="${T(36)}" stroke-width="1"`) +
+    seg(c, [c[0], c[1] - 5], T(44), 1) +
+    seg(c, [c[0] + 4.5, c[1] + 1.5], T(36), 1));
+};
+
+const crossY = (x: number, z: number): Item => {
+  const c = iso(RM, x, 0, z);
+  return I({ x: x - 0.3, y: 0, z: z - 0.3, w: 0.6, d: 0, h: 0.6 },
+    `<rect x="${(c[0] - 3.4).toFixed(1)}" y="${(c[1] - 12).toFixed(1)}" width="6.8" height="24" rx="1" fill="${T(34)}"/>` +
+    `<rect x="${(c[0] - 12).toFixed(1)}" y="${(c[1] - 3.4).toFixed(1)}" width="24" height="6.8" rx="1" fill="${T(34)}"/>`);
+};
 
 const shell = () => {
   let o = pg(topFace(RM, 0, 0, 0, RW, RD), T(6));
   for (let i = 1; i < RW; i++) o += seg(iso(RM, i, 0, 0), iso(RM, i, RD, 0), T(12), 0.5);
   for (let i = 1; i < RD; i++) o += seg(iso(RM, 0, i, 0), iso(RM, RW, i, 0), T(12), 0.5);
-  o += wallY(0, 0, RW, RH, T(10));
-  o += wallX(0, 0, RD, RH, T(8));
-  o += wallY(0, 0, RW, 0.1, T(22));
-  o += wallX(0, 0, RD, 0.1, T(18));
+  o += panY(0, 0, RW, RH, T(10));
+  o += panX(0, 0, RD, RH, T(8));
+  o += panY(0, 0, RW, 0.1, T(22));
+  o += panX(0, 0, RD, 0.1, T(18));
   o += seg(iso(RM, 0, 0, RH), iso(RM, RW, 0, RH), T(28), 0.8);
   o += seg(iso(RM, 0, 0, RH), iso(RM, 0, RD, RH), T(24), 0.8);
   o += seg(iso(RM, 0, 0, 0), iso(RM, 0, 0, RH), T(20), 0.6);
   return o;
 };
 
-const clinicRoom = () => {
-  let o = shell();
-  o += solid(2.9, 1.7, 0, 2.4, 1.15, 0.78);
-  o += solid(4.5, 1.85, 0.78, 0.6, 0.5, 0.14, 52, 40, 30);
-  o += solid(0.45, 0.3, 0, 2.2, 0.85, 0.72);
-  o += pg(frontFace(RM, 0.75, 1.15, 0.72, 0.95, 0.5), T(9));
-  o += pg(frontFace(RM, 0.82, 1.15, 0.77, 0.81, 0.4), T(30));
-  o += solid(0.2, 2.7, 0, 0.75, 1.8, 2.1);
-  for (const z of [0.62, 1.3]) o += pg(frontFace(RM, 0.2, 4.5, z, 0.75, 0.06), T(34));
-  for (const z of [0.72, 1.4]) {
-    for (let k = 0; k < 4; k++) o += pg(frontFace(RM, 0.28 + k * 0.16, 4.5, z, 0.11, 0.2 + (k % 3) * 0.05), T(40 + k * 5));
-  }
-  const [cx, cy] = iso(RM, 3.5, 0, 2.4);
-  o += `<rect x="${(cx - 3.4).toFixed(1)}" y="${(cy - 12).toFixed(1)}" width="6.8" height="24" rx="1" fill="${T(34)}"/>`;
-  o += `<rect x="${(cx - 12).toFixed(1)}" y="${(cy - 3.4).toFixed(1)}" width="24" height="6.8" rx="1" fill="${T(34)}"/>`;
-  return o;
-};
+/* ---- the six rooms ------------------------------------------------------
+   Order here is only a tie-break; `paint` works out what hides what.
 
-const cafeRoom = () => {
-  let o = shell();
-  o += solid(0.35, 0.3, 0, 5.2, 0.85, 1.0);
-  o += solid(1.5, 0.4, 1.0, 1.0, 0.65, 0.72, 44, 30, 20);
-  o += pg(frontFace(RM, 1.65, 1.05, 1.24, 0.7, 0.26), T(46));
-  for (const cx2 of [3.1, 3.45, 3.8]) o += solid(cx2, 0.42, 1.0, 0.2, 0.2, 0.24, 46, 34, 24);
-  for (const [tx, ty] of [[1.6, 2.5], [3.9, 3.2]] as [number, number][]) {
-    o += solid(tx, ty, 0, 1.25, 1.15, 0.68);
-    o += solid(tx - 0.05, ty - 0.85, 0.4, 0.7, 0.55, 0.1, 26, 17, 10);
-    o += solid(tx + 0.3, ty + 1.2, 0.4, 0.7, 0.55, 0.1, 26, 17, 10);
-  }
-  o += wallX(1.2, 0.5, 2.2, 2.3, T(6), ` stroke="${T(28)}" stroke-width="0.9"`);
-  for (let i = 0; i < 4; i++) o += wallX(1.45, 2.35 - i * 0.42, 1.5 - i * 0.16, 0.07, T(30));
-  for (const [lx, ly] of [[2.2, 2.2], [4.2, 2.8]] as [number, number][]) {
-    o += seg(iso(RM, lx, ly, RH), iso(RM, lx, ly, 2.5), T(22), 0.8);
-    o += dot(iso(RM, lx, ly, 2.35), 7, T(30));
-    o += dot(iso(RM, lx, ly, 2.32), 3.2, T(62));
-  }
-  return o;
-};
+   Layouts are spread on the SCREEN, not on the floor plan, and those are not
+   the same thing: screen x is (x − y)·hw, so the right-hand third of the
+   frame is the strip of floor with high x and low y. Fill a room by walking
+   the plan diagonally — a room laid out tidily along one wall leaves half
+   the picture as bare floor. */
 
-const salonRoom = () => {
-  let o = shell();
-  for (const sx of [0.4, 2.3, 4.2] as number[]) {
-    o += solid(sx, 0.3, 0, 1.4, 0.8, 0.8);
-    o += wallY(sx + 0.15, 0.95, 1.1, 1.9, T(4), ` stroke="${T(44)}" stroke-width="1.2"`);
-    o += wallY(sx + 0.08, 0.88, 1.24, 2.04, "none", ` stroke="${T(26)}" stroke-width="0.6"`);
-    o += solid(sx + 0.15, 1.5, 0, 1.05, 0.7, 0.5, 40, 28, 17);
-    o += pg(frontFace(RM, sx + 0.17, 2.2, 0.5, 1.01, 0.72), T(24));
-    for (let j = 0; j < 3; j++) o += solid(sx + 0.1 + j * 0.35, 0.4, 0.8, 0.18, 0.18, 0.3 + j * 0.05, 46 + j * 6, 34, 22);
-    o += dot(iso(RM, sx + 0.7, 1.0, RH), 4.2, T(34));
-  }
-  o += solid(0.15, 3.2, 0, 0.7, 1.6, 1.9);
-  for (const z of [0.5, 1.0, 1.5]) o += pg(frontFace(RM, 0.15, 4.8, z, 0.7, 0.06), T(36));
-  return o;
-};
+const clinicRoom = () =>
+  shell() +
+  paint([
+    /* walls */
+    clockY(1.5, 2.9),
+    glassY(3.05, 1.55, 1.35, 0.95),
+    crossY(5.35, 2.95),
+    on(wallX(0.4, 1.6, 1.0, 1.2, T(5), ` stroke="${T(26)}" stroke-width="0.7"`),
+       panX(0.55, 2.4, 0.7, 0.06, T(28)),
+       panX(0.55, 1.95, 0.7, 0.06, T(28))),
 
-const pharmacyRoom = () => {
-  let o = shell();
-  for (const bx of [0.35, 2.3, 4.25] as number[]) {
-    o += solid(bx, 0.25, 0, 1.6, 0.75, 2.4);
-    for (const z of [0.7, 1.4, 2.05]) o += pg(frontFace(RM, bx, 1.0, z, 1.6, 0.06), T(34));
-    for (const z of [0.78, 1.48]) {
-      for (let k = 0; k < 5; k++) o += pg(frontFace(RM, bx + 0.1 + k * 0.29, 1.0, z, 0.19, 0.28 + (k % 3) * 0.06), T(38 + (k % 4) * 8));
-    }
-  }
-  o += solid(0.4, 3.3, 0, 4.6, 0.95, 0.95);
-  o += pg(frontFace(RM, 0.7, 4.25, 0.95, 1.35, 0.55), T(9));
-  o += pg(frontFace(RM, 0.78, 4.25, 1.02, 1.19, 0.42), T(30));
-  const [rx, ry] = iso(RM, 3.5, 0, 2.55);
-  o += `<text x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" text-anchor="middle" fill="${T(38)}" font-size="17" font-family="var(--font-mono)" font-weight="700">Rx</text>`;
-  return o;
-};
+    /* the y = 0 wall, walked left to right: desk, wash counter, tall store */
+    on(table(0.5, 0.35, 2.0, 0.8, 0.74),
+       blk(0.65, 0.45, 0.74, 0.46, 0.32, 0.1, 34, 24, 16).s,
+       blk(1.35, 0.5, 0.74, 0.66, 0.28, 0.03, 26, 18, 12).s,
+       pg(frontFace(RM, 0.75, 1.15, 0.74, 0.9, 0.48), T(9)),
+       pg(frontFace(RM, 0.82, 1.15, 0.79, 0.76, 0.38), T(30))),
+    seat(1.1, 1.45),
+    on(blk(3.0, 0.35, 0, 1.5, 0.8, 0.9),
+       pg(topFace(RM, 3.25, 0.5, 0.9, 0.55, 0.5), T(10), ` stroke="${T(34)}" stroke-width="0.6"`),
+       seg(iso(RM, 3.52, 0.45, 0.9), iso(RM, 3.52, 0.45, 1.35), T(32), 1.2),
+       [0.3, 0.6].map((z) => pg(frontFace(RM, 3.0, 1.15, z, 1.5, 0.05), T(26))).join("")),
+    on(blk(4.9, 0.35, 0, 1.0, 0.8, 2.0),
+       [0.55, 1.1, 1.65].map((z) => pg(frontFace(RM, 4.9, 1.15, z, 1.0, 0.06), T(34))).join(""),
+       [0.63, 1.18].map((z) =>
+         [0, 1, 2].map((k) => pg(frontFace(RM, 5.0 + k * 0.28, 1.15, z, 0.2, 0.24 + (k % 2) * 0.08), T(40 + k * 7))).join("")).join("")),
 
-const shopRoom = () => {
-  let o = shell();
-  o += solid(1.7, 1.9, 0, 2.9, 1.9, 0.72);
-  for (const [tx, ty, i] of [[2.0, 2.2, 0], [2.8, 2.6, 1], [3.5, 2.1, 2], [3.9, 2.9, 3]] as [number, number, number][]) {
-    o += solid(tx, ty, 0.72, 0.36, 0.36, 0.3, 42 + i * 7, 30, 20);
-  }
-  for (const bx of [0.5, 3.1] as number[]) {
-    o += wallY(bx, 0.4, 2.1, 2.5, T(5), ` stroke="${T(24)}" stroke-width="0.7"`);
-    for (const z of [0.9, 1.55, 2.2]) o += wallY(bx, z, 2.1, 0.06, T(30));
-    for (const z of [0.98, 1.63]) {
-      for (let k = 0; k < 5; k++) o += wallY(bx + 0.12 + k * 0.38, z, 0.24, 0.28, T(36 + (k % 3) * 9));
-    }
-  }
-  o += seg(iso(RM, 0, 1.0, 2.5), iso(RM, 0, 3.4, 2.5), T(34), 1.6);
-  for (const hy of [1.2, 1.6, 2.0, 2.45, 2.9] as number[]) {
-    o += seg(iso(RM, 0, hy, 2.5), iso(RM, 0, hy, 1.7), T(24), 0.7);
-    o += wallX(hy - 0.09, 1.35, 0.2, 0.34, T(30));
-  }
-  o += solid(0.4, 3.9, 0, 2.2, 0.8, 0.85);
-  o += solid(0.65, 4.05, 0.85, 0.6, 0.45, 0.38, 46, 34, 24);
-  return o;
-};
+    /* the middle: exam table on a mat, stool, trolley off to the right */
+    mat(2.3, 1.9, 2.8, 1.6),
+    on(blk(2.5, 2.1, 0, 2.3, 1.1, 0.55, 24, 16, 11),
+       blk(2.5, 2.1, 0.55, 2.3, 1.1, 0.15, 42, 30, 19).s,
+       blk(4.05, 2.25, 0.7, 0.6, 0.5, 0.14, 54, 42, 30).s,
+       pg(frontFace(RM, 2.5, 3.2, 0.22, 2.3, 0.06), T(30))),
+    stool(1.85, 2.55),
+    on(table(5.0, 2.0, 0.7, 0.62, 0.82),
+       blk(5.06, 2.08, 0.82, 0.5, 0.4, 0.08, 44, 32, 22).s,
+       pg(frontFace(RM, 5.0, 2.62, 0.36, 0.7, 0.05), T(26))),
 
-const startupRoom = () => {
-  let o = shell();
-  for (const sx of [0.5, 2.4, 4.3] as number[]) {
-    o += solid(sx, 0.35, 0, 1.35, 0.85, 0.68);
-    o += pg(frontFace(RM, sx + 0.35, 1.2, 0.68, 0.62, 0.46), T(8));
-    o += pg(frontFace(RM, sx + 0.4, 1.2, 0.72, 0.52, 0.37), T(32));
-    o += solid(sx + 0.42, 1.14, 0.68, 0.5, 0.06, 0.03, 34, 24, 16);
-    o += solid(sx + 0.25, 0.45, 0.68, 0.5, 0.3, 0.04, 26, 18, 12);
-    o += dot(iso(RM, sx + 0.67, 0.8, RH), 3.6, T(30));
-  }
-  o += wallY(1.1, 1.4, 3.6, 1.9, T(5), ` stroke="${T(34)}" stroke-width="1"`);
-  for (let i = 0; i < 4; i++) o += wallY(1.4, 2.85 - i * 0.34, 2.7 - i * 0.28, 0.07, T(26));
-  o += solid(0.2, 3.9, 0, 0.5, 0.5, 0.28, 20, 13, 8);
-  o += solid(0.28, 3.98, 0.28, 0.34, 0.34, 0.55, 26, 17, 11);
-  return o;
-};
+    /* the x = 0 wall: tall store and a bin */
+    on(blk(0.2, 1.7, 0, 0.8, 1.5, 2.1),
+       [0.62, 1.3].map((z) => pg(frontFace(RM, 0.2, 3.2, z, 0.8, 0.06), T(34))).join(""),
+       [0.72, 1.4].map((z) =>
+         [0, 1, 2, 3].map((k) => pg(frontFace(RM, 0.28 + k * 0.17, 3.2, z, 0.12, 0.2 + (k % 3) * 0.05), T(40 + k * 5))).join("")).join("")),
+    on(blk(0.3, 3.5, 0, 0.42, 0.42, 0.5, 22, 15, 10),
+       pg(topFace(RM, 0.35, 3.55, 0.51, 0.32, 0.32), T(6))),
+
+    /* the near band: the waiting row */
+    seat(1.15, 4.15),
+    seat(2.0, 4.15),
+    seat(2.85, 4.15),
+    on(table(3.75, 4.2, 0.55, 0.5, 0.5),
+       blk(3.85, 4.28, 0.5, 0.32, 0.24, 0.04, 40, 28, 19).s),
+    plant(5.25, 4.1, 0.66),
+
+    down(1.5, 1.4),
+    down(4.3, 1.5),
+    down(2.6, 3.6),
+  ], "clinic");
+
+const cafeRoom = () =>
+  shell() +
+  paint([
+    /* menu board, bottle shelves, window */
+    on(wallY(0.45, 1.85, 1.35, 1.05, T(4), ` stroke="${T(32)}" stroke-width="0.9"`),
+       [0.35, 0.62, 0.89].map((f) => panY(0.6, 1.95 + f * 0.9, 1.0 - f * 0.5, 0.06, T(22))).join("")),
+    ...[1.95, 2.6].map((z) =>
+      on(wallY(2.2, z, 3.2, 0.07, T(30)),
+         [0, 1, 2, 3, 4, 5].map((k) =>
+           panY(2.32 + k * 0.5, z + 0.07, 0.22, 0.26 + (k % 3) * 0.07, T(34 + (k % 4) * 7))).join(""))),
+    on(wallX(1.2, 0.5, 2.2, 2.3, T(20), ` stroke="${T(38)}" stroke-width="0.9"`),
+       panX(2.28, 0.5, 0.05, 2.3, T(32)),
+       panX(1.2, 1.62, 2.2, 0.05, T(32))),
+
+    /* the bar and what stands on it */
+    on(blk(0.35, 0.3, 0, 5.2, 0.85, 1.0),
+       pg(frontFace(RM, 0.35, 1.15, 0.86, 5.2, 0.05), T(30))),
+    on(blk(1.5, 0.4, 1.0, 1.0, 0.65, 0.72, 44, 30, 20),
+       pg(frontFace(RM, 1.65, 1.05, 1.24, 0.7, 0.26), T(48))),
+    I({ x: 2.7, y: 0.42, z: 1.0, w: 0.8, d: 0.2, h: 0.24 },
+      [2.7, 3.0, 3.3].map((cx) => blk(cx, 0.42, 1.0, 0.2, 0.2, 0.24, 46, 34, 24).s).join("")),
+    on(blk(3.9, 0.4, 1.0, 1.05, 0.62, 0.44, 15, 10, 7),
+       pg(frontFace(RM, 3.9, 1.02, 1.2, 1.05, 0.04), T(32)),
+       [0.1, 0.5].map((f) => pg(frontFace(RM, 3.9 + f, 1.02, 1.0, 0.28, 0.16), T(38))).join("")),
+
+    /* bar stools sit far right in frame — the deep end of the y = 0 wall */
+    stool(4.6, 1.35, 0.44, 0.78),
+    stool(5.25, 1.35, 0.44, 0.78),
+
+    /* three tables walked diagonally so they cross the whole frame */
+    ...([[1.5, 2.6], [3.0, 3.2], [4.6, 3.3]] as [number, number][]).flatMap(([tx, ty], n) => [
+      on(table(tx, ty, 1.2, 1.1, 0.68),
+         blk(tx + 0.34, ty + 0.3, 0.68, 0.3, 0.3, 0.11, 44, 32, 22).s,
+         n === 1 ? blk(tx + 0.72, ty + 0.34, 0.68, 0.24, 0.24, 0.06, 38, 26, 18).s : ""),
+      bench(tx - 0.05, ty - 0.85, 0.7, 0.55),
+      bench(tx + 0.3, ty + 1.2, 0.7, 0.55),
+    ]),
+
+    /* the x = 0 wall: condiment stand, magazine rack, plant */
+    on(table(0.4, 2.4, 0.6, 0.6, 0.9),
+       blk(0.5, 2.5, 0.9, 0.4, 0.4, 0.16, 42, 30, 20).s),
+    on(blk(0.3, 3.3, 0, 0.55, 0.6, 1.1, 24, 16, 11),
+       [0.45, 0.8].map((z) => pg(frontFace(RM, 0.3, 3.9, z, 0.55, 0.05), T(30))).join("")),
+    plant(0.3, 4.25),
+
+    pend(2.1, 3.15),
+    pend(3.6, 3.75),
+    pend(5.2, 3.85),
+  ], "cafe");
+
+const salonRoom = () =>
+  shell() +
+  paint([
+    mat(0.2, 1.3, 5.6, 1.2),
+    ...([0.4, 2.3, 4.2] as number[]).flatMap((sx) => [
+      glassY(sx + 0.15, 0.95, 1.1, 1.9, 15),
+      on(blk(sx, 0.3, 0, 1.4, 0.8, 0.8),
+         [0.28, 0.55].map((z) => pg(frontFace(RM, sx, 1.1, z, 1.4, 0.05), T(26))).join("")),
+      I({ x: sx + 0.1, y: 0.4, z: 0.8, w: 0.8, d: 0.18, h: 0.45 },
+        [0, 1, 2].map((j) => blk(sx + 0.1 + j * 0.35, 0.4, 0.8, 0.18, 0.18, 0.3 + j * 0.05, 46 + j * 6, 34, 22).s).join("")),
+      /* The chair, built the way a salon chair is: plate, pedestal, footrest,
+         pad, two arms, a back and a headrest. A pad-and-panel shorthand here
+         read as a monitor on a stand. */
+      I({ x: sx + 0.1, y: 1.45, z: 0, w: 1.15, d: 0.8, h: 1.35 },
+        paint([
+          blk(sx + 0.5, 1.7, 0, 0.3, 0.3, 0.04, 24, 16, 11),
+          blk(sx + 0.58, 1.78, 0.04, 0.14, 0.14, 0.36, 15, 10, 7, false),
+          blk(sx + 0.45, 2.05, 0.16, 0.5, 0.16, 0.06, 28, 19, 12),
+          blk(sx + 0.1, 1.45, 0.4, 1.15, 0.8, 0.14, 40, 28, 18),
+          blk(sx + 0.1, 1.45, 0.54, 0.14, 0.68, 0.28, 32, 22, 14),
+          blk(sx + 1.11, 1.45, 0.54, 0.14, 0.68, 0.28, 32, 22, 14),
+          blk(sx + 0.1, 2.13, 0.54, 1.15, 0.12, 0.62, 36, 24, 16),
+          blk(sx + 0.28, 2.13, 1.16, 0.8, 0.12, 0.19, 44, 31, 20),
+        ])),
+      down(sx + 0.7, 1.0, 4.2),
+    ]),
+
+    /* towel shelves on the x = 0 wall, then the wash bay under them */
+    ...[1.25, 1.85].map((z) =>
+      on(wallX(2.4, z, 1.5, 0.07, T(32)),
+         [0, 1, 2].map((k) => panX(2.5 + k * 0.45, z + 0.07, 0.32, 0.2, T(38 + k * 6))).join(""))),
+    on(blk(0.3, 3.3, 0, 1.9, 0.85, 0.9),
+       [0.55, 1.4].map((bx) =>
+         pg(topFace(RM, 0.3 + bx, 3.5, 0.9, 0.45, 0.45), T(9), ` stroke="${T(34)}" stroke-width="0.6"`) +
+         seg(iso(RM, 0.3 + bx + 0.22, 3.42, 0.9), iso(RM, 0.3 + bx + 0.22, 3.42, 1.35), T(32), 1.1)).join("")),
+
+    /* trolley, waiting bench, retail shelf on the deep right */
+    on(table(2.55, 3.15, 0.5, 0.5, 0.78),
+       [0.3, 0.54].map((z) => pg(frontFace(RM, 2.55, 3.65, z, 0.5, 0.05), T(32))).join("")),
+    on(blk(2.5, 4.2, 0, 1.6, 0.65, 0.44, 30, 20, 13),
+       pg(frontFace(RM, 2.5, 4.85, 0.44, 1.6, 0.6), T(24)),
+       pg(topFace(RM, 2.5, 4.77, 1.04, 1.6, 0.08), T(40))),
+    on(blk(4.35, 3.85, 0, 1.55, 0.85, 1.05),
+       pg(frontFace(RM, 4.35, 4.7, 1.06, 1.55, 0.06), T(34)),
+       blk(4.5, 3.95, 1.05, 0.5, 0.4, 0.06, 42, 30, 20).s,
+       [0.35, 0.7].map((z) => pg(frontFace(RM, 4.35, 4.7, z, 1.55, 0.05), T(26))).join("")),
+    plant(0.35, 4.35),
+  ], "salon");
+
+const pharmacyRoom = () =>
+  shell() +
+  paint([
+    ...([0.35, 2.3, 4.25] as number[]).map((bx) =>
+      on(blk(bx, 0.25, 0, 1.6, 0.75, 2.4),
+         [0.7, 1.4, 2.05].map((z) => pg(frontFace(RM, bx, 1.0, z, 1.6, 0.06), T(34))).join(""),
+         [0.78, 1.48].map((z) =>
+           [0, 1, 2, 3, 4].map((k) =>
+             pg(frontFace(RM, bx + 0.1 + k * 0.29, 1.0, z, 0.19, 0.28 + (k % 3) * 0.06), T(38 + (k % 4) * 8))).join("")).join(""))),
+    I({ x: 3.2, y: 0, z: 2.45, w: 0.6, d: 0, h: 0.4 },
+      (() => { const [rx, ry] = iso(RM, 3.5, 0, 2.6);
+        return `<text x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" text-anchor="middle" fill="${T(38)}" font-size="17" font-family="var(--font-mono)" font-weight="700">Rx</text>`; })()),
+    clockY(1.15, 2.95),
+    on(wallX(0.4, 1.4, 1.2, 1.2, T(5), ` stroke="${T(28)}" stroke-width="0.8"`),
+       panX(0.55, 2.25, 0.9, 0.06, T(26)),
+       panX(0.55, 1.85, 0.9, 0.06, T(26))),
+
+    /* cold cabinet on the left, island of shelves through the middle */
+    on(blk(0.1, 2.1, 0, 0.78, 0.9, 2.0, 24, 15, 10),
+       pg(frontFace(RM, 0.1, 3.0, 0.3, 0.78, 1.5), T(13), ` stroke="${T(38)}" stroke-width="0.9"`),
+       [0.75, 1.25].map((z) => pg(frontFace(RM, 0.16, 3.0, z, 0.66, 0.05), T(30))).join("")),
+    on(blk(1.3, 1.9, 0, 3.0, 0.65, 1.05),
+       [0, 1, 2, 3, 4, 5].map((k) =>
+         blk(1.42 + k * 0.48, 1.98, 1.05, 0.34, 0.45, 0.22 + (k % 3) * 0.07, 42 + (k % 3) * 8, 30, 20).s).join("")),
+    I({ x: 5.2, y: 1.9, z: 0, w: 0.55, d: 0.55, h: 0.66 },
+      [0, 1, 2].map((k) => blk(5.2 + k * 0.02, 1.9 + k * 0.02, k * 0.22, 0.55, 0.55, 0.22, 26 + k * 7, 18, 12).s).join("")),
+    on(blk(5.15, 3.1, 0, 0.75, 0.7, 1.35, 26, 17, 11),
+       [0.5, 0.95].map((z) => pg(frontFace(RM, 5.15, 3.8, z, 0.75, 0.05), T(32))).join(""),
+       [0.58, 1.03].map((z) =>
+         [0, 1].map((k) => pg(frontFace(RM, 5.25 + k * 0.28, 3.8, z, 0.2, 0.22), T(40 + k * 8))).join("")).join("")),
+
+    /* dispensing counter, till, screen, and the queue rail in front of it */
+    on(blk(0.4, 3.6, 0, 4.6, 0.95, 0.95),
+       pg(frontFace(RM, 0.4, 4.55, 0.96, 4.6, 0.05), T(30))),
+    on(blk(1.0, 3.75, 0.95, 0.7, 0.5, 0.3, 40, 28, 19),
+       pg(frontFace(RM, 1.08, 4.25, 1.25, 0.54, 0.16), T(48))),
+    on(blk(2.6, 3.8, 0.95, 0.2, 0.2, 0.06, 26, 18, 12),
+       pg(frontFace(RM, 2.35, 4.0, 0.95, 1.35, 0.55), T(9)),
+       pg(frontFace(RM, 2.43, 4.0, 1.02, 1.19, 0.42), T(30))),
+    blk(1.35, 4.72, 0, 0.16, 0.16, 1.0, 34, 23, 15),
+    on(blk(3.45, 4.72, 0, 0.16, 0.16, 1.0, 34, 23, 15),
+       seg(iso(RM, 1.43, 4.8, 0.95), iso(RM, 2.48, 4.8, 0.74), T(44), 1.3),
+       seg(iso(RM, 2.48, 4.8, 0.74), iso(RM, 3.53, 4.8, 0.95), T(44), 1.3)),
+
+    down(1.6, 2.2),
+    down(4.4, 2.6),
+    down(3.0, 4.2),
+  ], "pharmacy");
+
+const shopRoom = () =>
+  shell() +
+  paint([
+    ...([0.4, 2.9] as number[]).map((bx) =>
+      on(wallY(bx, 0.4, 2.0, 2.5, T(5), ` stroke="${T(24)}" stroke-width="0.7"`),
+         [0.9, 1.55, 2.2].map((z) => panY(bx, z, 2.0, 0.06, T(30))).join(""),
+         [0.98, 1.63].map((z) =>
+           [0, 1, 2, 3, 4].map((k) => panY(bx + 0.12 + k * 0.36, z, 0.22, 0.28, T(36 + (k % 3) * 9))).join("")).join(""))),
+    /* rail on the x = 0 wall */
+    I({ x: 0, y: 1.0, z: 1.3, w: 0, d: 2.4, h: 1.25 },
+      seg(iso(RM, 0, 1.0, 2.5), iso(RM, 0, 3.4, 2.5), T(34), 1.6) +
+      ([1.2, 1.6, 2.0, 2.45, 2.9] as number[]).map((hy) =>
+        seg(iso(RM, 0, hy, 2.5), iso(RM, 0, hy, 1.7), T(24), 0.7) +
+        panX(hy - 0.09, 1.35, 0.2, 0.34, T(30))).join("")),
+    glassX(3.7, 0.55, 0.95, 1.85, 15),
+
+    /* the middle: a display table on a mat */
+    mat(1.4, 1.6, 3.6, 2.5),
+    on(table(1.7, 1.9, 2.9, 1.9, 0.72, 24, 17, 11),
+       ([[0.25, 0.25, 0], [1.0, 0.65, 1], [1.75, 0.15, 2], [2.15, 0.95, 3]] as [number, number, number][])
+         .map(([ox, oy, i]) => blk(1.7 + ox, 1.9 + oy, 0.72, 0.36, 0.36, 0.3, 42 + i * 7, 30, 20).s).join(""),
+       ([[0.85, 1.25], [1.6, 1.0]] as [number, number][])
+         .map(([ox, oy]) => blk(1.7 + ox, 1.9 + oy, 0.72, 0.5, 0.38, 0.09, 36, 25, 16).s +
+                            blk(1.72 + ox, 1.92 + oy, 0.81, 0.46, 0.34, 0.08, 40, 28, 18).s).join(""),
+       blk(2.05, 3.35, 0.72, 0.28, 0.06, 0.34, 44, 31, 20).s),
+
+    /* deep right: a shoe shelf and a dress form */
+    on(blk(5.3, 0.4, 0, 0.65, 1.2, 1.6, 26, 17, 11),
+       [0.45, 0.9, 1.32].map((z) => pg(frontFace(RM, 5.3, 1.6, z, 0.65, 0.05), T(32))).join(""),
+       [0.5, 0.95].map((z) =>
+         [0, 1].map((k) => pg(frontFace(RM, 5.38 + k * 0.26, 1.6, z, 0.2, 0.16), T(40 + k * 8))).join("")).join("")),
+    I({ x: 4.9, y: 2.2, z: 0, w: 0.9, d: 0.4, h: 1.62 },
+      paint([
+        blk(4.9, 2.2, 0, 0.85, 0.1, 0.05, 24, 16, 11),
+        blk(4.9, 2.5, 0, 0.85, 0.1, 0.05, 24, 16, 11),
+        blk(4.92, 2.32, 0, 0.08, 0.08, 1.55, 20, 14, 9, false),
+        blk(5.65, 2.32, 0, 0.08, 0.08, 1.55, 20, 14, 9, false),
+        ...[0, 1, 2, 3].map((k) => blk(5.04 + k * 0.16, 2.28, 0.62, 0.12, 0.16, 0.9, 28 + k * 5, 20, 13)),
+        blk(4.9, 2.3, 1.55, 0.9, 0.12, 0.07, 42, 30, 19),
+      ])),
+
+    /* the near band: counter, bench, basket stack */
+    on(blk(0.4, 3.95, 0, 2.0, 0.8, 0.85),
+       blk(0.65, 4.1, 0.85, 0.6, 0.45, 0.38, 46, 34, 24).s,
+       pg(frontFace(RM, 0.4, 4.75, 0.55, 2.0, 0.05), T(28))),
+    on(blk(3.0, 4.3, 0, 1.4, 0.6, 0.42, 30, 20, 13),
+       pg(frontFace(RM, 3.0, 4.9, 0.42, 1.4, 0.5), T(24))),
+    I({ x: 4.9, y: 3.9, z: 0, w: 0.6, d: 0.55, h: 0.78 },
+      [0, 1, 2].map((k) => blk(4.9 + k * 0.02, 3.9 + k * 0.02, k * 0.26, 0.6, 0.55, 0.26, 24 + k * 8, 18, 12).s).join("")),
+
+    down(2.0, 1.5),
+    down(4.6, 1.9),
+    down(2.6, 4.0),
+  ], "shop");
+
+const startupRoom = () =>
+  shell() +
+  paint([
+    on(wallY(1.1, 1.4, 3.6, 1.9, T(5), ` stroke="${T(34)}" stroke-width="1"`),
+       [0, 1, 2, 3].map((i) => panY(1.4, 2.85 - i * 0.34, 2.7 - i * 0.28, 0.07, T(26))).join("")),
+    clockY(5.4, 2.7),
+    on(wallX(0.6, 1.95, 1.4, 1.15, T(16), ` stroke="${T(36)}" stroke-width="0.8"`),
+       [0, 1, 2, 3].map((k) =>
+         panX(0.72 + (k % 2) * 0.62, 2.13 + Math.floor(k / 2) * 0.5, 0.46, 0.36, T(26 + k * 5))).join("")),
+
+    /* three desks along the y = 0 wall, chairs pulled out toward the viewer */
+    ...([0.5, 2.4, 4.3] as number[]).flatMap((sx) => [
+      on(table(sx, 0.35, 1.35, 0.85, 0.7),
+         blk(sx + 0.25, 0.45, 0.7, 0.5, 0.3, 0.04, 26, 18, 12).s,
+         blk(sx + 0.95, 0.45, 0.7, 0.26, 0.26, 0.2, 36, 25, 17).s,
+         pg(frontFace(RM, sx + 0.35, 1.2, 0.7, 0.62, 0.46), T(8)),
+         pg(frontFace(RM, sx + 0.4, 1.2, 0.74, 0.52, 0.37), T(32)),
+         blk(sx + 0.42, 1.14, 0.7, 0.5, 0.06, 0.03, 34, 24, 16).s),
+      seat(sx + 0.35, 1.55, 0.64, 0.6, 0.7),
+      pend(sx + 0.67, 0.8, 1.1),
+    ]),
+
+    /* lounge corner on the mat */
+    mat(0.2, 2.5, 2.7, 2.1),
+    I({ x: 0.3, y: 3.5, z: 0, w: 2.1, d: 0.9, h: 1.05 },
+      paint([
+        blk(0.3, 3.5, 0, 2.1, 0.16, 1.05, 22, 15, 10),
+        blk(0.3, 3.66, 0, 0.28, 0.74, 0.62, 26, 17, 11),
+        blk(2.12, 3.66, 0, 0.28, 0.74, 0.62, 26, 17, 11),
+        blk(0.58, 3.66, 0, 1.54, 0.74, 0.44, 32, 22, 14),
+        blk(0.6, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+        blk(1.1, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+        blk(1.6, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+      ])),
+    on(table(0.85, 2.7, 1.0, 0.65, 0.42),
+       blk(1.0, 2.8, 0.42, 0.28, 0.28, 0.12, 44, 32, 22).s,
+       blk(1.42, 2.84, 0.42, 0.3, 0.24, 0.05, 38, 26, 18).s),
+
+    /* deep right and the near band */
+    on(blk(0.1, 1.3, 0, 0.7, 1.25, 1.75),
+       [0.55, 1.15].map((z) => pg(frontFace(RM, 0.1, 2.55, z, 0.7, 0.06), T(34))).join(""),
+       [0.63, 1.23].map((z) =>
+         [0, 1, 2].map((k) => pg(frontFace(RM, 0.18 + k * 0.19, 2.55, z, 0.14, 0.26), T(38 + k * 8))).join("")).join("")),
+    on(blk(5.15, 3.0, 0, 0.75, 1.5, 0.8, 28, 19, 12),
+       pg(frontFace(RM, 5.15, 4.5, 0.4, 0.75, 0.05), T(34)),
+       blk(5.25, 3.15, 0.8, 0.5, 0.42, 0.1, 40, 28, 19).s,
+       blk(5.28, 3.7, 0.8, 0.3, 0.3, 0.34, 34, 23, 15).s),
+    on(blk(2.6, 4.2, 0, 0.45, 0.45, 1.2, 24, 16, 11),
+       pg(frontFace(RM, 2.63, 4.65, 0.55, 0.39, 0.5), T(13), ` stroke="${T(36)}" stroke-width="0.7"`)),
+    plant(3.25, 4.15, 0.68),
+    I({ x: 4.2, y: 4.3, z: 0, w: 0.55, d: 0.55, h: 0.86 },
+      [[0, 0.55, 0.3, 20], [0.08, 0.4, 0.28, 26], [0.13, 0.3, 0.28, 32]]
+        .map(([o, s2, hh, t], k) => blk(4.2 + o, 4.3 + o, k === 0 ? 0 : k === 1 ? 0.3 : 0.58, s2, s2, hh, t, 17, 11).s).join("")),
+  ], "startup");
 
 const ROOMS: Record<string, () => string> = {
   "01": clinicRoom,
@@ -279,6 +684,16 @@ const ROOMS: Record<string, () => string> = {
   "05": shopRoom,
   "06": startupRoom,
 };
+
+/* Built here, not in the template: TONES is only complete once every room has
+   been drawn, and the plate needs the finished set. */
+const ROOM_SVG: Record<string, string> = Object.fromEntries(
+  clientTypes.map((c) => [c.key, ROOMS[c.key]?.() ?? ""]),
+);
+const toneVars = [...TONES]
+  .sort((a, b) => a - b)
+  .map((n) => `--t${n}:color-mix(in oklab,var(--interior-ink) ${n}%,var(--interior))`)
+  .join(";");
 
 const span = String(clientTypes.length).padStart(2, "0");
 ---
@@ -294,7 +709,7 @@ const span = String(clientTypes.length).padStart(2, "0");
       id="who-h"
     />
 
-    <div class="dist" data-district>
+    <div class="dist" data-district style={toneVars}>
       <div class="dist__bar mono">
         <span>THE OPEN BOX — DISTRICT 01</span>
         <span class="dist__code" data-status>{span} SPACES · TAP ONE TO ENTER</span>
@@ -378,7 +793,7 @@ const span = String(clientTypes.length).padStart(2, "0");
                     viewBox="-177 -164 388 358"
                     role="img"
                     aria-label={`Cutaway of a typical ${c.name.toLowerCase()} space.`}
-                    set:html={ROOMS[c.key]?.() ?? ""}
+                    set:html={ROOM_SVG[c.key] ?? ""}
                   />
                 </figure>
 
@@ -685,6 +1100,39 @@ const span = String(clientTypes.length).padStart(2, "0");
       grid-template-columns: minmax(0, 1fr) auto auto;
       align-items: center;
       gap: 1.2rem;
+    }
+  }
+
+  /* Stacked, the room is height-bound and letterboxes into the middle third
+     of the plate — 470px of drawing inside 1040px of stage, which is most of
+     why a furnished room still read as empty. Wide enough, the slip moves
+     into that dead margin and the room takes the full height of the stage. */
+  @media (min-width: 1000px) {
+    :global(html.js) .dist__panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(15rem, 24vw, 20rem);
+      /* stretch, not center: flex:1 on the wrap does nothing here, so the
+         column has to carry the height or the SVG sizes to its intrinsic
+         one and runs straight out of the stage. */
+      align-items: stretch;
+      gap: clamp(1rem, 2.4vw, 2rem);
+    }
+    :global(html.js) .dist__roomwrap {
+      height: 100%;
+      min-height: 0;
+    }
+    :global(html.js) .dist__info {
+      grid-template-columns: 1fr;
+      align-content: center;
+      gap: 0.9rem;
+      padding-top: 0;
+      border-top: 0;
+      border-left: var(--hair) dashed var(--interior-line);
+      padding-left: clamp(1rem, 2.4vw, 2rem);
+      height: 100%;
+    }
+    :global(html.js) .dist__line {
+      font-size: 0.86rem;
     }
   }
 
