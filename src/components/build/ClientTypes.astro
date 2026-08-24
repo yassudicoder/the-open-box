@@ -27,6 +27,7 @@ import {
   EYE, VBH, VB_TOP, KERB, ROAD_HALF, NAMED_W, FILLER_W,
   SLOTS, FILLERS, DRAW_ORDER, ribsOf, ribPoints, quadPoints, cardTransform,
   czOf, hazeOf, solveF, vbwOf, sAt, sx, sy,
+  rayEnd, dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
 } from "../../lib/street.ts";
 
 function icon(path: string) {
@@ -198,18 +199,16 @@ const bakedFill = FILLERS.map((s, i) => ({ i, slot: s, ...bakeRibs(s, FILLER_W) 
 /* The ground is invariant under a pure-Z dolly with panX = 0, so it is drawn
    once and never touched again — which also keeps it out of the damage rect
    on every animated frame. */
-const GROUND_Y = (VBH + VB_TOP) * 0.78;
-const KERB_L = `${(-BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`;
-const KERB_R = `${(BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`;
+/* Every ground line is a ray from the vanishing point, and where it lands is
+   pure geometry — slope EYE / X, nothing to do with the frame. */
+const ray = (X: number) => rayEnd(X).map((n) => n.toFixed(0)).join(",");
+const band = (a: number, b: number) => `0,0 ${ray(a)} ${ray(b)}`;
 
-/* 16 cross-rungs recycled modulo one spacing: receding rungs are a technical
-   drawing, a dashed centre line is a highway. */
-const RUNG_N = 16;
-const RUNG_SPACING = 26 / RUNG_N;
-const bakedRungs = Array.from({ length: RUNG_N }, (_, i) => {
-  const z = BAKE_CZ + 2 + i * RUNG_SPACING;
-  const s = sAt(z, BAKE_CZ, BAKE_F);
-  return { i, t: `translate(0px,${sy(s, 0).toFixed(1)}px) scale(${s.toFixed(4)})` };
+/* Lane markings run ALONG the road, so each dash is a rib. They are what
+   makes this a road rather than a corridor: cross-rungs read as a ladder. */
+const bakedDashes = Array.from({ length: DASH_N }, (_, i) => {
+  const zA = dashZ(i, BAKE_CZ);
+  return ribPoints(-DASH_HALF, 0, DASH_HALF, 0, zA, zA + DASH_LEN, BAKE_CZ, 0, BAKE_F);
 });
 
 /* ---------------------------------------------------------------------------
@@ -863,21 +862,20 @@ const span = String(clientTypes.length).padStart(2, "0");
           {/* the ground: invariant under a pure-Z dolly, so it is drawn once
               and never enters the damage rect on an animated frame */}
           <g class="st-ground">
-            <polygon points={`${(-BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} ${(BAKE_VBW / 2).toFixed(0)},${GROUND_Y.toFixed(0)} 0,0`} class="st-road" />
-            <line x1={0} y1={0} x2={(-BAKE_VBW / 2).toFixed(0)} y2={GROUND_Y.toFixed(0)} class="st-kerb" />
-            <line x1={0} y1={0} x2={(BAKE_VBW / 2).toFixed(0)} y2={GROUND_Y.toFixed(0)} class="st-kerb" />
+            <polygon points={band(-ROAD_HALF, ROAD_HALF)} class="st-road" />
+            <polygon points={band(-KERB, -ROAD_HALF)} class="st-walk" />
+            <polygon points={band(KERB, ROAD_HALF)} class="st-walk" />
+            <line x1={0} y1={0} x2={rayEnd(-ROAD_HALF)[0]} y2={rayEnd(-ROAD_HALF)[1]} class="st-kerb" />
+            <line x1={0} y1={0} x2={rayEnd(ROAD_HALF)[0]} y2={rayEnd(ROAD_HALF)[1]} class="st-kerb" />
+            <line x1={0} y1={0} x2={rayEnd(-KERB)[0]} y2={rayEnd(-KERB)[1]} class="st-walkedge" />
+            <line x1={0} y1={0} x2={rayEnd(KERB)[0]} y2={rayEnd(KERB)[1]} class="st-walkedge" />
             <line x1={(-BAKE_VBW / 2).toFixed(0)} y1={0} x2={(BAKE_VBW / 2).toFixed(0)} y2={0} class="st-horizon" />
             <circle cx={0} cy={0} r={2.5} class="st-vp" />
           </g>
 
-          {/* recycled cross-rungs — receding rungs read as a technical
-              drawing where a dashed centre line would read as a highway */}
-          <g class="st-rungs" data-rungs>
-            {bakedRungs.map((r) => (
-              <g data-rung={r.i} style={`transform:${r.t}`}>
-                <line x1={-ROAD_HALF} y1={0} x2={ROAD_HALF} y2={0} />
-              </g>
-            ))}
+          {/* the centre line, dividing the carriageway */}
+          <g class="st-dashes" data-dashes>
+            {bakedDashes.map((d, i) => (d ? <polygon points={d} data-dash={i} /> : <polygon data-dash={i} style="visibility:hidden" />))}
           </g>
 
           {/* far to near — the order is a build-time constant because
@@ -1083,12 +1081,15 @@ const span = String(clientTypes.length).padStart(2, "0");
   .st__svg { display: none; }
   .st__skip { display: none; }
 
-  .st-road { fill: color-mix(in oklab, var(--interior-ink) 4%, var(--interior)); }
-  .st-kerb { stroke: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); stroke-width: 1.1; }
+  .st-road { fill: color-mix(in oklab, var(--interior-ink) 9%, var(--interior)); }
+  .st-walk { fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior)); }
+  .st-kerb { stroke: color-mix(in oklab, var(--interior-ink) 40%, var(--interior)); stroke-width: 1.3; }
+  .st-walkedge { stroke: color-mix(in oklab, var(--interior-ink) 26%, var(--interior)); stroke-width: 0.9; }
   .st-horizon { stroke: color-mix(in oklab, var(--interior-ink) 18%, var(--interior)); stroke-width: 0.7; }
   .st-vp { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
-  .st-rungs line { stroke: color-mix(in oklab, var(--interior-ink) 22%, var(--interior)); stroke-width: 0.07; }
-  .st-rungs g { will-change: transform; }
+  /* The paint is the lightest thing on the road, the way road paint is —
+     which in this palette means the least ink, not the most. */
+  .st-dashes polygon { fill: var(--interior); }
 
   /* Faces carry tone; the card carries the line art. Strokes are NOT
      non-scaling: letting them thin with distance is the depth cue, and it is
@@ -1269,20 +1270,29 @@ const span = String(clientTypes.length).padStart(2, "0");
       position: absolute;
       inset: 0;
       z-index: 3;
+      /* Six interiors, ~1100 polygons, laid out on every frame of the drive
+         while all six are closed. This lets the browser skip the subtree it
+         is not showing; unlike hiding it, the content stays in the
+         accessibility tree and in find-in-page. */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 480px;
       background: var(--interior);
       opacity: 0;
-      transform: scale(1.02);
+      transform: scale(1.07);
       pointer-events: none;
-      transition: opacity 0.34s var(--ease), transform 0.34s var(--ease);
+      transition: opacity 0.42s var(--ease), transform 0.42s var(--ease);
     }
     :global(html.js) .st__space[open] > .dist__panel {
+      content-visibility: visible;
       opacity: 1;
       transform: none;
       pointer-events: auto;
     }
-    :global(html.js) .st__frame[data-open] .st__svg,
+    /* The street's own fade is driven frame by frame during the zoom, so it
+       must NOT also carry a CSS transition — the two would fight and the
+       result reads as a stutter. Only the skip button transitions. */
     :global(html.js) .st__frame[data-open] .st__skip { opacity: 0; }
-    :global(html.js) .st__svg { transition: opacity 0.34s var(--ease); }
+    :global(html.js) .st__skip { transition: opacity 0.3s var(--ease), background 0.15s var(--ease); }
   }
 
   /* ---- the interior: room fills the stage, slip pinned beneath ---- */
@@ -1435,7 +1445,8 @@ const span = String(clientTypes.length).padStart(2, "0");
 <script>
   import {
     NEAR, VBH, VB_TOP, KERB, NAMED_W, FILLER_W, ribsOf, ribPoints,
-    cardTransform, czOf, hazeOf, solveF, vbwOf, sAt, sy, widthOf, MIN_TAP, ease,
+    cardTransform, czOf, hazeOf, solveF, vbwOf, widthOf, MIN_TAP, ease,
+    dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
   } from "../../lib/street.ts";
 
   /* The <details> layer works with none of this: every category is a visible
@@ -1482,7 +1493,11 @@ const span = String(clientTypes.length).padStart(2, "0");
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const PIN_TOP = 62;
-    const RUNG_SP = 26 / 16;
+    /* How hard the camera chases the scroll. Bound straight to scrollY it
+       moves in the wheel's own steps, which on a trackpad is a stutter; a
+       short exponential follow turns those steps into a glide without ever
+       lagging far enough behind to feel disconnected. */
+    const FOLLOW = 0.13;
 
     type Solid = {
       el: SVGGraphicsElement;
@@ -1521,7 +1536,7 @@ const span = String(clientTypes.length).padStart(2, "0");
 
     const solids = Array.from(svg.querySelectorAll("[data-b],[data-fill]")).map(read);
     const named = solids.filter((s) => s.key);
-    const rungs = Array.from(svg.querySelectorAll<SVGGElement>("[data-rung]"));
+    const dashes = Array.from(svg.querySelectorAll<SVGPolygonElement>("[data-dash]"));
 
     /* Facade anchors are focusable by default so the no-JS path can use them.
        Under JS the chips are the keyboard control, and two tab stops per
@@ -1609,15 +1624,15 @@ const span = String(clientTypes.length).padStart(2, "0");
         }
       }
 
-      const n = quality >= 1 ? 8 : rungs.length;
-      const z0 = Math.floor((cz + 2) / RUNG_SP) * RUNG_SP;
-      for (let i = 0; i < rungs.length; i++) {
-        if (i >= n) { rungs[i].style.visibility = "hidden"; continue; }
-        rungs[i].style.visibility = "";
-        const z = z0 + (i + 1) * RUNG_SP * (quality >= 1 ? 2 : 1);
-        const s = sAt(z, cz, F);
-        rungs[i].style.transform = `translate(0px,${sy(s, 0).toFixed(1)}px) scale(${s.toFixed(4)})`;
-        rungs[i].style.opacity = hazeOf(z - cz).toFixed(3);
+      const lanes = quality >= 1 ? 12 : DASH_N;
+      for (let i = 0; i < dashes.length; i++) {
+        if (i >= lanes) { dashes[i].style.visibility = "hidden"; continue; }
+        const zA = dashZ(i, cz);
+        const pts = ribPoints(-DASH_HALF, 0, DASH_HALF, 0, zA, zA + DASH_LEN, cz, panX, F);
+        if (pts === null) { dashes[i].style.visibility = "hidden"; continue; }
+        dashes[i].style.visibility = "";
+        dashes[i].setAttribute("points", pts);
+        dashes[i].style.opacity = (paintHaze(zA - cz) * (zoom > 0 ? Math.max(0, 1 - zoom / 0.18) : 1)).toFixed(3);
       }
       frame.dataset.cz = cam.cz.toFixed(2);
     };
@@ -1632,7 +1647,7 @@ const span = String(clientTypes.length).padStart(2, "0");
 
     /* ---- frame pump ------------------------------------------------------ */
     let raf = 0;
-    let lastP = -1;
+    let tPrev = 0;
     let parity = 0;
     const times: number[] = [];
     let mark = 0;
@@ -1654,16 +1669,26 @@ const span = String(clientTypes.length).padStart(2, "0");
     const pump = (now: number) => {
       raf = 0;
       budget(now);
+      const dt = tPrev ? Math.min(0.05, (now - tPrev) / 1000) : 1 / 60;
+      tPrev = now;
       if (quality >= 2 && (parity ^= 1)) { schedule(); return; }
-      if (cam.zoom === 0) {
-        const p = pOf();
-        if (p !== lastP) { lastP = p; cam.cz = czOf(p); draw(); }
+      if (cam.zoom !== 0) return;
+      const aim = czOf(pOf());
+      const gap = aim - cam.cz;
+      if (Math.abs(gap) > 0.004) {
+        /* frame-rate independent: the same glide on 120Hz and on 30 */
+        cam.cz += gap * (1 - Math.exp(-dt / FOLLOW));
+        draw();
+        schedule(); // keep pumping until it has settled
+      } else if (cam.cz !== aim) {
+        cam.cz = aim;
+        draw();
       }
     };
     const schedule = () => { if (!raf) raf = requestAnimationFrame(pump); };
 
     addEventListener("scroll", schedule, { passive: true });
-    addEventListener("resize", () => { measure(); lastP = -1; schedule(); }, { passive: true });
+    addEventListener("resize", () => { measure(); draw(); schedule(); }, { passive: true });
 
     /* ---- the door -------------------------------------------------------- */
     let anim = 0;
@@ -1688,27 +1713,32 @@ const span = String(clientTypes.length).padStart(2, "0");
       const pxE = Math.max(-6, Math.min(6, 5.4 * s.side));
       cam.target = s;
       let opened = false;
-      tween(620, (t) => {
+      tween(760, (t) => {
         cam.zoom = t;
         cam.cz = cz0 + (czE - cz0) * t;
         cam.panX = px0 + (pxE - px0) * t;
         F = F0 + (1240 - F0) * t;
+        /* the street thins out under the incoming room instead of being cut
+           away beneath it — the two are the same place, a moment apart */
+        svg.style.opacity = t > 0.5 ? (1 - (t - 0.5) / 0.5).toFixed(3) : "1";
         draw();
-        if (!opened && t >= 0.55) {
+        if (!opened && t >= 0.62) {
           opened = true;
           d.open = true;
           d.querySelector<HTMLElement>("[data-back]")?.focus({ preventScroll: true });
         }
       }, () => {
         svg.style.visibility = "hidden";
+        svg.style.opacity = "";
       });
     };
 
     const leave = (d: HTMLDetailsElement) => {
       svg.style.visibility = "";
+      svg.style.opacity = "0";
       const cz0 = cam.cz, F0 = F, px0 = cam.panX, z0 = cam.zoom;
       let closed = false;
-      tween(520, (t) => {
+      tween(620, (t) => {
         const k = 1 - t;
         cam.zoom = z0 * k;
         /* the live scroll position is the target, so if the page moved while
@@ -1717,13 +1747,15 @@ const span = String(clientTypes.length).padStart(2, "0");
         cam.cz = czNow + (cz0 - czNow) * k;
         cam.panX = px0 * k;
         F = solveF(vbw) + (F0 - solveF(vbw)) * k;
-        if (!closed && k < 0.5) { closed = true; d.open = false; }
+        if (!closed && k < 0.55) { closed = true; d.open = false; }
+        svg.style.opacity = k < 0.5 ? "1" : (1 - (k - 0.5) / 0.5).toFixed(3);
         draw();
       }, () => {
         cam.zoom = 0;
         cam.target = null;
         F = solveF(vbw);
-        lastP = -1;
+        svg.style.opacity = "";
+        draw();
         schedule();
       });
     };
@@ -1755,7 +1787,7 @@ const span = String(clientTypes.length).padStart(2, "0");
     });
 
     measure();
-    lastP = -1;
+    draw();
     schedule();
   }
   if (document.readyState !== "loading") initDistrict();

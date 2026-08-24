@@ -71,12 +71,21 @@ export const SLOTS: Slot[] = [
 ];
 
 /* Anonymous infill so six buildings on a road read as a district. They carry
-   no name, no key, no copy and no data — they invent nothing. */
+   no name, no key, no copy and no data — they invent nothing.
+
+   They all stand BEYOND the last pair, and that is a hard constraint, not a
+   composition choice. The camera dwells 12 units short of the pair it is
+   showing, so anything standing in that gap is nearer than the thing you came
+   to look at and fills the frame with a blank wall. Put one between the pairs
+   — which is where they look like they belong on a plan — and every dwell is
+   blocked by a building with no name on it. Out here they do the opposite
+   job: they carry the street past the last shopfront instead of stopping it
+   dead at the vanishing point. */
 export const FILLERS: { side: Side; zf: number; zb: number; h: number }[] = [
-  { side: -1, zf: 42, zb: 50, h: 5.6 },
-  { side: 1, zf: 46, zb: 54, h: 6.4 },
-  { side: -1, zf: 68, zb: 76, h: 5.2 },
-  { side: 1, zf: 72, zb: 80, h: 6.8 },
+  { side: -1, zf: 100, zb: 108, h: 6.4 },
+  { side: 1, zf: 104, zb: 112, h: 5.6 },
+  { side: -1, zf: 116, zb: 124, h: 6.8 },
+  { side: 1, zf: 120, zb: 128, h: 5.2 },
 ];
 
 /** Draw order is a build-time constant: same-side Z extents are disjoint, and
@@ -212,6 +221,39 @@ export const ribsOf = (s: { side: Side; zf: number; zb: number; h: number }, w: 
     base: [xi, 0, xo, 0, s.zf, s.zb],
   };
 };
+
+/* ---- the road surface ----------------------------------------------------
+   A line running along Z at lateral offset X projects to a ray from the
+   vanishing point whose slope is EYE / X. That is geometry, not layout: it
+   does NOT depend on the viewBox width. The first version drew the kerbs to
+   the frame corners instead, which put the road edge at a slope of 0.28 where
+   the buildings actually stand on 0.42 — the road and the buildings it served
+   were two unrelated drawings sharing a frame. */
+export const rayEnd = (X: number): [number, number] => {
+  const k = (VB_TOP + VBH) / EYE;
+  return [X * k, VB_TOP + VBH];
+};
+
+/** Centre-line markings. A dash lies flat on the road and runs ALONG Z, so it
+    is a rib — the cross-section is the width of the paint. */
+export const DASH_LEN = 1.7;
+export const DASH_PITCH = 4.2;
+export const DASH_N = 22;
+export const DASH_HALF = 0.15;
+
+/** Paint holds its brightness further down the road than masonry does, so it
+    gets its own, gentler falloff — under the building haze the centre line
+    petered out a third of the way to the vanishing point. */
+export const paintHaze = (d: number) => {
+  if (d <= 0) return 0;
+  const o = (140 - d) / 46;
+  return o < 0 ? 0 : o > 1 ? 1 : o;
+};
+
+/** Z of dash i, recycled ahead of the camera so a handful of marks paint an
+    endless road. */
+export const dashZ = (i: number, cz: number) =>
+  Math.floor((cz + NEAR) / DASH_PITCH) * DASH_PITCH + i * DASH_PITCH;
 
 /* ---- depth cues ---------------------------------------------------------- */
 
