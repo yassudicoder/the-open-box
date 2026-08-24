@@ -430,8 +430,8 @@ const cafeRoom = () =>
   shell() +
   paint([
     /* menu board, bottle shelves, window */
-    on(wallY(0.45, 1.85, 1.35, 1.05, T(4), ` stroke="${T(32)}" stroke-width="0.9"`),
-       [0.35, 0.62, 0.89].map((f) => panY(0.6, 1.95 + f * 0.9, 1.0 - f * 0.5, 0.06, T(22))).join("")),
+    on(wallY(0.45, 1.85, 1.35, 1.05, T(36), ` stroke="${T(50)}" stroke-width="0.9"`),
+       [0.35, 0.62, 0.89].map((f) => panY(0.6, 1.95 + f * 0.9, 1.0 - f * 0.5, 0.06, T(13))).join("")),
     ...[1.95, 2.6].map((z) =>
       on(wallY(2.2, z, 3.2, 0.07, T(30)),
          [0, 1, 2, 3, 4, 5].map((k) =>
@@ -578,7 +578,7 @@ const shopRoom = () =>
   shell() +
   paint([
     ...([0.4, 2.9] as number[]).map((bx) =>
-      on(wallY(bx, 0.4, 2.0, 2.5, T(5), ` stroke="${T(24)}" stroke-width="0.7"`),
+      on(wallY(bx, 0.4, 2.0, 2.5, T(17), ` stroke="${T(30)}" stroke-width="0.7"`),
          [0.9, 1.55, 2.2].map((z) => panY(bx, z, 2.0, 0.06, T(30))).join(""),
          [0.98, 1.63].map((z) =>
            [0, 1, 2, 3, 4].map((k) => panY(bx + 0.12 + k * 0.36, z, 0.22, 0.28, T(36 + (k % 3) * 9))).join("")).join(""))),
