@@ -6,12 +6,10 @@
    each. Click a space and it takes over the frame — the others step back —
    showing what a site for that business actually has to contain.
 
-   Built on the same idea as the "inside the box" moment in the hero: this
-   frame is permanently inverted (--interior / --interior-ink), the same
-   pair DemoContinue.astro uses for its own always-dark capsule, regardless
-   of which theme the rest of the page is in. Stepping into the district
-   uses the one inversion trick this site already has, rather than
-   inventing a second one.
+   The plate sits on the page's own paper and ink, not inverted. It is still
+   written against the --interior / --interior-ink pair, but .dist re-points
+   that pair at --paper / --ink, so the whole district — tone scale, block
+   faces, rules — follows the page and the theme from one place.
 
    Mechanism is still native <details>/<summary> — same foundation as the
    manifest list this replaces, so it stays keyboard-operable, readable by
@@ -210,18 +208,26 @@ const I = (b: Box, s: string): Item => ({ b, s });
 /** marks that belong to a prop — same box, drawn straight after it */
 const on = (it: Item, ...more: string[]): Item => ({ b: it.b, s: it.s + more.join("") });
 
-/** A solid: its two visible walls plus the top. The hairline on every face is
-    what stops one grey box dissolving into the grey box behind it — without
-    it a room full of props reads as a single lump. */
+/** A solid: its two visible walls plus the top.
+
+    The three numbers are ink strengths, given strongest first. Which FACE
+    gets which depends on where the light is, and on paper it falls from
+    above: the top of a thing is its lightest face and the side turned away
+    is its darkest, so the strongest step goes on the side and the weakest on
+    the top. (Against the old inverted plate it ran the other way — more ink
+    meant brighter there.) These three lines are where the light comes from.
+
+    The hairline on every face is what stops one grey box dissolving into the
+    grey box behind it — without it a room full of props reads as one lump. */
 const blk = (x: number, y: number, z: number, w: number, d: number, h: number,
-             top = 30, front = 19, side = 11, edge = true): Item => {
-  const e = edge ? ` stroke="${T(top + 13)}" stroke-width="0.45" stroke-linejoin="round"` : "";
+             strong = 30, mid = 19, weak = 11, edge = true): Item => {
+  const e = edge ? ` stroke="${T(strong + 13)}" stroke-width="0.45" stroke-linejoin="round"` : "";
   return {
     b: { x, y, z, w, d, h },
     s:
-      pg(sideFace(RM, x + w, y, z, d, h), T(side), e) +
-      pg(frontFace(RM, x, y + d, z, w, h), T(front), e) +
-      pg(topFace(RM, x, y, z + h, w, d), T(top), e),
+      pg(sideFace(RM, x + w, y, z, d, h), T(strong), e) +
+      pg(frontFace(RM, x, y + d, z, w, h), T(mid), e) +
+      pg(topFace(RM, x, y, z + h, w, d), T(weak), e),
   };
 };
 
@@ -244,12 +250,12 @@ const wallX = (y: number, z: number, d: number, h: number, fill: string, extra =
 const legs = (x: number, y: number, w: number, d: number, h: number, t = 0.08) =>
   ([[x + 0.05, y + 0.05], [x + w - t - 0.05, y + 0.05],
     [x + 0.05, y + d - t - 0.05], [x + w - t - 0.05, y + d - t - 0.05]] as [number, number][])
-    .map(([lx, ly]) => blk(lx, ly, 0, t, t, h, 15, 10, 7, false));
+    .map(([lx, ly]) => blk(lx, ly, 0, t, t, h, 30, 22, 16, false));
 
 const table = (x: number, y: number, w: number, d: number, h: number,
-               top = 32, front = 22, side = 14): Item => ({
+               strong = 32, mid = 22, weak = 14): Item => ({
   b: { x, y, z: 0, w, d, h },
-  s: paint([...legs(x, y, w, d, h - 0.09), blk(x, y, h - 0.09, w, d, 0.09, top, front, side)]),
+  s: paint([...legs(x, y, w, d, h - 0.09), blk(x, y, h - 0.09, w, d, 0.09, strong, mid, weak)]),
 });
 
 /** seat pad on legs with a back on the near side, so it faces the viewer */
@@ -265,7 +271,7 @@ const seat = (x: number, y: number, w = 0.6, d = 0.58, bh = 0.58): Item => ({
 const stool = (x: number, y: number, s = 0.42, h = 0.62): Item => ({
   b: { x, y, z: 0, w: s, d: s, h },
   s: paint([
-    blk(x + s / 2 - 0.05, y + s / 2 - 0.05, 0, 0.1, 0.1, h - 0.08, 15, 10, 7, false),
+    blk(x + s / 2 - 0.05, y + s / 2 - 0.05, 0, 0.1, 0.1, h - 0.08, 30, 22, 16, false),
     blk(x, y, h - 0.08, s, s, 0.08, 36, 25, 16),
   ]),
 });
@@ -289,16 +295,18 @@ const pend = (x: number, y: number, drop = 1.3): Item => ({
   b: { x: x - 0.12, y: y - 0.12, z: RH - drop, w: 0.24, d: 0.24, h: drop },
   s:
     seg(iso(RM, x, y, RH), iso(RM, x, y, RH - drop), T(22), 0.8) +
-    dot(iso(RM, x, y, RH - drop - 0.15), 7, T(30)) +
-    dot(iso(RM, x, y, RH - drop - 0.18), 3.2, T(62)),
+    dot(iso(RM, x, y, RH - drop - 0.15), 7, T(38)) +
+    dot(iso(RM, x, y, RH - drop - 0.18), 3.2, T(5)),
 });
 
 /** recessed ceiling light */
 const down = (x: number, y: number, r = 4): Item =>
-  I({ x: x - 0.1, y: y - 0.1, z: RH - 0.05, w: 0.2, d: 0.2, h: 0.05 }, dot(iso(RM, x, y, RH), r, T(30)));
+  I({ x: x - 0.1, y: y - 0.1, z: RH - 0.05, w: 0.2, d: 0.2, h: 0.05 },
+    dot(iso(RM, x, y, RH), r, T(5), ` stroke="${T(34)}" stroke-width="0.8"`));
 
-/** A mat — zero height, so anything standing on it draws after. Lighter than
-    the floor, never darker: a dark patch on a dark floor reads as a hole in it. */
+/** A mat — zero height, so anything standing on it draws after. One tonal
+    step off the floor and no more; any further and it stops reading as a rug
+    and starts reading as a hole cut in the floor. */
 const mat = (x: number, y: number, w: number, d: number): Item =>
   I({ x, y, z: 0, w, d, h: 0 },
     pg(topFace(RM, x, y, 0.01, w, d), T(11), ` stroke="${T(24)}" stroke-width="0.6"`) +
@@ -484,7 +492,7 @@ const salonRoom = () =>
       I({ x: sx + 0.1, y: 1.45, z: 0, w: 1.15, d: 0.8, h: 1.35 },
         paint([
           blk(sx + 0.5, 1.7, 0, 0.3, 0.3, 0.04, 24, 16, 11),
-          blk(sx + 0.58, 1.78, 0.04, 0.14, 0.14, 0.36, 15, 10, 7, false),
+          blk(sx + 0.58, 1.78, 0.04, 0.14, 0.14, 0.36, 30, 22, 16, false),
           blk(sx + 0.45, 2.05, 0.16, 0.5, 0.16, 0.06, 28, 19, 12),
           blk(sx + 0.1, 1.45, 0.4, 1.15, 0.8, 0.14, 40, 28, 18),
           blk(sx + 0.1, 1.45, 0.54, 0.14, 0.68, 0.28, 32, 22, 14),
@@ -601,8 +609,8 @@ const shopRoom = () =>
       paint([
         blk(4.9, 2.2, 0, 0.85, 0.1, 0.05, 24, 16, 11),
         blk(4.9, 2.5, 0, 0.85, 0.1, 0.05, 24, 16, 11),
-        blk(4.92, 2.32, 0, 0.08, 0.08, 1.55, 20, 14, 9, false),
-        blk(5.65, 2.32, 0, 0.08, 0.08, 1.55, 20, 14, 9, false),
+        blk(4.92, 2.32, 0, 0.08, 0.08, 1.55, 32, 24, 17, false),
+        blk(5.65, 2.32, 0, 0.08, 0.08, 1.55, 32, 24, 17, false),
         ...[0, 1, 2, 3].map((k) => blk(5.04 + k * 0.16, 2.28, 0.62, 0.12, 0.16, 0.9, 28 + k * 5, 20, 13)),
         blk(4.9, 2.3, 1.55, 0.9, 0.12, 0.07, 42, 30, 19),
       ])),
@@ -830,8 +838,19 @@ const span = String(clientTypes.length).padStart(2, "0");
 </section>
 
 <style>
-  /* ---- the plate: permanently inverted, like the inside of the hero box ---- */
+  /* ---- the plate ----
+     Everything inside the district — the tone scale on the rooms, the block
+     faces, the slip's rules — is written against --interior / --interior-ink,
+     so which way round the plate runs is decided here and nowhere else.
+     It used to run inverted, like the inside of the hero box. It doesn't now:
+     a black panel dropped into a white page fought the rest of the section,
+     and the drawings read better as ink on paper anyway. Redefining the pair
+     locally re-points all of it at the page's own palette; every tonal step
+     keeps its relative weight and simply lands the other way up. */
   .dist {
+    --interior: var(--paper);
+    --interior-ink: var(--ink);
+    --interior-line: var(--line-2);
     background: var(--interior);
     color: var(--interior-ink);
     border: var(--hair-strong) solid var(--interior-ink);
@@ -855,15 +874,19 @@ const span = String(clientTypes.length).padStart(2, "0");
   }
 
   /* ---- the isometric building ----
-     Faces are all currentColor at different opacities, so the whole scene
-     inverts with the plate: no second palette, no per-block hue. */
+     Faces are all one ink at different strengths, so the whole scene tracks
+     the plate and the theme: no second palette, no per-block hue. */
   .iso {
     padding: clamp(0.5rem, 2vw, 1.2rem) clamp(0.5rem, 2vw, 1rem) 0;
   }
   .iso__svg {
     display: block;
     width: 100%;
-    max-width: 40rem;
+    /* Width cap plus a height cap: height:auto alone would let a wide plate
+       scale the model straight out of the stage. Whichever binds first wins
+       and the aspect holds either way. */
+    max-width: 52rem;
+    max-height: 100%;
     height: auto;
     margin-inline: auto;
     color: var(--interior-ink);
@@ -874,14 +897,14 @@ const span = String(clientTypes.length).padStart(2, "0");
      defeat it: every roof shows through every other block and the skyline
      reads as sheets of glass. color-mix keeps them opaque while still
      resolving against the plate, so the scene inverts without a palette. */
-  .iso-plinth-t { fill: color-mix(in oklab, var(--interior-ink) 9%, var(--interior)); }
+  .iso-plinth-t { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
   .iso-plinth-f { fill: color-mix(in oklab, var(--interior-ink) 14%, var(--interior)); }
-  .iso-plinth-s { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
+  .iso-plinth-s { fill: color-mix(in oklab, var(--interior-ink) 20%, var(--interior)); }
 
   .iso__block { cursor: pointer; }
   /* Every face also carries a hairline edge. Tonal separation alone is not
-     enough on a near-black ground — without the edges the roof reads as a
-     bright plane floating clear of an invisible facade. */
+     enough at these strengths — without the edges the roof reads as a plane
+     floating clear of a facade that has dissolved into the ground. */
   .iso-top,
   .iso-front,
   .iso-side {
@@ -889,9 +912,11 @@ const span = String(clientTypes.length).padStart(2, "0");
     stroke-width: 0.7;
     transition: fill 0.18s var(--ease), stroke 0.18s var(--ease);
   }
-  .iso-top   { fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
+  /* Same relighting as the room solids: on paper the roof is the lightest
+     face of a block and the shaded side the darkest. */
+  .iso-top   { fill: color-mix(in oklab, var(--interior-ink) 11%, var(--interior)); }
   .iso-front { fill: color-mix(in oklab, var(--interior-ink) 20%, var(--interior)); }
-  .iso-side  { fill: color-mix(in oklab, var(--interior-ink) 11%, var(--interior)); }
+  .iso-side  { fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
   .iso-win   { fill: color-mix(in oklab, var(--interior-ink) 50%, var(--interior)); transition: fill 0.18s var(--ease); }
   .iso-cap {
     fill: none;
@@ -906,7 +931,7 @@ const span = String(clientTypes.length).padStart(2, "0");
     letter-spacing: 0.14em;
     text-anchor: middle;
     fill: currentColor;
-    fill-opacity: 0.45;
+    fill-opacity: 0.7;
     transition: fill-opacity 0.18s var(--ease);
   }
 
@@ -921,13 +946,13 @@ const span = String(clientTypes.length).padStart(2, "0");
   .iso__block.is-active .iso-side { stroke: var(--interior-ink); }
   .iso__block:hover .iso-top,
   .iso__block:focus-visible .iso-top,
-  .iso__block.is-active .iso-top { fill: color-mix(in oklab, var(--interior-ink) 52%, var(--interior)); }
+  .iso__block.is-active .iso-top { fill: color-mix(in oklab, var(--interior-ink) 21%, var(--interior)); }
   .iso__block:hover .iso-front,
   .iso__block:focus-visible .iso-front,
   .iso__block.is-active .iso-front { fill: color-mix(in oklab, var(--interior-ink) 33%, var(--interior)); }
   .iso__block:hover .iso-side,
   .iso__block:focus-visible .iso-side,
-  .iso__block.is-active .iso-side { fill: color-mix(in oklab, var(--interior-ink) 19%, var(--interior)); }
+  .iso__block.is-active .iso-side { fill: color-mix(in oklab, var(--interior-ink) 55%, var(--interior)); }
   .iso__block:hover .iso-win,
   .iso__block:focus-visible .iso-win,
   .iso__block.is-active .iso-win { fill: color-mix(in oklab, var(--interior-ink) 72%, var(--interior)); }
