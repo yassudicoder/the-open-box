@@ -274,7 +274,7 @@ export const advantages: { title: string; body: string }[] = [
   },
   {
     title: "Built around your business",
-    body: "The structure comes from what your customers need to do — book, call, find you, read the menu — not from a template that was already lying around.",
+    body: "The structure comes from what your customers actually need to do: book, call, find you, read the menu. Not from a template that happened to be lying around.",
   },
   {
     title: "Responsive by default",
@@ -290,7 +290,7 @@ export const advantages: { title: string; body: string }[] = [
   },
   {
     title: "No features you don't need",
-    body: "If a thing doesn't earn its place — a login, a blog, an animation — it doesn't get built. Less to maintain, less to go wrong.",
+    body: "A login nobody asked for, a blog nobody will update, an animation for its own sake — if it doesn't earn its place, it doesn't get built. That's one less thing for you to maintain later.",
   },
 ];
 
