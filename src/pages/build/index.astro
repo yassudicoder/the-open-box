@@ -6,12 +6,19 @@
    typography, same crease dividers — this is the studio's other half, not a
    different website.
 
-   Order: WHO IT'S FOR → WHAT I DO → FROM FIGMA TO LIVE → SELECTED WORK →
-          WHY ME → THE BRIEF
+   Order: WHO IT'S FOR → WHAT I DO → FROM FIGMA TO LIVE → WHY ME →
+          THE BRIEF
 
    HOW I WORK was cut — it was a static six-step restatement of exactly
    what FROM FIGMA TO LIVE already demonstrates interactively. One section
    doing that job beats two, and the demo is the stronger of the two.
+
+   SELECTED WORK is unmounted, not deleted. There's no real client work yet
+   to show, and an empty "reserved slots" section reads as thin rather than
+   honest. The component and src/data/commissions.ts still exist exactly as
+   built — the moment there's one real project, add it to commissions.ts and
+   drop <SelectedWork /> back in below Pipeline; it switches from empty-state
+   to real cards on its own, no layout work needed.
    ========================================================================== */
 import Base from "../../layouts/Base.astro";
 import CreaseDivider from "../../components/CreaseDivider.astro";
@@ -19,7 +26,6 @@ import BuildHero from "../../components/build/BuildHero.astro";
 import ClientTypes from "../../components/build/ClientTypes.astro";
 import ServiceLines from "../../components/build/ServiceLines.astro";
 import Pipeline from "../../components/build/Pipeline.astro";
-import SelectedWork from "../../components/build/SelectedWork.astro";
 import WhyMe from "../../components/build/WhyMe.astro";
 import ProjectBrief from "../../components/build/ProjectBrief.astro";
 import { site } from "../../data/site.ts";
@@ -144,9 +150,7 @@ const jsonld = [
   <CreaseDivider variant="fold" />
   <Pipeline />
   <CreaseDivider variant="flap" />
-  <SelectedWork />
-  <CreaseDivider variant="fold" />
   <WhyMe />
-  <CreaseDivider variant="flap" />
+  <CreaseDivider variant="fold" />
   <ProjectBrief />
 </Base>
