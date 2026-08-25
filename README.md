@@ -211,6 +211,61 @@ cover is used as a fallback.)
 
 ---
 
+## The brief form — switching on automatic sending
+
+`/build/` ends in an enquiry form. Pressing **SEND THE BRIEF** posts it to
+`api/brief.js`, a Vercel Serverless Function that emails the brief to the studio
+and answers inline. The visitor never leaves the page.
+
+**Until `RESEND_API_KEY` is set, the endpoint answers 501 and the form silently
+falls back to opening the visitor's own mail app with the brief already written.**
+Nothing breaks and no enquiry is lost while this is unconfigured — but nothing is
+delivered automatically either. Three steps:
+
+1. Sign up at [resend.com](https://resend.com) **using the address you want the
+   briefs to arrive at** (`boxai5115@gmail.com`). The free tier is 3,000
+   emails/month. Create an API key.
+2. In Vercel → your project → **Settings → Environment Variables**, add:
+
+   | Name | Value | Required |
+   |---|---|---|
+   | `RESEND_API_KEY` | the key from step 1 (`re_…`) | yes |
+   | `MAIL_TO` | where briefs are delivered | no — defaults to `boxai5115@gmail.com` |
+   | `MAIL_FROM` | the sender | no — defaults to `The Open Box <onboarding@resend.dev>` |
+
+3. Redeploy, then open **`/api/brief`** in a browser. It answers with a status
+   object and never reveals the key:
+
+   ```json
+   { "endpoint": "/api/brief", "deployed": true, "configured": true, "deliversTo": "b***@gmail.com" }
+   ```
+
+   `deployed: false` (a 404) means Vercel did not pick up the `api/` directory.
+   `configured: false` means the key is missing. Both are visible in one click.
+
+Resend's default `onboarding@resend.dev` sender can only deliver to the address
+that owns the Resend account — which is exactly this use case, so it works with
+no domain to verify. Once a custom domain exists, verify it in Resend and point
+`MAIL_FROM` at it so the mail is unambiguously yours.
+
+### Why a first-party endpoint and not Formspree / Web3Forms
+
+`vercel.json` sets `connect-src 'self'` and `form-action 'self'`. The browser
+would simply refuse to send this form to a third-party form service without
+widening that policy, and widening the CSP of a site whose whole argument is
+"nothing leaves your device" is a bad trade. Same-origin needs no CSP change, and
+the API key stays on the server where the browser never sees it.
+
+### What protects the endpoint
+
+A honeypot field, a dwell check (a submission that arrives faster than a human
+could read is silently accepted and dropped), a same-origin check, per-field
+length caps, a body-size cap, CRLF stripping so nothing can inject a mail header,
+and a best-effort per-IP rate limit of 5 per 10 minutes.
+
+It also works with JavaScript disabled: the form is a real `method="post"` form
+and the endpoint answers with an HTML confirmation page.
+
 ## Project structure
 
 ```

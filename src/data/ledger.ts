@@ -7,6 +7,11 @@
 
    SERVERS / BYTES UPLOADED / ACCOUNTS are CONSTANTS — the brand promise. They
    are hardcoded 0, never fetched, never computed.
+
+   SCOPE: these zeros describe THE TOOLS. The website itself runs exactly one
+   endpoint (api/brief.js) so the enquiry form can send without handing the
+   visitor to a mail client; it emails the brief and keeps nothing. The rendered
+   caption says so rather than letting the row read as a site-wide absolute.
    ========================================================================== */
 
 import { liveTools } from "./tools";

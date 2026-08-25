@@ -42,13 +42,22 @@ const toolItems: Item[] = tools.flatMap((t) => {
   return out;
 });
 
+/* BUILT TO ORDER — the commissioned side. Routes, not scroll targets, so they
+   work from any page in the site. */
+const buildItems: Item[] = [
+  { label: "Built to Order — Commissions", hint: "HIRE", group: "BUILD", action: "route:/build/", keywords: "freelance hire web developer designer ui ux figma website service agency work with me" },
+  { label: "Start a project brief", hint: "CONTACT", group: "BUILD", action: "route:/build/#brief", keywords: "enquiry quote contact whatsapp email brief commission" },
+  { label: "Services — design & development", hint: "SCOPE", group: "BUILD", action: "route:/build/#services", keywords: "web development ui ux design figma what i do pricing" },
+  { label: "From Figma to live — the pipeline", hint: "PROCESS", group: "BUILD", action: "route:/build/#pipeline", keywords: "process how it works stages design build deploy" },
+];
+
 const extra: Item[] = [
   { label: "All Dispatches", hint: "INDEX", group: "OPEN", action: "route:/dispatches/", keywords: "blog all posts" },
   { label: "RSS Feed", hint: "XML", group: "OPEN", action: `route:${site.links.rss}`, keywords: "feed subscribe" },
   { label: "Email Yash", hint: site.email, group: "OPEN", action: `href:mailto:${site.email}`, keywords: "contact mail" },
 ];
 
-const items = [...sections, ...toolItems, ...extra];
+const items = [...sections, ...buildItems, ...toolItems, ...extra];
 
 const paletteData = {
   items,
@@ -430,8 +439,11 @@ const paletteData = {
       const [kind, ...rest] = it.action.split(":");
       const target = rest.join(":");
       if (kind === "scroll") {
+        const el = document.querySelector(target);
         close();
-        document.querySelector(target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Sections live on the home page; from anywhere else, go there.
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        else window.location.href = `/${target}`;
       } else if (kind === "href") {
         window.open(target, target.startsWith("mailto:") ? "_self" : "_blank", "noopener");
         close();

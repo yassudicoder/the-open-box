@@ -1,0 +1,161 @@
+---
+/* =============================================================================
+   /build/ — BUILT TO ORDER
+
+   The commissioned counterpart to the catalog. Same layout shell, same
+   typography, same crease dividers — this is the studio's other half, not a
+   different website.
+
+   Order: WHO IT'S FOR → WHAT I DO → FROM FIGMA TO LIVE → WHY ME →
+          THE BRIEF
+
+   HOW I WORK was cut — it was a static six-step restatement of exactly
+   what FROM FIGMA TO LIVE already demonstrates interactively. One section
+   doing that job beats two, and the demo is the stronger of the two.
+
+   SELECTED WORK is unmounted, not deleted. There's no real client work yet
+   to show, and an empty "reserved slots" section reads as thin rather than
+   honest. The component and src/data/commissions.ts still exist exactly as
+   built — the moment there's one real project, add it to commissions.ts and
+   drop <SelectedWork /> back in below Pipeline; it switches from empty-state
+   to real cards on its own, no layout work needed.
+   ========================================================================== */
+import Base from "../../layouts/Base.astro";
+import CreaseDivider from "../../components/CreaseDivider.astro";
+import BuildHero from "../../components/build/BuildHero.astro";
+import ClientTypes from "../../components/build/ClientTypes.astro";
+import ServiceLines from "../../components/build/ServiceLines.astro";
+import Pipeline from "../../components/build/Pipeline.astro";
+import WhyMe from "../../components/build/WhyMe.astro";
+import ProjectBrief from "../../components/build/ProjectBrief.astro";
+import { site } from "../../data/site.ts";
+import { serviceLines, clientTypes } from "../../data/services.ts";
+
+const title = "Freelance Web Developer & UI/UX Designer";
+const description =
+  "Freelance web developer and UI/UX designer in India. Clinic, cafe, salon, pharmacy, shop and startup websites — designed in Figma, built responsive, deployed live.";
+
+/* Page-level structured data. Everything here is a description of the service
+   on offer — no ratings, no review counts, no prices invented. */
+const jsonld = [
+  {
+    "@context": "https://schema.org",
+    "@type": "ProfessionalService",
+    "@id": new URL("/build/", site.domain).href + "#studio",
+    name: `${site.name} — Built to Order`,
+    url: new URL("/build/", site.domain).href,
+    description,
+    email: site.email,
+    image: new URL("/og-cover.png", site.domain).href,
+    priceRange: "Quoted per project",
+    areaServed: [
+      { "@type": "Country", name: site.build.region },
+      { "@type": "Place", name: "Remote, worldwide" },
+    ],
+    founder: { "@type": "Person", name: site.maker, sameAs: [site.linkedin] },
+    provider: { "@type": "Organization", name: site.name, url: site.domain },
+    knowsAbout: [
+      "Web development",
+      "UI/UX design",
+      "Figma",
+      "Responsive web design",
+      "Website redesign",
+      "Landing pages",
+      "Web applications",
+    ],
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Services",
+      itemListElement: serviceLines.map((line) => ({
+        "@type": "OfferCatalog",
+        name: line.name,
+        itemListElement: line.items.map((item) => ({
+          "@type": "Offer",
+          itemOffered: { "@type": "Service", name: item, description: line.summary },
+        })),
+      })),
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: site.name,
+        item: site.domain,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: site.build.label,
+        item: new URL("/build/", site.domain).href,
+      },
+    ],
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "Can I get design without development, or development without design?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Yes. UI/UX design in Figma and web development are two separate lines of work. Either can be commissioned on its own, or both together — in which case the design goes straight into the build with no handover in between.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What kinds of businesses is this for?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text:
+            "It is built for independent businesses: clinics and healthcare practices, cafes and restaurants, salons and parlours, pharmacies and medical stores, local shops, and startups and personal brands.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "What does a project cost?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "It is quoted per project, after a first conversation about scope. There is no package price, because a five-page site for a cafe and a web application are not the same job.",
+        },
+      },
+      {
+        "@type": "Question",
+        name: "Who owns the website and the design files afterwards?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "You do. The site is deployed on your own domain, and you get the code, the Figma file, and a short handover on how to update it.",
+        },
+      },
+    ],
+  },
+];
+---
+
+<Base
+  title={title}
+  description={description}
+  path="/build/"
+  jsonld={jsonld}
+>
+  <BuildHero />
+  <CreaseDivider variant="fold" />
+  <ClientTypes />
+  <CreaseDivider variant="flap" />
+  <ServiceLines />
+  <CreaseDivider variant="fold" />
+  <Pipeline />
+  <CreaseDivider variant="flap" />
+  {/* The brief follows the pipeline directly: someone who has just read how
+      the work runs is at the point of asking for it, and making them scroll
+      past a page of reasons first is asking them to cool off. WHY WORK WITH
+      ME closes the page — it answers the objection of anyone who did not
+      fill the form in. */}
+  <ProjectBrief />
+  <CreaseDivider variant="fold" />
+  <WhyMe />
+</Base>

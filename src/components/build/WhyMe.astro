@@ -1,0 +1,114 @@
+---
+/* =============================================================================
+   04 / WHY WORK WITH ME
+
+   No badges, no "10+ years", no invented numbers. Three statements that are
+   structurally true of a one-person studio — cut from six to the three that
+   don't repeat something already said elsewhere on the page.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { advantages } from "../../data/services.ts";
+---
+
+<section class="section" id="why" aria-labelledby="why-h">
+  <div class="wrap">
+    <SectionHeader
+      index="04"
+      glyph="§"
+      title="Why work with me"
+      sublabel="PLAIN TERMS"
+      kicker="NO AGENCY, NO RELAY, NO HANDOVER"
+      id="why-h"
+    />
+
+    <ul class="wm">
+      {
+        advantages.map((a, i) => (
+          <li class="wm__item" data-reveal style={`--reveal-delay:${(i % 2) * 0.06}s`}>
+            <span class="wm__mark" aria-hidden="true" />
+            <div>
+              <h3 class="wm__title">{a.title}</h3>
+              <p class="wm__body">{a.body}</p>
+            </div>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="wm__foot mono" data-reveal>
+      <span class="glyph accent" aria-hidden="true">⌀</span>
+      WHAT I WON'T CLAIM: A RANKING, A CONVERSION RATE, OR A RESULT I CAN'T
+      CONTROL. THE WORK IS THE ARGUMENT.
+    </p>
+  </div>
+</section>
+
+<style>
+  .wm {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    border-top: var(--hair) solid var(--line);
+  }
+  .wm__item {
+    display: grid;
+    grid-template-columns: 0.9rem 1fr;
+    gap: 0.9rem;
+    align-items: start;
+    padding: clamp(1.1rem, 2.4vw, 1.5rem) 0;
+    border-bottom: var(--hair) solid var(--line);
+  }
+  .wm__mark {
+    width: 9px;
+    height: 9px;
+    margin-top: 0.42em;
+    background: var(--accent);
+    border-radius: 1px;
+    flex: none;
+  }
+  .wm__title {
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.18rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    margin-bottom: 0.34rem;
+  }
+  .wm__body {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+    line-height: 1.5;
+    max-width: 52ch;
+  }
+  .wm__foot {
+    display: block;
+    margin-top: 1.4rem;
+    font-size: 0.6rem;
+    line-height: 1.7;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+    max-width: 62ch;
+  }
+  .wm__foot .glyph {
+    margin-right: 0.4em;
+  }
+
+  @media (min-width: 760px) {
+    .wm {
+      grid-template-columns: repeat(3, 1fr);
+      column-gap: clamp(1.6rem, 4vw, 3rem);
+    }
+    .wm__item {
+      grid-template-columns: 1fr;
+      border-bottom: 0;
+      border-right: var(--hair) solid var(--line);
+      padding-right: clamp(1.2rem, 3vw, 2rem);
+    }
+    .wm__item:last-child {
+      border-right: 0;
+    }
+    .wm__mark {
+      margin-top: 0;
+      margin-bottom: 0.6rem;
+    }
+  }
+</style>

@@ -234,6 +234,13 @@ ol {
   border-radius: 1px;
 }
 
+/* The hidden attribute must beat any display rule a component sets on the same
+   element, or a panel meant to appear only after an action shows on page load.
+   (It did: .pb__sent is display:flex, so [hidden] lost until this landed.) */
+[hidden] {
+  display: none !important;
+}
+
 ::selection {
   background: var(--accent-text);
   color: var(--accent-ink);

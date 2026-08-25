@@ -3,7 +3,7 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "The Open Box — umbrella studio site for small, honest, local-first tools.",
+  "description": "The Open Box \u2014 umbrella studio site for small, honest, local-first tools.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",

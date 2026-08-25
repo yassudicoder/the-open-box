@@ -1,0 +1,1919 @@
+---
+/* =============================================================================
+   01 / WHO IT'S FOR — THE DISTRICT
+
+   A blueprint of a small business district: six numbered spaces, one icon
+   each. Click a space and it takes over the frame — the others step back —
+   showing what a site for that business actually has to contain.
+
+   The plate sits on the page's own paper and ink, not inverted. It is still
+   written against the --interior / --interior-ink pair, but .dist re-points
+   that pair at --paper / --ink, so the whole district — tone scale, block
+   faces, rules — follows the page and the theme from one place.
+
+   Mechanism is still native <details>/<summary> — same foundation as the
+   manifest list this replaces, so it stays keyboard-operable, readable by
+   assistive tech with no ARIA patching, and every space's full name and
+   description stay in the DOM for search engines whether or not JavaScript
+   ever runs. What's new is on top: a script enforces "one space open at a
+   time" and drives the zoom-in/step-back choreography. Without JavaScript,
+   the mechanism still opens and closes (multiple at once, no animation) —
+   informationally complete either way, since the full description ships
+   as accessible text on every closed block, not just the open one.
+   ========================================================================== */
+import SectionHeader from "../SectionHeader.astro";
+import { clientTypes } from "../../data/services.ts";
+import {
+  EYE, VBH, VB_TOP, KERB, ROAD_HALF, NAMED_W, FILLER_W,
+  SLOTS, FILLERS, DRAW_ORDER, ribsOf, ribPoints, quadPoints, cardTransform,
+  czOf, hazeOf, solveF, vbwOf, sAt, sx, sy,
+  rayEnd, dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
+  STYLES, FILLER_STYLES, SHOP_H, SIGN_H, flankRibs, type Style,
+} from "../../lib/street.ts";
+
+function icon(path: string) {
+  return `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+}
+
+/* one line-art mark per space — the district's only illustration budget.
+   The raw paths are kept separately because the street reuses them at a
+   different stroke weight, as the literal sign over each shopfront. */
+const ICON_PATHS: Record<string, string> = {
+  "01": '<path d="M16 8v16M8 16h16"/>', // clinic — a plain cross
+  "02": '<path d="M9 13h13v3a6.5 6.5 0 0 1-6.5 6.5H15A6.5 6.5 0 0 1 9 16v-3Z"/><path d="M22 14h2.5a3 3 0 0 1 0 6H22"/><path d="M13 8c0-1.2.8-1.4.8-2.6M17 8c0-1.2.8-1.4.8-2.6"/>', // cafe — cup + handle + steam
+  "03": '<circle cx="10" cy="9" r="2.6"/><circle cx="10" cy="23" r="2.6"/><path d="M12 10.8 24 22M24 10l-9 8.3M12 21.2l3-2.8"/>', // salon — scissors
+  "04": '<rect x="9" y="12" width="8" height="14" rx="4"/><path d="M13 12V9a4 4 0 0 1 8 0v3"/><path d="M13 19h4"/>', // pharmacy — capsule
+  "05": '<path d="M9 12h14l-1.3 13.2a2 2 0 0 1-2 1.8H12.3a2 2 0 0 1-2-1.8L9 12Z"/><path d="M12.5 12V9.5a3.5 3.5 0 0 1 7 0V12"/>', // shop — bag
+  "06": '<rect x="6" y="8" width="20" height="13" rx="1.5"/><path d="M12 25h8M16 21v4"/>', // startup — screen
+};
+const ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(ICON_PATHS).map(([k, v]) => [k, icon(v)]),
+);
+
+/* ---------------------------------------------------------------------------
+   ISOMETRIC PROJECTION — ported from the InteractiveMallSimulation prototype
+   (yassudicoder/InteractiveMallSimulation, src/App.tsx). That was React; this
+   is plain Astro, so only the maths came across — it renders at BUILD TIME to
+   static SVG and ships no JavaScript for the drawing itself.
+
+   One projection plus three face builders is the whole engine: every solid in
+   the scene is a top, a front and a side polygon at different depths. The
+   prototype faked light by darkening a per-shop neon hex; here the faces are
+   all currentColor at different opacities instead, so the whole building
+   inverts with the plate and needs no palette of its own — greys on black in
+   light mode, greys on white in dark, one drawing either way.
+   ------------------------------------------------------------------------ */
+type Cam = { hw: number; hh: number; uh: number };
+const CAM: Cam = { hw: 25, hh: 12.5, uh: 33 };
+
+const iso = (c: Cam, x: number, y: number, z: number): [number, number] => [
+  (x - y) * c.hw,
+  (x + y) * c.hh - z * c.uh,
+];
+const poly = (pts: [number, number][]) =>
+  pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+/* Which walls are visible: screen_y = (x + y)·hh - z·uh, so depth grows with
+   x + y and the NEAREST corner of a block is (x+w, y+d). The two walls the
+   viewer can see are therefore the one at x + w and the one at y + d — not
+   the one at y, which is the hidden back wall. */
+const topFace = (c: Cam, x: number, y: number, z: number, w: number, d: number) =>
+  poly([iso(c, x, y, z), iso(c, x + w, y, z), iso(c, x + w, y + d, z), iso(c, x, y + d, z)]);
+const frontFace = (c: Cam, x: number, y: number, z: number, w: number, h: number) =>
+  poly([iso(c, x, y, z), iso(c, x + w, y, z), iso(c, x + w, y, z + h), iso(c, x, y, z + h)]);
+const sideFace = (c: Cam, x: number, y: number, z: number, d: number, h: number) =>
+  poly([iso(c, x, y, z), iso(c, x, y + d, z), iso(c, x, y + d, z + h), iso(c, x, y, z + h)]);
+
+/* ---------------------------------------------------------------------------
+   THE STREET — one-point perspective, replacing the isometric city.
+
+   The maths lives in src/lib/street.ts because the client script needs the
+   identical functions: this file bakes the first frame at build time, the
+   script drives every frame after it, and if the two ever disagree the
+   handover shows as a jump at exactly one aspect ratio.
+
+   Two element forms and no others. Anything sharing one Z is a CARD — it
+   collapses to a uniform scale about the vanishing point, so it is authored
+   once here in local coordinates and moved with a single transform write.
+   Anything spanning depth is a RIB — a trapezoid converging on the vanishing
+   point, which is not affine and must have its points rewritten each frame.
+   Ribs are restricted to exactly two distinct Z values, which is what makes
+   the near-plane clip a simple interpolation.
+   ------------------------------------------------------------------------ */
+
+
+/* The baked frame is drawn for a reference 16:9-ish desktop band. It exists
+   so the JS path has no blank flash before the first update() and so a
+   crawler sees a composed street; the runtime immediately re-solves it for
+   the real frame. */
+const BAKE_W = 928;
+const BAKE_H = VBH;
+const BAKE_VBW = vbwOf(BAKE_W, 486);
+const BAKE_F = solveF(BAKE_VBW);
+const BAKE_CZ = czOf(0);
+
+/* ---- the six buildings ---------------------------------------------------
+   A shop faces the ROAD, not the far end of the street. That plane — the one
+   at X = ±KERB running from zf to zb — spans depth, so every mark on it is a
+   rib and gets its points rewritten; none of it can be a card. That is the
+   whole reason the shopfronts were on the end face to begin with, and it was
+   the wrong trade: it made each building read as a cube with a picture on the
+   front rather than as a building on a street.
+
+   The sign is the exception. Text lying on a foreshortened wall is close to
+   unreadable at a dwell, so it goes on a projecting bracket at right angles
+   to the shopfront, facing down the street — which is what a real shop does
+   with a sign for exactly the same reason. Being constant-Z it is a card, so
+   it stays upright and costs one transform write.
+
+   Detail is tiered by depth. Full articulation on the buildings you are
+   actually next to, bands only in the middle distance, bare plane far off —
+   past about 55 units a window is a fraction of a pixel and only costs. */
+
+/* ---- the end return ------------------------------------------------------
+   The face at zf, seen head-on while you approach. A blank party wall would
+   be more honest for a terrace, but you spend most of the drive looking at
+   it, so it wraps the shopfront round the corner the way a corner building
+   does. It carries no sign: that is the bracket's job. */
+const endFace = (side: -1 | 1, h: number, st: Style, w: number) => {
+  const u = (n: number) => n * side;
+  const x0 = Math.min(0, u(w));
+  const ln = (a: number, b: number, c: number, d: number, sw = 0.07) =>
+    `<line x1="${u(a).toFixed(2)}" y1="${b.toFixed(2)}" x2="${u(c).toFixed(2)}" y2="${d.toFixed(2)}" stroke-width="${sw}"/>`;
+  const bx = (a: number, b: number, ww: number, hh: number, cls = "", sw = 0.06) =>
+    `<rect${cls ? ` class="${cls}"` : ""} x="${Math.min(u(a), u(a + ww)).toFixed(2)}" y="${b.toFixed(2)}" width="${ww.toFixed(2)}" height="${hh.toFixed(2)}" stroke-width="${sw}"${cls ? "" : ' fill="none"'}/>`;
+  /* the diagonal flicks the references use to say "this is glass" */
+  const sheen = (a: number, b: number, ww: number, hh: number) =>
+    ln(a + ww * 0.16, b + hh * 0.82, a + ww * 0.52, b + hh * 0.14, 0.05) +
+    ln(a + ww * 0.42, b + hh * 0.86, a + ww * 0.74, b + hh * 0.28, 0.045);
+
+  let o = `<rect class="st-face" x="${x0.toFixed(2)}" y="0" width="${w.toFixed(2)}" height="${h.toFixed(2)}" stroke-width="0.1"/>`;
+  const top = h - SHOP_H - SIGN_H - 0.45;
+  o += ln(0, h - SHOP_H, w, h - SHOP_H, 0.08);
+  o += ln(0, h - SHOP_H - SIGN_H, w, h - SHOP_H - SIGN_H, 0.05);
+
+  if (st.win === "curtain") {
+    o += bx(0.5, 0.5, w - 1, top - 0.7, "st-glasscard");
+    const cw = (w - 1) / st.cols;
+    for (let k = 1; k < st.cols; k++) o += ln(0.5 + k * cw, 0.5, 0.5 + k * cw, top - 0.2, 0.06);
+    o += sheen(0.5, 0.5, w - 1, top - 0.7);
+  } else {
+    const fh = (top - 0.6) / st.floors;
+    for (let f = 0; f < st.floors; f++) {
+      const y = 0.55 + f * fh;
+      const cw = (w - 1.4) / st.cols;
+      const ww = st.win === "tall" ? cw * 0.42 : st.win === "ribbon" ? cw * 0.86 : cw * 0.6;
+      for (let k = 0; k < st.cols; k++) {
+        const a = 0.7 + k * cw + (cw - ww) / 2;
+        const hh = fh * (st.win === "tall" ? 0.78 : 0.6);
+        o += bx(a, y, ww, hh, "st-glasscard");
+        if (f === 0) o += sheen(a, y, ww, hh);
+      }
+      if (f > 0) o += ln(0, y - 0.22, w, y - 0.22, 0.045);
+    }
+  }
+  /* the shopfront returning round the corner, with its own entrance */
+  const bays = Math.max(2, st.bays - 1);
+  for (let k = 0; k < bays; k++) {
+    const bw = (w - 1.2) / bays;
+    o += bx(0.6 + k * bw + 0.12, h - SHOP_H + 0.25, bw - 0.34, SHOP_H - 0.55, "st-glasscard");
+  }
+  o += bx(w - 1.75, h - SHOP_H + 0.1, 1.15, SHOP_H - 0.1, "", 0.08);
+  o += ln(w - 1.5, h - 1.5, w - 1.28, h - 1.36, 0.06);
+  if (st.awning) {
+    o += bx(0.5, h - SHOP_H - 0.28, w - 2.4, 0.26, "st-plate", 0.05);
+    for (let k = 1; k < 5; k++) o += ln(0.5 + ((w - 2.4) * k) / 5, h - SHOP_H - 0.28, 0.5 + ((w - 2.4) * k) / 5, h - SHOP_H - 0.02, 0.04);
+  }
+  /* what tops it — a flat parapet, a moulded cornice, or a stepped gable */
+  if (st.cap === "cornice") { o += ln(-0.12, 0.34, w + 0.12, 0.34, 0.1); o += ln(0, 0.62, w, 0.62, 0.05); }
+  else if (st.cap === "stepped") {
+    o += ln(0, 0.62, w, 0.62, 0.08);
+    o += ln(w * 0.22, 0.28, w * 0.78, 0.28, 0.08);
+    o += ln(w * 0.22, 0.28, w * 0.22, 0.62, 0.06);
+    o += ln(w * 0.78, 0.28, w * 0.78, 0.62, 0.06);
+  } else o += ln(0, 0.24, w, 0.24, 0.07);
+  o += ln(0, h - 0.14, w, h - 0.14, 0.05);
+  return o;
+};
+
+/** The projecting sign: a bracket at right angles to the shopfront, hanging
+    over the pavement and facing down the street, carrying the mark and the
+    key. Constant-Z, so it is a card and the type stays upright. */
+const signCard = (key: string, side: -1 | 1) => {
+  const u = (n: number) => -n * side; // out over the road
+  const W = 2.0;
+  const x0 = Math.min(u(0.18), u(0.18 + W));
+  return (
+    `<line x1="0" y1="0.36" x2="${u(0.2).toFixed(2)}" y2="0.36" stroke-width="0.07"/>` +
+    `<rect class="st-plate" x="${x0.toFixed(2)}" y="0" width="${W.toFixed(2)}" height="${SIGN_H.toFixed(2)}" stroke-width="0.06"/>` +
+    `<svg x="${Math.min(u(0.42), u(0.86)).toFixed(2)}" y="0.14" width="0.44" height="0.44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>` +
+    `<text x="${u(1.42).toFixed(2)}" y="0.53" text-anchor="middle" font-family="var(--font-mono)" font-size="0.5" letter-spacing="0.05" stroke="none" fill="currentColor">${key}</text>`
+  );
+};
+
+/** The static elevations have no perspective and so no bracket to hang a sign
+    from; there the mark and key sit flat on the fascia instead. */
+const elevationSign = (key: string, side: -1 | 1, h: number) => {
+  const u = (n: number) => n * side;
+  const y = h - SHOP_H - SIGN_H;
+  return (
+    `<rect class="st-plate" x="${Math.min(u(0.5), u(3.4)).toFixed(2)}" y="${(y + 0.08).toFixed(2)}" width="2.90" height="${(SIGN_H - 0.16).toFixed(2)}" stroke-width="0.05"/>` +
+    `<svg x="${Math.min(u(0.72), u(1.18)).toFixed(2)}" y="${(y + 0.16).toFixed(2)}" width="0.44" height="0.44" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[key]}</svg>` +
+    `<text x="${u(2.4).toFixed(2)}" y="${(y + 0.55).toFixed(2)}" text-anchor="middle" font-family="var(--font-mono)" font-size="0.5" letter-spacing="0.05" stroke="none" fill="currentColor">${key}</text>`
+  );
+};
+
+/* ---- the baked first frame ---------------------------------------------- */
+const bakeRibs = (b: { side: -1 | 1; zf: number; zb: number; h: number }, w: number, st: Style, named: boolean) => {
+  const R = ribsOf(b, w);
+  const p = (k: "flank" | "base") => {
+    const [ax, ay, bx2, by, zA, zB] = R[k];
+    return ribPoints(ax, ay, bx2, by, zA, zB, BAKE_CZ, 0, BAKE_F);
+  };
+  const xi = KERB * b.side;
+  const marks = flankRibs(b, st, named);
+  return {
+    flank: p("flank"),
+    base: p("base"),
+    /* every mark on the road-facing wall, baked at the reference camera */
+    marks: marks.map((m) => ({
+      c: m.c,
+      lod: m.lod,
+      d: ribPoints(xi, m.y0, xi, m.y1, m.z0, m.z1, BAKE_CZ, 0, BAKE_F),
+    })),
+    card: cardTransform(xi, b.h, b.zf, BAKE_CZ, 0, BAKE_F),
+    sign: cardTransform(xi, SHOP_H + SIGN_H, b.zf + 1.5, BAKE_CZ, 0, BAKE_F),
+    haze: hazeOf(b.zf - BAKE_CZ),
+  };
+};
+
+const bakedNamed = SLOTS.map((s) => ({ slot: s, ...bakeRibs(s, NAMED_W, STYLES[s.key], true) }));
+const bakedFill = FILLERS.map((s, i) => ({ i, slot: s, ...bakeRibs(s, FILLER_W, FILLER_STYLES[i], false) }));
+
+/* The ground is invariant under a pure-Z dolly with panX = 0, so it is drawn
+   once and never touched again — which also keeps it out of the damage rect
+   on every animated frame. */
+/* Every ground line is a ray from the vanishing point, and where it lands is
+   pure geometry — slope EYE / X, nothing to do with the frame. */
+const ray = (X: number) => rayEnd(X).map((n) => n.toFixed(0)).join(",");
+const band = (a: number, b: number) => `0,0 ${ray(a)} ${ray(b)}`;
+
+/* Lane markings run ALONG the road, so each dash is a rib. They are what
+   makes this a road rather than a corridor: cross-rungs read as a ladder. */
+const bakedDashes = Array.from({ length: DASH_N }, (_, i) => {
+  const zA = dashZ(i, BAKE_CZ);
+  return ribPoints(-DASH_HALF, 0, DASH_HALF, 0, zA, zA + DASH_LEN, BAKE_CZ, 0, BAKE_F);
+});
+
+/* ---------------------------------------------------------------------------
+   THE INTERIORS — ported from the prototype's six room components.
+
+   Same idea, three differences. (1) Tone, not hue: the prototype shaded with
+   dk(neonHex, f); here T(pct) mixes --interior-ink into --interior at the
+   same relative percentages, so the tonal structure survives exactly and the
+   whole room inverts with the plate. (2) Walls on the FAR side. The
+   prototype puts its "back wall" at y = D and "right wall" at x = W, but in
+   this projection depth grows with x + y, so those are the NEAR walls and
+   they sit between the viewer and the furniture; here they are at x = 0 and
+   y = 0 and the room opens toward you. (3) Draw order is computed, not
+   authored — see `paint` below; the prototype emits furniture in source
+   order and lets near props paint over far ones. (4) Emitted as SVG strings
+   at build time — no React, no client JS.
+   ------------------------------------------------------------------------ */
+const RM: Cam = { hw: 33, hh: 16.5, uh: 40 };
+const RW = 6;
+const RD = 5;
+const RH = 3.8;
+
+/** One opaque step between the plate and its ink. The prototype's factors were
+    tuned against saturated neon; the same numbers in pure tone come out far too
+    close to the ground, so they are lifted and spread here — the ordering is
+    preserved, the range is not.
+
+    Returns a custom property, not the colour: spelled out, the same six rooms
+    put 1,800 copies of a 65-character color-mix() into the document. Declared
+    once on the plate and inherited, they cost eleven characters each — 90 KB
+    less markup for the browser to parse, for the same pixels. */
+const TONES = new Set<number>();
+const T = (pct: number) => {
+  const n = Math.min(94, Math.max(4, Math.round(pct * 1.45 + 5)));
+  TONES.add(n);
+  return `var(--t${n})`;
+};
+
+const pg = (pts: string, fill: string, extra = "") => `<polygon points="${pts}" fill="${fill}"${extra}/>`;
+const seg = (a: [number, number], b: [number, number], stroke: string, w = 0.7) =>
+  `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${stroke}" stroke-width="${w}"/>`;
+const dot = (pnt: [number, number], r: number, fill: string, extra = "") =>
+  `<circle cx="${pnt[0].toFixed(1)}" cy="${pnt[1].toFixed(1)}" r="${r}" fill="${fill}"${extra}/>`;
+
+/* ---- draw order inside a room -------------------------------------------
+   Every prop is an axis-aligned box, and A can only hide B when A sits
+   wholly on the near side of B along one axis. That is a partial order, not
+   a sort key — a wide counter and a stool standing in front of it share the
+   same x + y, and no single number separates them. So each prop declares its
+   box, `after` compares two boxes, and a stable topological walk emits them
+   far to near. Pairs that can never overlap on screen keep the order they
+   were written in.
+
+   The prototype has no such pass: it emits furniture in source order, which
+   is why its desks paint over the units behind them. Free here — it all runs
+   once, at build time.
+
+   `paint` also shouts if two props share a volume, because the sort assumes
+   solids that touch but never interpenetrate. That check has caught every
+   layout slip in this file; leave it in. */
+type Box = { x: number; y: number; z: number; w: number; d: number; h: number };
+type Item = { b: Box; s: string };
+
+const after = (a: Box, b: Box) =>
+  a.x >= b.x + b.w || a.y >= b.y + b.d || a.z >= b.z + b.h;
+
+const hits = (a: Box, b: Box) => {
+  const e = 1e-6;
+  return (
+    a.x + e < b.x + b.w && b.x + e < a.x + a.w &&
+    a.y + e < b.y + b.d && b.y + e < a.y + a.d &&
+    a.z + e < b.z + b.h && b.z + e < a.z + a.h
+  );
+};
+
+const paint = (items: Item[], room = "") => {
+  const n = items.length;
+  const succ: number[][] = items.map(() => []);
+  const indeg: number[] = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (room && hits(items[i].b, items[j].b)) {
+        console.warn(`[district] ${room}: props ${i} and ${j} share a volume`, items[i].b, items[j].b);
+      }
+      const ij = after(items[i].b, items[j].b);
+      const ji = after(items[j].b, items[i].b);
+      if (ij === ji) continue; // both or neither — nothing to enforce
+      const first = ij ? j : i;
+      const next = ij ? i : j;
+      succ[first].push(next);
+      indeg[next]++;
+    }
+  }
+  const out: string[] = [];
+  const drawn: boolean[] = new Array(n).fill(false);
+  for (let k = 0; k < n; k++) {
+    let pick = -1;
+    for (let i = 0; i < n && pick < 0; i++) if (!drawn[i] && indeg[i] === 0) pick = i;
+    /* Cycle guard: a pathological ring of boxes can leave every survivor
+       waiting on another. Take the earliest rather than spin. */
+    for (let i = 0; i < n && pick < 0; i++) if (!drawn[i]) pick = i;
+    drawn[pick] = true;
+    out.push(items[pick].s);
+    for (const nx of succ[pick]) indeg[nx]--;
+  }
+  return out.join("");
+};
+
+const I = (b: Box, s: string): Item => ({ b, s });
+/** marks that belong to a prop — same box, drawn straight after it */
+const on = (it: Item, ...more: string[]): Item => ({ b: it.b, s: it.s + more.join("") });
+
+/** A solid: its two visible walls plus the top.
+
+    The three numbers are ink strengths, given strongest first. Which FACE
+    gets which depends on where the light is, and on paper it falls from
+    above: the top of a thing is its lightest face and the side turned away
+    is its darkest, so the strongest step goes on the side and the weakest on
+    the top. (Against the old inverted plate it ran the other way — more ink
+    meant brighter there.) These three lines are where the light comes from.
+
+    The hairline on every face is what stops one grey box dissolving into the
+    grey box behind it — without it a room full of props reads as one lump. */
+const blk = (x: number, y: number, z: number, w: number, d: number, h: number,
+             strong = 30, mid = 19, weak = 11, edge = true): Item => {
+  const e = edge ? ` stroke="${T(strong + 13)}" stroke-width="0.45" stroke-linejoin="round"` : "";
+  return {
+    b: { x, y, z, w, d, h },
+    s:
+      pg(sideFace(RM, x + w, y, z, d, h), T(strong), e) +
+      pg(frontFace(RM, x, y + d, z, w, h), T(mid), e) +
+      pg(topFace(RM, x, y, z + h, w, d), T(weak), e),
+  };
+};
+
+/** flat panel on the far wall at y = 0 */
+const panY = (x: number, z: number, w: number, h: number, fill: string, extra = "") =>
+  pg(poly([iso(RM, x, 0, z), iso(RM, x + w, 0, z), iso(RM, x + w, 0, z + h), iso(RM, x, 0, z + h)]), fill, extra);
+/** flat panel on the far wall at x = 0 */
+const panX = (y: number, z: number, d: number, h: number, fill: string, extra = "") =>
+  pg(poly([iso(RM, 0, y, z), iso(RM, 0, y + d, z), iso(RM, 0, y + d, z + h), iso(RM, 0, y, z + h)]), fill, extra);
+
+const wallY = (x: number, z: number, w: number, h: number, fill: string, extra = ""): Item =>
+  I({ x, y: 0, z, w, d: 0, h }, panY(x, z, w, h, fill, extra));
+const wallX = (y: number, z: number, d: number, h: number, fill: string, extra = ""): Item =>
+  I({ x: 0, y, z, w: 0, d, h }, panX(y, z, d, h, fill, extra));
+
+/* ---- repeated props -----------------------------------------------------
+   Legs matter more than they sound: a tabletop floating on four posts reads
+   as furniture, where the same volume drawn solid reads as a crate. */
+
+const legs = (x: number, y: number, w: number, d: number, h: number, t = 0.08) =>
+  ([[x + 0.05, y + 0.05], [x + w - t - 0.05, y + 0.05],
+    [x + 0.05, y + d - t - 0.05], [x + w - t - 0.05, y + d - t - 0.05]] as [number, number][])
+    .map(([lx, ly]) => blk(lx, ly, 0, t, t, h, 30, 22, 16, false));
+
+const table = (x: number, y: number, w: number, d: number, h: number,
+               strong = 32, mid = 22, weak = 14): Item => ({
+  b: { x, y, z: 0, w, d, h },
+  s: paint([...legs(x, y, w, d, h - 0.09), blk(x, y, h - 0.09, w, d, 0.09, strong, mid, weak)]),
+});
+
+/** seat pad on legs with a back on the near side, so it faces the viewer */
+const seat = (x: number, y: number, w = 0.6, d = 0.58, bh = 0.58): Item => ({
+  b: { x, y, z: 0, w, d, h: 0.44 + bh },
+  s: paint([
+    ...legs(x, y, w, d, 0.36, 0.07),
+    blk(x, y, 0.36, w, d, 0.08, 32, 22, 14),
+    blk(x, y + d - 0.08, 0.44, w, 0.08, bh, 38, 26, 17),
+  ]),
+});
+
+const stool = (x: number, y: number, s = 0.42, h = 0.62): Item => ({
+  b: { x, y, z: 0, w: s, d: s, h },
+  s: paint([
+    blk(x + s / 2 - 0.05, y + s / 2 - 0.05, 0, 0.1, 0.1, h - 0.08, 30, 22, 16, false),
+    blk(x, y, h - 0.08, s, s, 0.08, 36, 25, 16),
+  ]),
+});
+
+/** pot plus a loose crown of leaves — the only organic thing in the room */
+const plant = (x: number, y: number, s = 0.62): Item => {
+  const c = iso(RM, x + s / 2, y + s / 2, s * 0.62);
+  const leaf = (dx: number, dy: number, r: number, t: number) =>
+    dot([c[0] + dx, c[1] + dy], r, T(t), ` stroke="${T(t + 14)}" stroke-width="0.45"`);
+  return {
+    b: { x, y, z: 0, w: s, d: s, h: s * 2.6 },
+    s:
+      blk(x + s * 0.16, y + s * 0.16, 0, s * 0.68, s * 0.68, s * 0.62, 26, 17, 11).s +
+      seg([c[0], c[1]], [c[0], c[1] - 24], T(24), 1) +
+      leaf(0, -18, 10, 18) + leaf(-10, -8, 8, 26) + leaf(10, -11, 7, 22) + leaf(1, -29, 6, 30),
+  };
+};
+
+/** pendant on a cord */
+const pend = (x: number, y: number, drop = 1.3): Item => ({
+  b: { x: x - 0.12, y: y - 0.12, z: RH - drop, w: 0.24, d: 0.24, h: drop },
+  s:
+    seg(iso(RM, x, y, RH), iso(RM, x, y, RH - drop), T(22), 0.8) +
+    dot(iso(RM, x, y, RH - drop - 0.15), 7, T(38)) +
+    dot(iso(RM, x, y, RH - drop - 0.18), 3.2, T(5)),
+});
+
+/** recessed ceiling light */
+const down = (x: number, y: number, r = 4): Item =>
+  I({ x: x - 0.1, y: y - 0.1, z: RH - 0.05, w: 0.2, d: 0.2, h: 0.05 },
+    dot(iso(RM, x, y, RH), r, T(5), ` stroke="${T(34)}" stroke-width="0.8"`));
+
+/** A mat — zero height, so anything standing on it draws after. One tonal
+    step off the floor and no more; any further and it stops reading as a rug
+    and starts reading as a hole cut in the floor. */
+const mat = (x: number, y: number, w: number, d: number): Item =>
+  I({ x, y, z: 0, w, d, h: 0 },
+    pg(topFace(RM, x, y, 0.01, w, d), T(11), ` stroke="${T(24)}" stroke-width="0.6"`) +
+    pg(topFace(RM, x + 0.14, y + 0.14, 0.02, w - 0.28, d - 0.28), "none", ` stroke="${T(19)}" stroke-width="0.4"`));
+
+/** a bench or low seat: a slab on four legs, no back */
+const bench = (x: number, y: number, w: number, d: number, h = 0.5): Item => ({
+  b: { x, y, z: 0, w, d, h },
+  s: paint([...legs(x, y, w, d, h - 0.09, 0.07), blk(x, y, h - 0.09, w, d, 0.09, 30, 20, 13)]),
+});
+
+/** glass on a wall: lighter than the wall, framed, with one band of sheen */
+const glassY = (x: number, z: number, w: number, h: number, fill = 13): Item =>
+  on(wallY(x, z, w, h, T(fill), ` stroke="${T(46)}" stroke-width="1.1"`),
+     panY(x + w * 0.14, z, w * 0.13, h, T(fill + 11)),
+     panY(x + w * 0.42, z, w * 0.06, h, T(fill + 7)));
+
+const glassX = (y: number, z: number, d: number, h: number, fill = 13): Item =>
+  on(wallX(y, z, d, h, T(fill), ` stroke="${T(46)}" stroke-width="1.1"`),
+     panX(y + d * 0.14, z, d * 0.13, h, T(fill + 11)),
+     panX(y + d * 0.42, z, d * 0.06, h, T(fill + 7)));
+
+const clockY = (x: number, z: number): Item => {
+  const c = iso(RM, x, 0, z);
+  return I({ x: x - 0.25, y: 0, z: z - 0.25, w: 0.5, d: 0, h: 0.5 },
+    dot(c, 8, T(8), ` stroke="${T(36)}" stroke-width="1"`) +
+    seg(c, [c[0], c[1] - 5], T(44), 1) +
+    seg(c, [c[0] + 4.5, c[1] + 1.5], T(36), 1));
+};
+
+const crossY = (x: number, z: number): Item => {
+  const c = iso(RM, x, 0, z);
+  return I({ x: x - 0.3, y: 0, z: z - 0.3, w: 0.6, d: 0, h: 0.6 },
+    `<rect x="${(c[0] - 3.4).toFixed(1)}" y="${(c[1] - 12).toFixed(1)}" width="6.8" height="24" rx="1" fill="${T(34)}"/>` +
+    `<rect x="${(c[0] - 12).toFixed(1)}" y="${(c[1] - 3.4).toFixed(1)}" width="24" height="6.8" rx="1" fill="${T(34)}"/>`);
+};
+
+const shell = () => {
+  let o = pg(topFace(RM, 0, 0, 0, RW, RD), T(6));
+  for (let i = 1; i < RW; i++) o += seg(iso(RM, i, 0, 0), iso(RM, i, RD, 0), T(12), 0.5);
+  for (let i = 1; i < RD; i++) o += seg(iso(RM, 0, i, 0), iso(RM, RW, i, 0), T(12), 0.5);
+  o += panY(0, 0, RW, RH, T(10));
+  o += panX(0, 0, RD, RH, T(8));
+  o += panY(0, 0, RW, 0.1, T(22));
+  o += panX(0, 0, RD, 0.1, T(18));
+  o += seg(iso(RM, 0, 0, RH), iso(RM, RW, 0, RH), T(28), 0.8);
+  o += seg(iso(RM, 0, 0, RH), iso(RM, 0, RD, RH), T(24), 0.8);
+  o += seg(iso(RM, 0, 0, 0), iso(RM, 0, 0, RH), T(20), 0.6);
+  return o;
+};
+
+/* ---- the six rooms ------------------------------------------------------
+   Order here is only a tie-break; `paint` works out what hides what.
+
+   Layouts are spread on the SCREEN, not on the floor plan, and those are not
+   the same thing: screen x is (x − y)·hw, so the right-hand third of the
+   frame is the strip of floor with high x and low y. Fill a room by walking
+   the plan diagonally — a room laid out tidily along one wall leaves half
+   the picture as bare floor. */
+
+const clinicRoom = () =>
+  shell() +
+  paint([
+    /* walls */
+    clockY(1.5, 2.9),
+    glassY(3.05, 1.55, 1.35, 0.95),
+    crossY(5.35, 2.95),
+    on(wallX(0.4, 1.6, 1.0, 1.2, T(5), ` stroke="${T(26)}" stroke-width="0.7"`),
+       panX(0.55, 2.4, 0.7, 0.06, T(28)),
+       panX(0.55, 1.95, 0.7, 0.06, T(28))),
+
+    /* the y = 0 wall, walked left to right: desk, wash counter, tall store */
+    on(table(0.5, 0.35, 2.0, 0.8, 0.74),
+       blk(0.65, 0.45, 0.74, 0.46, 0.32, 0.1, 34, 24, 16).s,
+       blk(1.35, 0.5, 0.74, 0.66, 0.28, 0.03, 26, 18, 12).s,
+       pg(frontFace(RM, 0.75, 1.15, 0.74, 0.9, 0.48), T(9)),
+       pg(frontFace(RM, 0.82, 1.15, 0.79, 0.76, 0.38), T(30))),
+    seat(1.1, 1.45),
+    on(blk(3.0, 0.35, 0, 1.5, 0.8, 0.9),
+       pg(topFace(RM, 3.25, 0.5, 0.9, 0.55, 0.5), T(10), ` stroke="${T(34)}" stroke-width="0.6"`),
+       seg(iso(RM, 3.52, 0.45, 0.9), iso(RM, 3.52, 0.45, 1.35), T(32), 1.2),
+       [0.3, 0.6].map((z) => pg(frontFace(RM, 3.0, 1.15, z, 1.5, 0.05), T(26))).join("")),
+    on(blk(4.9, 0.35, 0, 1.0, 0.8, 2.0),
+       [0.55, 1.1, 1.65].map((z) => pg(frontFace(RM, 4.9, 1.15, z, 1.0, 0.06), T(34))).join(""),
+       [0.63, 1.18].map((z) =>
+         [0, 1, 2].map((k) => pg(frontFace(RM, 5.0 + k * 0.28, 1.15, z, 0.2, 0.24 + (k % 2) * 0.08), T(40 + k * 7))).join("")).join("")),
+
+    /* the middle: exam table on a mat, stool, trolley off to the right */
+    mat(2.3, 1.9, 2.8, 1.6),
+    on(blk(2.5, 2.1, 0, 2.3, 1.1, 0.55, 24, 16, 11),
+       blk(2.5, 2.1, 0.55, 2.3, 1.1, 0.15, 42, 30, 19).s,
+       blk(4.05, 2.25, 0.7, 0.6, 0.5, 0.14, 54, 42, 30).s,
+       pg(frontFace(RM, 2.5, 3.2, 0.22, 2.3, 0.06), T(30))),
+    stool(1.85, 2.55),
+    on(table(5.0, 2.0, 0.7, 0.62, 0.82),
+       blk(5.06, 2.08, 0.82, 0.5, 0.4, 0.08, 44, 32, 22).s,
+       pg(frontFace(RM, 5.0, 2.62, 0.36, 0.7, 0.05), T(26))),
+
+    /* the x = 0 wall: tall store and a bin */
+    on(blk(0.2, 1.7, 0, 0.8, 1.5, 2.1),
+       [0.62, 1.3].map((z) => pg(frontFace(RM, 0.2, 3.2, z, 0.8, 0.06), T(34))).join(""),
+       [0.72, 1.4].map((z) =>
+         [0, 1, 2, 3].map((k) => pg(frontFace(RM, 0.28 + k * 0.17, 3.2, z, 0.12, 0.2 + (k % 3) * 0.05), T(40 + k * 5))).join("")).join("")),
+    on(blk(0.3, 3.5, 0, 0.42, 0.42, 0.5, 22, 15, 10),
+       pg(topFace(RM, 0.35, 3.55, 0.51, 0.32, 0.32), T(6))),
+
+    /* the near band: the waiting row */
+    seat(1.15, 4.15),
+    seat(2.0, 4.15),
+    seat(2.85, 4.15),
+    on(table(3.75, 4.2, 0.55, 0.5, 0.5),
+       blk(3.85, 4.28, 0.5, 0.32, 0.24, 0.04, 40, 28, 19).s),
+    plant(5.25, 4.1, 0.66),
+
+    down(1.5, 1.4),
+    down(4.3, 1.5),
+    down(2.6, 3.6),
+  ], "clinic");
+
+const cafeRoom = () =>
+  shell() +
+  paint([
+    /* menu board, bottle shelves, window */
+    on(wallY(0.45, 1.85, 1.35, 1.05, T(36), ` stroke="${T(50)}" stroke-width="0.9"`),
+       [0.35, 0.62, 0.89].map((f) => panY(0.6, 1.95 + f * 0.9, 1.0 - f * 0.5, 0.06, T(13))).join("")),
+    ...[1.95, 2.6].map((z) =>
+      on(wallY(2.2, z, 3.2, 0.07, T(30)),
+         [0, 1, 2, 3, 4, 5].map((k) =>
+           panY(2.32 + k * 0.5, z + 0.07, 0.22, 0.26 + (k % 3) * 0.07, T(34 + (k % 4) * 7))).join(""))),
+    on(wallX(1.2, 0.5, 2.2, 2.3, T(20), ` stroke="${T(38)}" stroke-width="0.9"`),
+       panX(2.28, 0.5, 0.05, 2.3, T(32)),
+       panX(1.2, 1.62, 2.2, 0.05, T(32))),
+
+    /* the bar and what stands on it */
+    on(blk(0.35, 0.3, 0, 5.2, 0.85, 1.0),
+       pg(frontFace(RM, 0.35, 1.15, 0.86, 5.2, 0.05), T(30))),
+    on(blk(1.5, 0.4, 1.0, 1.0, 0.65, 0.72, 44, 30, 20),
+       pg(frontFace(RM, 1.65, 1.05, 1.24, 0.7, 0.26), T(48))),
+    I({ x: 2.7, y: 0.42, z: 1.0, w: 0.8, d: 0.2, h: 0.24 },
+      [2.7, 3.0, 3.3].map((cx) => blk(cx, 0.42, 1.0, 0.2, 0.2, 0.24, 46, 34, 24).s).join("")),
+    on(blk(3.9, 0.4, 1.0, 1.05, 0.62, 0.44, 15, 10, 7),
+       pg(frontFace(RM, 3.9, 1.02, 1.2, 1.05, 0.04), T(32)),
+       [0.1, 0.5].map((f) => pg(frontFace(RM, 3.9 + f, 1.02, 1.0, 0.28, 0.16), T(38))).join("")),
+
+    /* bar stools sit far right in frame — the deep end of the y = 0 wall */
+    stool(4.6, 1.35, 0.44, 0.78),
+    stool(5.25, 1.35, 0.44, 0.78),
+
+    /* three tables walked diagonally so they cross the whole frame */
+    ...([[1.5, 2.6], [3.0, 3.2], [4.6, 3.3]] as [number, number][]).flatMap(([tx, ty], n) => [
+      on(table(tx, ty, 1.2, 1.1, 0.68),
+         blk(tx + 0.34, ty + 0.3, 0.68, 0.3, 0.3, 0.11, 44, 32, 22).s,
+         n === 1 ? blk(tx + 0.72, ty + 0.34, 0.68, 0.24, 0.24, 0.06, 38, 26, 18).s : ""),
+      bench(tx - 0.05, ty - 0.85, 0.7, 0.55),
+      bench(tx + 0.3, ty + 1.2, 0.7, 0.55),
+    ]),
+
+    /* the x = 0 wall: condiment stand, magazine rack, plant */
+    on(table(0.4, 2.4, 0.6, 0.6, 0.9),
+       blk(0.5, 2.5, 0.9, 0.4, 0.4, 0.16, 42, 30, 20).s),
+    on(blk(0.3, 3.3, 0, 0.55, 0.6, 1.1, 24, 16, 11),
+       [0.45, 0.8].map((z) => pg(frontFace(RM, 0.3, 3.9, z, 0.55, 0.05), T(30))).join("")),
+    plant(0.3, 4.25),
+
+    pend(2.1, 3.15),
+    pend(3.6, 3.75),
+    pend(5.2, 3.85),
+  ], "cafe");
+
+const salonRoom = () =>
+  shell() +
+  paint([
+    mat(0.2, 1.3, 5.6, 1.2),
+    ...([0.4, 2.3, 4.2] as number[]).flatMap((sx) => [
+      glassY(sx + 0.15, 0.95, 1.1, 1.9, 15),
+      on(blk(sx, 0.3, 0, 1.4, 0.8, 0.8),
+         [0.28, 0.55].map((z) => pg(frontFace(RM, sx, 1.1, z, 1.4, 0.05), T(26))).join("")),
+      I({ x: sx + 0.1, y: 0.4, z: 0.8, w: 0.8, d: 0.18, h: 0.45 },
+        [0, 1, 2].map((j) => blk(sx + 0.1 + j * 0.35, 0.4, 0.8, 0.18, 0.18, 0.3 + j * 0.05, 46 + j * 6, 34, 22).s).join("")),
+      /* The chair, built the way a salon chair is: plate, pedestal, footrest,
+         pad, two arms, a back and a headrest. A pad-and-panel shorthand here
+         read as a monitor on a stand. */
+      I({ x: sx + 0.1, y: 1.45, z: 0, w: 1.15, d: 0.8, h: 1.35 },
+        paint([
+          blk(sx + 0.5, 1.7, 0, 0.3, 0.3, 0.04, 24, 16, 11),
+          blk(sx + 0.58, 1.78, 0.04, 0.14, 0.14, 0.36, 30, 22, 16, false),
+          blk(sx + 0.45, 2.05, 0.16, 0.5, 0.16, 0.06, 28, 19, 12),
+          blk(sx + 0.1, 1.45, 0.4, 1.15, 0.8, 0.14, 40, 28, 18),
+          blk(sx + 0.1, 1.45, 0.54, 0.14, 0.68, 0.28, 32, 22, 14),
+          blk(sx + 1.11, 1.45, 0.54, 0.14, 0.68, 0.28, 32, 22, 14),
+          blk(sx + 0.1, 2.13, 0.54, 1.15, 0.12, 0.62, 36, 24, 16),
+          blk(sx + 0.28, 2.13, 1.16, 0.8, 0.12, 0.19, 44, 31, 20),
+        ])),
+      down(sx + 0.7, 1.0, 4.2),
+    ]),
+
+    /* towel shelves on the x = 0 wall, then the wash bay under them */
+    ...[1.25, 1.85].map((z) =>
+      on(wallX(2.4, z, 1.5, 0.07, T(32)),
+         [0, 1, 2].map((k) => panX(2.5 + k * 0.45, z + 0.07, 0.32, 0.2, T(38 + k * 6))).join(""))),
+    on(blk(0.3, 3.3, 0, 1.9, 0.85, 0.9),
+       [0.55, 1.4].map((bx) =>
+         pg(topFace(RM, 0.3 + bx, 3.5, 0.9, 0.45, 0.45), T(9), ` stroke="${T(34)}" stroke-width="0.6"`) +
+         seg(iso(RM, 0.3 + bx + 0.22, 3.42, 0.9), iso(RM, 0.3 + bx + 0.22, 3.42, 1.35), T(32), 1.1)).join("")),
+
+    /* trolley, waiting bench, retail shelf on the deep right */
+    on(table(2.55, 3.15, 0.5, 0.5, 0.78),
+       [0.3, 0.54].map((z) => pg(frontFace(RM, 2.55, 3.65, z, 0.5, 0.05), T(32))).join("")),
+    on(blk(2.5, 4.2, 0, 1.6, 0.65, 0.44, 30, 20, 13),
+       pg(frontFace(RM, 2.5, 4.85, 0.44, 1.6, 0.6), T(24)),
+       pg(topFace(RM, 2.5, 4.77, 1.04, 1.6, 0.08), T(40))),
+    on(blk(4.35, 3.85, 0, 1.55, 0.85, 1.05),
+       pg(frontFace(RM, 4.35, 4.7, 1.06, 1.55, 0.06), T(34)),
+       blk(4.5, 3.95, 1.05, 0.5, 0.4, 0.06, 42, 30, 20).s,
+       [0.35, 0.7].map((z) => pg(frontFace(RM, 4.35, 4.7, z, 1.55, 0.05), T(26))).join("")),
+    plant(0.35, 4.35),
+  ], "salon");
+
+const pharmacyRoom = () =>
+  shell() +
+  paint([
+    ...([0.35, 2.3, 4.25] as number[]).map((bx) =>
+      on(blk(bx, 0.25, 0, 1.6, 0.75, 2.4),
+         [0.7, 1.4, 2.05].map((z) => pg(frontFace(RM, bx, 1.0, z, 1.6, 0.06), T(34))).join(""),
+         [0.78, 1.48].map((z) =>
+           [0, 1, 2, 3, 4].map((k) =>
+             pg(frontFace(RM, bx + 0.1 + k * 0.29, 1.0, z, 0.19, 0.28 + (k % 3) * 0.06), T(38 + (k % 4) * 8))).join("")).join(""))),
+    clockY(1.15, 2.95),
+    on(wallX(0.4, 1.4, 1.2, 1.2, T(5), ` stroke="${T(28)}" stroke-width="0.8"`),
+       panX(0.55, 2.25, 0.9, 0.06, T(26)),
+       panX(0.55, 1.85, 0.9, 0.06, T(26))),
+
+    /* cold cabinet on the left, island of shelves through the middle */
+    on(blk(0.1, 2.1, 0, 0.78, 0.9, 2.0, 24, 15, 10),
+       pg(frontFace(RM, 0.1, 3.0, 0.3, 0.78, 1.5), T(13), ` stroke="${T(38)}" stroke-width="0.9"`),
+       [0.75, 1.25].map((z) => pg(frontFace(RM, 0.16, 3.0, z, 0.66, 0.05), T(30))).join("")),
+    on(blk(1.3, 1.9, 0, 3.0, 0.65, 1.05),
+       [0, 1, 2, 3, 4, 5].map((k) =>
+         blk(1.42 + k * 0.48, 1.98, 1.05, 0.34, 0.45, 0.22 + (k % 3) * 0.07, 42 + (k % 3) * 8, 30, 20).s).join("")),
+    I({ x: 5.2, y: 1.9, z: 0, w: 0.55, d: 0.55, h: 0.66 },
+      [0, 1, 2].map((k) => blk(5.2 + k * 0.02, 1.9 + k * 0.02, k * 0.22, 0.55, 0.55, 0.22, 26 + k * 7, 18, 12).s).join("")),
+    on(blk(5.15, 3.1, 0, 0.75, 0.7, 1.35, 26, 17, 11),
+       [0.5, 0.95].map((z) => pg(frontFace(RM, 5.15, 3.8, z, 0.75, 0.05), T(32))).join(""),
+       [0.58, 1.03].map((z) =>
+         [0, 1].map((k) => pg(frontFace(RM, 5.25 + k * 0.28, 3.8, z, 0.2, 0.22), T(40 + k * 8))).join("")).join("")),
+
+    /* dispensing counter, till, screen, and the queue rail in front of it */
+    on(blk(0.4, 3.6, 0, 4.6, 0.95, 0.95),
+       pg(frontFace(RM, 0.4, 4.55, 0.96, 4.6, 0.05), T(30))),
+    on(blk(1.0, 3.75, 0.95, 0.7, 0.5, 0.3, 40, 28, 19),
+       pg(frontFace(RM, 1.08, 4.25, 1.25, 0.54, 0.16), T(48))),
+    on(blk(2.6, 3.8, 0.95, 0.2, 0.2, 0.06, 26, 18, 12),
+       pg(frontFace(RM, 2.35, 4.0, 0.95, 1.35, 0.55), T(9)),
+       pg(frontFace(RM, 2.43, 4.0, 1.02, 1.19, 0.42), T(30))),
+    blk(1.35, 4.72, 0, 0.16, 0.16, 1.0, 34, 23, 15),
+    on(blk(3.45, 4.72, 0, 0.16, 0.16, 1.0, 34, 23, 15),
+       seg(iso(RM, 1.43, 4.8, 0.95), iso(RM, 2.48, 4.8, 0.74), T(44), 1.3),
+       seg(iso(RM, 2.48, 4.8, 0.74), iso(RM, 3.53, 4.8, 0.95), T(44), 1.3)),
+
+    down(1.6, 2.2),
+    down(4.4, 2.6),
+    down(3.0, 4.2),
+  ], "pharmacy");
+
+const shopRoom = () =>
+  shell() +
+  paint([
+    ...([0.4, 2.9] as number[]).map((bx) =>
+      on(wallY(bx, 0.4, 2.0, 2.5, T(17), ` stroke="${T(30)}" stroke-width="0.7"`),
+         [0.9, 1.55, 2.2].map((z) => panY(bx, z, 2.0, 0.06, T(30))).join(""),
+         [0.98, 1.63].map((z) =>
+           [0, 1, 2, 3, 4].map((k) => panY(bx + 0.12 + k * 0.36, z, 0.22, 0.28, T(36 + (k % 3) * 9))).join("")).join(""))),
+    /* rail on the x = 0 wall */
+    I({ x: 0, y: 1.0, z: 1.3, w: 0, d: 2.4, h: 1.25 },
+      seg(iso(RM, 0, 1.0, 2.5), iso(RM, 0, 3.4, 2.5), T(34), 1.6) +
+      ([1.2, 1.6, 2.0, 2.45, 2.9] as number[]).map((hy) =>
+        seg(iso(RM, 0, hy, 2.5), iso(RM, 0, hy, 1.7), T(24), 0.7) +
+        panX(hy - 0.09, 1.35, 0.2, 0.34, T(30))).join("")),
+    glassX(3.7, 0.55, 0.95, 1.85, 15),
+
+    /* the middle: a display table on a mat */
+    mat(1.4, 1.6, 3.6, 2.5),
+    on(table(1.7, 1.9, 2.9, 1.9, 0.72, 24, 17, 11),
+       ([[0.25, 0.25, 0], [1.0, 0.65, 1], [1.75, 0.15, 2], [2.15, 0.95, 3]] as [number, number, number][])
+         .map(([ox, oy, i]) => blk(1.7 + ox, 1.9 + oy, 0.72, 0.36, 0.36, 0.3, 42 + i * 7, 30, 20).s).join(""),
+       ([[0.85, 1.25], [1.6, 1.0]] as [number, number][])
+         .map(([ox, oy]) => blk(1.7 + ox, 1.9 + oy, 0.72, 0.5, 0.38, 0.09, 36, 25, 16).s +
+                            blk(1.72 + ox, 1.92 + oy, 0.81, 0.46, 0.34, 0.08, 40, 28, 18).s).join(""),
+       blk(2.05, 3.35, 0.72, 0.28, 0.06, 0.34, 44, 31, 20).s),
+
+    /* deep right: a shoe shelf and a dress form */
+    on(blk(5.3, 0.4, 0, 0.65, 1.2, 1.6, 26, 17, 11),
+       [0.45, 0.9, 1.32].map((z) => pg(frontFace(RM, 5.3, 1.6, z, 0.65, 0.05), T(32))).join(""),
+       [0.5, 0.95].map((z) =>
+         [0, 1].map((k) => pg(frontFace(RM, 5.38 + k * 0.26, 1.6, z, 0.2, 0.16), T(40 + k * 8))).join("")).join("")),
+    I({ x: 4.9, y: 2.2, z: 0, w: 0.9, d: 0.4, h: 1.62 },
+      paint([
+        blk(4.9, 2.2, 0, 0.85, 0.1, 0.05, 24, 16, 11),
+        blk(4.9, 2.5, 0, 0.85, 0.1, 0.05, 24, 16, 11),
+        blk(4.92, 2.32, 0, 0.08, 0.08, 1.55, 32, 24, 17, false),
+        blk(5.65, 2.32, 0, 0.08, 0.08, 1.55, 32, 24, 17, false),
+        ...[0, 1, 2, 3].map((k) => blk(5.04 + k * 0.16, 2.28, 0.62, 0.12, 0.16, 0.9, 28 + k * 5, 20, 13)),
+        blk(4.9, 2.3, 1.55, 0.9, 0.12, 0.07, 42, 30, 19),
+      ])),
+
+    /* the near band: counter, bench, basket stack */
+    on(blk(0.4, 3.95, 0, 2.0, 0.8, 0.85),
+       blk(0.65, 4.1, 0.85, 0.6, 0.45, 0.38, 46, 34, 24).s,
+       pg(frontFace(RM, 0.4, 4.75, 0.55, 2.0, 0.05), T(28))),
+    on(blk(3.0, 4.3, 0, 1.4, 0.6, 0.42, 30, 20, 13),
+       pg(frontFace(RM, 3.0, 4.9, 0.42, 1.4, 0.5), T(24))),
+    I({ x: 4.9, y: 3.9, z: 0, w: 0.6, d: 0.55, h: 0.78 },
+      [0, 1, 2].map((k) => blk(4.9 + k * 0.02, 3.9 + k * 0.02, k * 0.26, 0.6, 0.55, 0.26, 24 + k * 8, 18, 12).s).join("")),
+
+    down(2.0, 1.5),
+    down(4.6, 1.9),
+    down(2.6, 4.0),
+  ], "shop");
+
+const startupRoom = () =>
+  shell() +
+  paint([
+    on(wallY(1.1, 1.4, 3.6, 1.9, T(5), ` stroke="${T(34)}" stroke-width="1"`),
+       [0, 1, 2, 3].map((i) => panY(1.4, 2.85 - i * 0.34, 2.7 - i * 0.28, 0.07, T(26))).join("")),
+    clockY(5.4, 2.7),
+    on(wallX(0.6, 1.95, 1.4, 1.15, T(16), ` stroke="${T(36)}" stroke-width="0.8"`),
+       [0, 1, 2, 3].map((k) =>
+         panX(0.72 + (k % 2) * 0.62, 2.13 + Math.floor(k / 2) * 0.5, 0.46, 0.36, T(26 + k * 5))).join("")),
+
+    /* three desks along the y = 0 wall, chairs pulled out toward the viewer */
+    ...([0.5, 2.4, 4.3] as number[]).flatMap((sx) => [
+      on(table(sx, 0.35, 1.35, 0.85, 0.7),
+         blk(sx + 0.25, 0.45, 0.7, 0.5, 0.3, 0.04, 26, 18, 12).s,
+         blk(sx + 0.95, 0.45, 0.7, 0.26, 0.26, 0.2, 36, 25, 17).s,
+         pg(frontFace(RM, sx + 0.35, 1.2, 0.7, 0.62, 0.46), T(8)),
+         pg(frontFace(RM, sx + 0.4, 1.2, 0.74, 0.52, 0.37), T(32)),
+         blk(sx + 0.42, 1.14, 0.7, 0.5, 0.06, 0.03, 34, 24, 16).s),
+      seat(sx + 0.35, 1.55, 0.64, 0.6, 0.7),
+      pend(sx + 0.67, 0.8, 1.1),
+    ]),
+
+    /* lounge corner on the mat */
+    mat(0.2, 2.5, 2.7, 2.1),
+    I({ x: 0.3, y: 3.5, z: 0, w: 2.1, d: 0.9, h: 1.05 },
+      paint([
+        blk(0.3, 3.5, 0, 2.1, 0.16, 1.05, 22, 15, 10),
+        blk(0.3, 3.66, 0, 0.28, 0.74, 0.62, 26, 17, 11),
+        blk(2.12, 3.66, 0, 0.28, 0.74, 0.62, 26, 17, 11),
+        blk(0.58, 3.66, 0, 1.54, 0.74, 0.44, 32, 22, 14),
+        blk(0.6, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+        blk(1.1, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+        blk(1.6, 3.7, 0.44, 0.48, 0.66, 0.06, 38, 26, 18),
+      ])),
+    on(table(0.85, 2.7, 1.0, 0.65, 0.42),
+       blk(1.0, 2.8, 0.42, 0.28, 0.28, 0.12, 44, 32, 22).s,
+       blk(1.42, 2.84, 0.42, 0.3, 0.24, 0.05, 38, 26, 18).s),
+
+    /* deep right and the near band */
+    on(blk(0.1, 1.3, 0, 0.7, 1.25, 1.75),
+       [0.55, 1.15].map((z) => pg(frontFace(RM, 0.1, 2.55, z, 0.7, 0.06), T(34))).join(""),
+       [0.63, 1.23].map((z) =>
+         [0, 1, 2].map((k) => pg(frontFace(RM, 0.18 + k * 0.19, 2.55, z, 0.14, 0.26), T(38 + k * 8))).join("")).join("")),
+    on(blk(5.15, 3.0, 0, 0.75, 1.5, 0.8, 28, 19, 12),
+       pg(frontFace(RM, 5.15, 4.5, 0.4, 0.75, 0.05), T(34)),
+       blk(5.25, 3.15, 0.8, 0.5, 0.42, 0.1, 40, 28, 19).s,
+       blk(5.28, 3.7, 0.8, 0.3, 0.3, 0.34, 34, 23, 15).s),
+    on(blk(2.6, 4.2, 0, 0.45, 0.45, 1.2, 24, 16, 11),
+       pg(frontFace(RM, 2.63, 4.65, 0.55, 0.39, 0.5), T(13), ` stroke="${T(36)}" stroke-width="0.7"`)),
+    plant(3.25, 4.15, 0.68),
+    I({ x: 4.2, y: 4.3, z: 0, w: 0.55, d: 0.55, h: 0.86 },
+      [[0, 0.55, 0.3, 20], [0.08, 0.4, 0.28, 26], [0.13, 0.3, 0.28, 32]]
+        .map(([o, s2, hh, t], k) => blk(4.2 + o, 4.3 + o, k === 0 ? 0 : k === 1 ? 0.3 : 0.58, s2, s2, hh, t, 17, 11).s).join("")),
+  ], "startup");
+
+const ROOMS: Record<string, () => string> = {
+  "01": clinicRoom,
+  "02": cafeRoom,
+  "03": salonRoom,
+  "04": pharmacyRoom,
+  "05": shopRoom,
+  "06": startupRoom,
+};
+
+/* Built here, not in the template: TONES is only complete once every room has
+   been drawn, and the plate needs the finished set. */
+const ROOM_SVG: Record<string, string> = Object.fromEntries(
+  clientTypes.map((c) => [c.key, ROOMS[c.key]?.() ?? ""]),
+);
+const toneVars = [...TONES]
+  .sort((a, b) => a - b)
+  .map((n) => `--t${n}:color-mix(in oklab,var(--interior-ink) ${n}%,var(--interior))`)
+  .join(";");
+
+const span = String(clientTypes.length).padStart(2, "0");
+---
+
+<section class="section" id="who" aria-labelledby="who-h" style={toneVars}>
+  <div class="wrap">
+    <SectionHeader
+      index="01"
+      glyph="⌀"
+      title="Who it's for"
+      sublabel="ORDER TYPES"
+      kicker={`TYPES / 01–${span} · DRIVE THE STREET, OR PICK ONE BELOW`}
+      id="who-h"
+    />
+
+    {/* The track is only tall when the street can actually run — the height
+        is added inside the same query that turns the camera on, so the page
+        never reserves scroll for a mechanism that will not start. */}
+    <div class="st__track" data-track>
+      <div class="st__frame" data-frame>
+        <div class="st__bar mono">
+          <span>THE OPEN BOX — DISTRICT 01</span>
+          <span class="st__code" data-status>{span} SPACES · PICK ONE TO STEP INSIDE</span>
+        </div>
+
+        {/* Ends the drive; never skips the section. An exit that removes the
+            answer is worse than the scroll it saves, so this lands on the
+            last pair with the directory still in frame. */}
+        <button class="st__skip mono" type="button" data-skip>
+          END THE DRIVE <span aria-hidden="true">▸</span>
+        </button>
+
+        {/* THE STREET. Not aria-hidden: it holds real focusable links, and
+            hiding a container while leaving its links focusable is a keyboard
+            trap. The directory below is the same six spaces reached another
+            way, and is what a screen reader is meant to use. */}
+        <svg
+          class="st__svg"
+          data-svg
+          viewBox={`${(-BAKE_VBW / 2).toFixed(0)} ${VB_TOP} ${BAKE_VBW} ${VBH}`}
+          preserveAspectRatio="xMidYMid meet"
+          role="group"
+          aria-label="District street. The same six spaces are listed below."
+        >
+          {/* the ground: invariant under a pure-Z dolly, so it is drawn once
+              and never enters the damage rect on an animated frame */}
+          <g class="st-ground">
+            <polygon points={band(-ROAD_HALF, ROAD_HALF)} class="st-road" />
+            <polygon points={band(-KERB, -ROAD_HALF)} class="st-walk" />
+            <polygon points={band(KERB, ROAD_HALF)} class="st-walk" />
+            <line x1={0} y1={0} x2={rayEnd(-ROAD_HALF)[0]} y2={rayEnd(-ROAD_HALF)[1]} class="st-kerb" />
+            <line x1={0} y1={0} x2={rayEnd(ROAD_HALF)[0]} y2={rayEnd(ROAD_HALF)[1]} class="st-kerb" />
+            <line x1={0} y1={0} x2={rayEnd(-KERB)[0]} y2={rayEnd(-KERB)[1]} class="st-walkedge" />
+            <line x1={0} y1={0} x2={rayEnd(KERB)[0]} y2={rayEnd(KERB)[1]} class="st-walkedge" />
+            <line x1={(-BAKE_VBW / 2).toFixed(0)} y1={0} x2={(BAKE_VBW / 2).toFixed(0)} y2={0} class="st-horizon" />
+            <circle cx={0} cy={0} r={2.5} class="st-vp" />
+          </g>
+
+          {/* the centre line, dividing the carriageway */}
+          <g class="st-dashes" data-dashes>
+            {bakedDashes.map((d, i) => (d ? <polygon points={d} data-dash={i} /> : <polygon data-dash={i} style="visibility:hidden" />))}
+          </g>
+
+          {/* far to near — the order is a build-time constant because
+              same-side Z extents are disjoint and panX is 0 while driving */}
+          {
+            DRAW_ORDER.map((b) => {
+              const named = "key" in b ? (b as any).key as string : null;
+              const rec = named
+                ? bakedNamed.find((n) => n.slot.key === named)!
+                : bakedFill.find((n) => n.slot === b)!;
+              const type = named ? clientTypes.find((c) => c.key === named) : null;
+              const st = named ? STYLES[named] : FILLER_STYLES[bakedFill.findIndex((f) => f.slot === b)];
+              const inner = (
+                <>
+                  {rec.base && <polygon points={rec.base} class="st-base" />}
+                  {rec.flank && <polygon points={rec.flank} class="st-flank" />}
+                  {/* the shopfront, facing the road */}
+                  <g class="st-marks">
+                    {rec.marks.map((m, mi) => (
+                      m.d
+                        ? <polygon points={m.d} class={m.c} data-m={mi} data-lod={m.lod} />
+                        : <polygon class={m.c} data-m={mi} data-lod={m.lod} style="visibility:hidden" />
+                    ))}
+                  </g>
+                  {rec.card && (
+                    <g class="st-card" data-card style={`transform:${rec.card}`}
+                       set:html={endFace(b.side, b.h, st, named ? NAMED_W : FILLER_W)} />
+                  )}
+                  {named && rec.sign && (
+                    <g class="st-sign" data-sign style={`transform:${rec.sign}`} set:html={signCard(named, b.side)} />
+                  )}
+                </>
+              );
+              return named ? (
+                <a
+                  href={`#space-${named}`}
+                  class="st-b"
+                  data-b={named}
+                  data-zf={b.zf}
+                  data-side={b.side}
+                  data-h={b.h}
+                  style={`opacity:${rec.haze}`}
+                >
+                  <title>{type?.name}</title>
+                  {inner}
+                </a>
+              ) : (
+                <g class="st-b st-b--filler" data-fill={bakedFill.findIndex((f) => f.slot === b)} data-zf={b.zf} data-side={b.side} data-h={b.h}
+                   style={`opacity:${rec.haze}`} aria-hidden="true">
+                  {inner}
+                </g>
+              );
+            })
+          }
+        </svg>
+
+        {/* THE STATIC PRESENTATION — no JavaScript, reduced motion, or a
+            browser that cannot run the camera. Same <symbol>-free facade
+            artwork, drawn flat, so nothing here is duplicated content and
+            there is no perspective viewBox to mis-fit at any width. */}
+        <ul class="st__strip">
+          {
+            SLOTS.map((sl) => {
+              const type = clientTypes.find((c) => c.key === sl.key)!;
+              return (
+                <li>
+                  <a href={`#space-${sl.key}`} class="st__elev">
+                    <svg
+                      viewBox={`${Math.min(0, NAMED_W * sl.side) - 0.4} -0.4 ${NAMED_W + 0.8} ${sl.h + 0.8}`}
+                      role="img"
+                      aria-label={`Shopfront elevation for ${type.name.toLowerCase()}.`}
+                      set:html={endFace(sl.side, sl.h, STYLES[sl.key], NAMED_W) + elevationSign(sl.key, sl.side, sl.h)}
+                    />
+                    <span class="st__elevname">{type.name}</span>
+                  </a>
+                </li>
+              );
+            })
+          }
+        </ul>
+
+        {/* The directory. These summaries are visible in EVERY mode — that is
+            what makes a scroll-gated street defensible, because all six
+            categories are reachable at scroll position zero. */}
+        <div class="st__index" data-index>
+          <div class="st__chips">
+        {
+          clientTypes.map((c, i) => (
+            <details class="st__space" data-space id={`space-${c.key}`} style={`--i:${i}`}>
+              <summary class="st__chip">
+                <span class="dist__icon" aria-hidden="true" set:html={ICONS[c.key]} />
+                <span class="dist__n mono">{c.key}</span>
+                <span class="dist__name">{c.name}</span>
+                <span class="visually-hidden">{c.line}</span>
+              </summary>
+
+              <div class="dist__panel">
+                {/* THE INTERIOR — the same room the prototype drew, in tone
+                    instead of neon. Decorative: role="img" names it, and the
+                    zone list beneath is the actual information. */}
+                <figure class="dist__roomwrap">
+                  <svg
+                    class="dist__room"
+                    viewBox="-177 -164 388 358"
+                    role="img"
+                    aria-label={`Cutaway of a typical ${c.name.toLowerCase()} space.`}
+                    set:html={ROOM_SVG[c.key] ?? ""}
+                  />
+                </figure>
+
+                {/* the slip that sits under the room — name, what it is,
+                    what the site contains, and the way back */}
+                <div class="dist__info">
+                  <div class="dist__infomain">
+                    <p class="dist__infoname">{c.name}</p>
+                    <p class="dist__line">{c.line}</p>
+                  </div>
+                  <ul class="dist__zonelist mono">
+                    {c.sections.map((sec) => (
+                      <li>{sec.label}</li>
+                    ))}
+                  </ul>
+                  <button class="dist__back mono" type="button" data-back>
+                    ◂ BACK
+                  </button>
+                </div>
+              </div>
+            </details>
+          ))
+        }
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="wt__note mono">
+      <span class="glyph accent" aria-hidden="true">⌀</span>
+      NOT ON THE LIST? THE SHAPE CHANGES, THE PROCESS DOESN'T —
+      <a href="#brief">TELL ME WHAT YOU RUN <span aria-hidden="true">▸</span></a>
+    </p>
+  </div>
+</section>
+
+<style>
+  /* The band is self-framed by its own border, so it does not need a text
+     section's breathing room above and below. Trimming it here buys back
+     about 110px of the scroll the drive costs, without touching any other
+     section's rhythm. */
+  #who.section {
+    padding-block: clamp(2rem, 4vw, 3.5rem);
+    /* The district's palette is decided HERE and nowhere else. It must sit on
+       the same element that carries the baked --tNN tone scale (the inline
+       style attribute on this section), because those values are written in
+       terms of --interior / --interior-ink and resolve where they are
+       declared. Put this pair on a descendant instead and the tones quietly
+       fall back to the global inverted pair — the rooms come back black. */
+    --interior: var(--paper);
+    --interior-ink: var(--ink);
+    --interior-line: var(--line-2);
+  }
+
+  /* ---- the plate ----------------------------------------------------------
+     Everything inside the district is written against --interior /
+     --interior-ink, so which way round it runs is decided in ONE place. The
+     pair is re-pointed at the page's own palette on the section, not on a
+     wrapper: the frame needs to be sticky, and an overflow:hidden ANCESTOR
+     captures a sticky descendant's scrollport and silently kills the pin.
+     (Overflow on the sticky element itself is fine — only ancestors clip.) */
+  /* The masthead is fixed, so every anchor target in this section needs to
+     clear it or the jump lands under the bar. */
+  #who,
+  .st__space { scroll-margin-top: 70px; }
+
+  .st__track {
+    --band: clamp(25rem, 54svh, 34rem);
+    /* svh, never vh or dvh: a collapsing mobile URL bar must not resize the
+       pinned frame halfway through the drive. */
+    --run: clamp(520px, 86svh, 860px);
+    position: relative;
+  }
+  @media (max-width: 760px), (pointer: coarse) {
+    .st__track { --run: 50svh; }
+  }
+
+  .st__frame {
+    position: relative;
+    background: var(--interior);
+    color: var(--interior-ink);
+    border: var(--hair-strong) solid var(--interior-ink);
+    border-radius: 3px;
+    overflow: clip;
+    min-height: var(--band);
+    display: flex;
+    flex-direction: column;
+  }
+  .st__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.55rem 0.9rem;
+    border-bottom: var(--hair) solid var(--interior-line);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.85;
+    flex: none;
+  }
+  .st__code { transition: opacity 0.15s var(--ease); }
+
+  /* ---- the street ---------------------------------------------------------
+     Hidden by default. It is switched ON below, inside the same query that
+     gives the track its height, so a browser that cannot run the camera never
+     reserves scroll for it. */
+  .st__svg { display: none; }
+  .st__skip { display: none; }
+
+  .st-road { fill: color-mix(in oklab, var(--interior-ink) 9%, var(--interior)); }
+  .st-walk { fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior)); }
+  .st-kerb { stroke: color-mix(in oklab, var(--interior-ink) 40%, var(--interior)); stroke-width: 1.3; }
+  .st-walkedge { stroke: color-mix(in oklab, var(--interior-ink) 26%, var(--interior)); stroke-width: 0.9; }
+  .st-horizon { stroke: color-mix(in oklab, var(--interior-ink) 18%, var(--interior)); stroke-width: 0.7; }
+  .st-vp { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  /* The paint is the lightest thing on the road, the way road paint is —
+     which in this palette means the least ink, not the most. */
+  .st-dashes polygon { fill: var(--interior); }
+
+  /* Faces carry tone; the card carries the line art. Strokes are NOT
+     non-scaling: letting them thin with distance is the depth cue, and it is
+     the one thing a CSS-3D plane could not have done. */
+  .st-flank { fill: color-mix(in oklab, var(--interior-ink) 17%, var(--interior)); }
+  .st-base  { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-flank, .st-base {
+    stroke: color-mix(in oklab, var(--interior-ink) 46%, var(--interior));
+    stroke-width: 0.8;
+    stroke-linejoin: round;
+  }
+  /* ---- the shopfront, on the wall that faces the road ---------------------
+     These sit on the flank plane and are the reason a building reads as a
+     building rather than a cuboid. Glass is lighter than its wall, masonry
+     bands darker — the same rule the interiors follow. */
+  .st-glass   { fill: color-mix(in oklab, var(--interior-ink) 6%, var(--interior)); }
+  .st-pane    { fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior)); }
+  .st-door    { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-doorlite{ fill: color-mix(in oklab, var(--interior-ink) 8%, var(--interior)); }
+  .st-signband{ fill: color-mix(in oklab, var(--interior-ink) 34%, var(--interior)); }
+  .st-awning  { fill: color-mix(in oklab, var(--interior-ink) 44%, var(--interior)); }
+  .st-course  { fill: color-mix(in oklab, var(--interior-ink) 38%, var(--interior)); }
+  .st-pier    { fill: color-mix(in oklab, var(--interior-ink) 30%, var(--interior)); }
+  .st-marks polygon {
+    stroke: color-mix(in oklab, var(--interior-ink) 52%, var(--interior));
+    stroke-width: 0.55;
+    stroke-linejoin: round;
+  }
+  /* the bracket sign, hanging out over the pavement */
+  .st-sign {
+    fill: none;
+    stroke: color-mix(in oklab, var(--interior-ink) 66%, var(--interior));
+    will-change: transform;
+  }
+  .st-sign :global(.st-plate) { fill: var(--interior); }
+  .st-sign text { fill: var(--interior-ink); stroke: none; }
+  .st-card :global(.st-glasscard) {
+    fill: color-mix(in oklab, var(--interior-ink) 5%, var(--interior));
+  }
+
+  .st-card {
+    fill: none;
+    stroke: color-mix(in oklab, var(--interior-ink) 62%, var(--interior));
+    will-change: transform;
+  }
+  .st-card text { fill: var(--interior-ink); stroke: none; }
+  /* the opaque front of the building — and the click target */
+  .st-card :global(.st-face) {
+    fill: color-mix(in oklab, var(--interior-ink) 3%, var(--interior));
+  }
+
+  .st-b { cursor: pointer; }
+  .st-b--filler { pointer-events: none; }
+  .st-b:hover .st-card,
+  .st-b:focus-visible .st-card { stroke: var(--interior-ink); }
+  .st-b:hover .st-flank,
+  .st-b:focus-visible .st-flank { fill: color-mix(in oklab, var(--interior-ink) 26%, var(--interior)); }
+  .st-b.is-active .st-card { stroke: var(--interior-ink); }
+
+  .st__skip {
+    position: absolute;
+    right: 0.7rem;
+    top: 2.4rem;
+    z-index: 4;
+    background: var(--interior);
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    color: inherit;
+    cursor: pointer;
+    font-size: 0.55rem;
+    letter-spacing: 0.14em;
+    padding: 0.42em 0.7em;
+    transition: background 0.15s var(--ease);
+  }
+  .st__skip:hover,
+  .st__skip:focus-visible { background: var(--interior-line); }
+
+  /* ---- the static presentation -------------------------------------------
+     What ships with no JavaScript, under reduced motion, and anywhere the
+     camera cannot run. The same facade artwork, drawn flat — so it is not
+     duplicated content, and there is no perspective viewBox to mis-fit at
+     any width. */
+  .st__strip {
+    list-style: none;
+    margin: 0;
+    padding: clamp(0.7rem, 2vw, 1.1rem);
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(0.6rem, 1.6vw, 1rem);
+  }
+  @media (min-width: 560px) { .st__strip { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .st__strip { grid-template-columns: repeat(3, 1fr); } }
+  .st__elev {
+    display: grid;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    color: inherit;
+    text-decoration: none;
+  }
+  .st__elev:hover { background: color-mix(in oklab, var(--interior-ink) 5%, var(--interior)); }
+  .st__elev svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    fill: none;
+    stroke: color-mix(in oklab, var(--interior-ink) 60%, var(--interior));
+  }
+  .st__elev svg text { fill: var(--interior-ink); stroke: none; }
+  .st__elevname { font-size: 0.86rem; font-weight: 600; letter-spacing: -0.01em; }
+
+  /* ---- the directory ------------------------------------------------------
+     These summaries are visible in EVERY mode. They used to be display:none
+     whenever JavaScript ran, which dropped six real sentences out of the
+     accessibility tree; never re-add that rule. The strip is also what makes
+     a scroll-gated street defensible, because every category is reachable at
+     scroll position zero. */
+  .st__index { margin-top: auto; }
+  .st__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    width: 100%;
+    padding: clamp(0.6rem, 2vw, 0.9rem);
+    border-top: var(--hair) solid var(--interior-line);
+  }
+  .st__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    cursor: pointer;
+    list-style: none;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.4em 0.62em;
+    font-size: 0.76rem;
+    line-height: 1.1;
+    transition: background 0.15s var(--ease);
+  }
+  /* On a phone the six chips wrapped to five rows and took nearly half the
+     frame. The names stay — they are the whole accessibility argument — but
+     the mark goes and the type tightens, which fits them in two. */
+  @media (max-width: 620px) {
+    .st__chips { gap: 0.3rem; padding: 0.5rem 0.55rem; }
+    .st__chip {
+      gap: 0.3rem;
+      padding: 0.34em 0.46em;
+      font-size: 0.66rem;
+    }
+    .st__chip .dist__icon { display: none; }
+  }
+  .st__chip::-webkit-details-marker { display: none; }
+  .st__chip:hover { background: color-mix(in oklab, var(--interior-ink) 7%, var(--interior)); }
+  .st__space[open] > .st__chip { background: var(--interior-ink); color: var(--interior); }
+  .dist__icon { display: block; width: 1.05em; height: 1.05em; flex: none; }
+  .dist__icon :global(svg) { display: block; width: 100%; height: 100%; }
+  .dist__n { font-size: 0.62em; letter-spacing: 0.12em; opacity: 0.7; }
+  .dist__name { font-weight: 600; letter-spacing: -0.01em; }
+
+  /* ---- the drive ----------------------------------------------------------
+     Positive gating: the tall track, the pin and the camera all appear here
+     together, so they can never disagree about whether the street is running.
+     Anything that reserves layout for motion belongs inside this query. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html.js) .st__track { height: calc(var(--band) + var(--run)); }
+    :global(html.js) .st__frame {
+      position: sticky;
+      /* the masthead is 54px; one grid unit clears it. The camera reads the
+         same offset from JS, so pin and drive stay in phase. */
+      top: 62px;
+      height: var(--band);
+      min-height: 0;
+    }
+    :global(html.js) .st__svg { display: block; flex: 1; min-height: 0; width: 100%; }
+    :global(html.js) .st__skip { display: inline-flex; }
+    :global(html.js) .st__strip { display: none; }
+
+    /* The directory floats over the street rather than stacking under it, so
+       the frame height stays exactly today's stage envelope.
+
+       This layer is inset:0 and the visual bar is the child, NOT the other way
+       round. An absolutely-positioned bottom bar becomes the containing block
+       for everything inside it, and the open interior then resolves inset:0
+       against a 50px chip strip instead of the frame — it renders, it is just
+       squashed into the bar and unclickable. */
+    :global(html.js) .st__index {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      display: flex;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+    /* No backdrop-filter, and no position either. Both make an element a
+       containing block for absolutely-positioned DESCENDANTS, which puts the
+       open interior back inside the chip bar — the same squashed-panel bug as
+       anchoring this layer with bottom:0, arriving by a different route. A
+       near-opaque plate does the legibility job without that side effect. */
+    :global(html.js) .st__chips {
+      pointer-events: auto;
+      background: color-mix(in oklab, var(--interior) 94%, transparent);
+    }
+    :global(html.js) .st__space { position: static; }
+    /* Panels resolve against .st__index, which IS the frame. */
+    :global(html.js) .st__space > .dist__panel {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      /* Six interiors, ~1100 polygons, laid out on every frame of the drive
+         while all six are closed. This lets the browser skip the subtree it
+         is not showing; unlike hiding it, the content stays in the
+         accessibility tree and in find-in-page. */
+      content-visibility: auto;
+      contain-intrinsic-size: auto 480px;
+      background: var(--interior);
+      opacity: 0;
+      transform: scale(1.07);
+      pointer-events: none;
+      transition: opacity 0.42s var(--ease), transform 0.42s var(--ease);
+    }
+    :global(html.js) .st__space[open] > .dist__panel {
+      content-visibility: visible;
+      opacity: 1;
+      transform: none;
+      pointer-events: auto;
+    }
+    /* The street's own fade is driven frame by frame during the zoom, so it
+       must NOT also carry a CSS transition — the two would fight and the
+       result reads as a stutter. Only the skip button transitions. */
+    :global(html.js) .st__frame[data-open] .st__skip { opacity: 0; }
+    :global(html.js) .st__skip { transition: opacity 0.3s var(--ease), background 0.15s var(--ease); }
+  }
+
+  /* ---- the interior: room fills the stage, slip pinned beneath ---- */
+  .dist__panel {
+    display: flex;
+    flex-direction: column;
+    padding: clamp(0.6rem, 2vw, 1rem);
+  }
+  /* height:100% does NOT work here: <details> does not establish a definite
+     containing block for its content, so the percentage silently resolves to
+     auto and the panel grows to its natural height, pushing the slip out of
+     the stage. Pinning it to the space gives it a real box. */
+  :global(html.js) .dist__panel {
+    position: absolute;
+    inset: 0;
+  }
+  .dist__roomwrap {
+    flex: 1;
+    min-height: 0;
+    margin: 0;
+    display: grid;
+    place-items: center;
+  }
+  .dist__room {
+    display: block;
+    /* A definite box, not auto: an SVG with height:auto resolves to its full
+       intrinsic height and overruns the stage, taking the slip off-screen
+       with it. Given a real box, preserveAspectRatio letterboxes it to fit. */
+    width: 100%;
+    height: 100%;
+    color: var(--interior-ink);
+  }
+
+  .dist__info {
+    flex: none;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    padding-top: 0.75rem;
+    border-top: var(--hair) dashed var(--interior-line);
+  }
+  .dist__infoname {
+    font-size: 0.9rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.2rem;
+  }
+  .dist__line {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    opacity: 0.78;
+    max-width: 52ch;
+    margin: 0;
+  }
+  .dist__zonelist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .dist__zonelist li {
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.32em 0.55em;
+    font-size: 0.52rem;
+    letter-spacing: 0.08em;
+  }
+  .dist__back {
+    justify-self: start;
+    background: none;
+    border: var(--hair) solid var(--interior-line);
+    border-radius: 2px;
+    padding: 0.45em 0.8em;
+    cursor: pointer;
+    color: inherit;
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    transition: background 0.15s var(--ease);
+  }
+  .dist__back:hover,
+  .dist__back:focus-visible {
+    background: var(--interior-line);
+  }
+
+  @media (min-width: 720px) {
+    .dist__info {
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 1.2rem;
+    }
+  }
+
+  /* Stacked, the room is height-bound and letterboxes into the middle third
+     of the plate — 470px of drawing inside 1040px of stage, which is most of
+     why a furnished room still read as empty. Wide enough, the slip moves
+     into that dead margin and the room takes the full height of the stage. */
+  @media (min-width: 1000px) {
+    :global(html.js) .dist__panel {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) clamp(15rem, 24vw, 20rem);
+      /* stretch, not center: flex:1 on the wrap does nothing here, so the
+         column has to carry the height or the SVG sizes to its intrinsic
+         one and runs straight out of the stage. */
+      align-items: stretch;
+      gap: clamp(1rem, 2.4vw, 2rem);
+    }
+    :global(html.js) .dist__roomwrap {
+      height: 100%;
+      min-height: 0;
+    }
+    :global(html.js) .dist__info {
+      grid-template-columns: 1fr;
+      align-content: center;
+      gap: 0.9rem;
+      padding-top: 0;
+      border-top: 0;
+      border-left: var(--hair) dashed var(--interior-line);
+      padding-left: clamp(1rem, 2.4vw, 2rem);
+      height: 100%;
+    }
+    :global(html.js) .dist__line {
+      font-size: 0.86rem;
+    }
+  }
+
+  .wt__note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em;
+    margin-top: 1.4rem;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--label-aa);
+  }
+  .wt__note a {
+    color: var(--ink);
+    font-weight: 600;
+    border-bottom: var(--hair-strong) solid var(--accent-text);
+    padding-bottom: 0.1em;
+    transition: color 0.15s var(--ease);
+  }
+  .wt__note a:hover {
+    color: var(--accent-text);
+  }
+</style>
+
+<script>
+  import {
+    NEAR, VBH, VB_TOP, KERB, NAMED_W, FILLER_W, ribsOf, ribPoints,
+    cardTransform, czOf, hazeOf, solveF, vbwOf, widthOf, MIN_TAP, ease,
+    dashZ, DASH_LEN, DASH_N, DASH_HALF, paintHaze,
+    STYLES, FILLER_STYLES, SHOP_H, SIGN_H, flankRibs,
+  } from "../../lib/street.ts";
+  /* SHOP_H + SIGN_H = 3.62: the height the bracket hangs at, kept in step
+     with the frontmatter's own constants. */
+
+  /* The <details> layer works with none of this: every category is a visible
+     chip, opens natively, and reaches its interior. The camera is added on
+     top and is bound only when it can actually run. */
+  function initDistrict() {
+    const section = document.getElementById("who");
+    if (!section) return;
+    /* Scoped to the section on purpose: four other components use the
+       [data-status] hook, and a document-wide query resolves correctly today
+       only by accident of document order. */
+    const status = section.querySelector<HTMLElement>("[data-status]");
+    const spaces = Array.from(section.querySelectorAll<HTMLDetailsElement>(".st__space"));
+    const frame = section.querySelector<HTMLElement>("[data-frame]");
+    const defaultStatus = status?.textContent ?? "";
+    if (!spaces.length || !frame) return;
+
+    const nameOf = (d: HTMLDetailsElement) =>
+      d.querySelector<HTMLElement>(".dist__name")?.textContent ?? "";
+
+    const sync = () => {
+      const open = spaces.find((d) => d.open);
+      frame.toggleAttribute("data-open", Boolean(open));
+      if (status) {
+        status.textContent = open ? `INSIDE — ${nameOf(open).toUpperCase()}` : defaultStatus;
+      }
+      return open;
+    };
+
+    spaces.forEach((d) => {
+      d.addEventListener("toggle", () => {
+        if (d.open) spaces.forEach((o) => o !== d && (o.open = false));
+        sync();
+      });
+    });
+
+    /* ---- the camera ------------------------------------------------------
+       Everything below is enhancement. Reduced motion gets the static street
+       and the same six chips, and binds no listener at all. */
+    const svg = section.querySelector<SVGSVGElement>("[data-svg]");
+    const track = section.querySelector<HTMLElement>("[data-track]");
+    const skip = section.querySelector<HTMLButtonElement>("[data-skip]");
+    if (!svg || !track) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const PIN_TOP = 62;
+    /* How hard the camera chases the scroll. Bound straight to scrollY it
+       moves in the wheel's own steps, which on a trackpad is a stutter; a
+       short exponential follow turns those steps into a glide without ever
+       lagging far enough behind to feel disconnected. */
+    const FOLLOW = 0.13;
+
+    type Solid = {
+      el: SVGGraphicsElement;
+      key: string | null;
+      side: -1 | 1;
+      zf: number;
+      zb: number;
+      h: number;
+      ribs: ReturnType<typeof ribsOf>;
+      poly: Record<string, SVGPolygonElement | null>;
+      card: SVGGElement | null;
+      shown: boolean;
+      live: boolean;
+    };
+
+    const read = (el: Element): Solid => {
+      const side = Number((el as HTMLElement).dataset.side) as -1 | 1;
+      const zf = Number((el as HTMLElement).dataset.zf);
+      const h = Number((el as HTMLElement).dataset.h);
+      const key = (el as HTMLElement).dataset.b ?? null;
+      const w = key ? NAMED_W : FILLER_W;
+      const zb = zf + (key ? 14 : 8);
+      return {
+        el: el as SVGGraphicsElement,
+        key, side, zf, zb, h,
+        ribs: ribsOf({ side, zf, zb, h }, w),
+      marksGeom: flankRibs({ zf, zb, h }, key ? STYLES[key] : FILLER_STYLES[Number((el as HTMLElement).dataset.fill) || 0], Boolean(key)),
+        poly: {
+          flank: el.querySelector(".st-flank"),
+          base: el.querySelector(".st-base"),
+        },
+        marks: Array.from(el.querySelectorAll<SVGPolygonElement>("[data-m]")),
+        card: el.querySelector(".st-card"),
+        sign: el.querySelector<SVGGElement>(".st-sign"),
+        shown: true,
+        live: true,
+      };
+    };
+
+    const solids = Array.from(svg.querySelectorAll("[data-b],[data-fill]")).map(read);
+    const named = solids.filter((s) => s.key);
+    const dashes = Array.from(svg.querySelectorAll<SVGPolygonElement>("[data-dash]"));
+
+    /* Facade anchors are focusable by default so the no-JS path can use them.
+       Under JS the chips are the keyboard control, and two tab stops per
+       category is noise — but the href stays, always. */
+    named.forEach((s) => s.el.setAttribute("tabindex", "-1"));
+
+    let F = 442;
+    let vbw = 1717;
+    let frameW = 0;
+    const measure = () => {
+      const fr = frame.getBoundingClientRect();
+      const sr = svg.getBoundingClientRect();
+      frameW = fr.width || 1;
+      vbw = vbwOf(frameW, sr.height || fr.height || 1);
+      F = solveF(vbw);
+      svg.setAttribute("viewBox", `${(-vbw / 2).toFixed(0)} ${VB_TOP} ${vbw} ${VBH}`);
+    };
+
+    const cam = { cz: czOf(0), panX: 0, zoom: 0, target: null as Solid | null };
+    let quality = 0; // 0 full, 1 fewer solids, 2 half rate
+
+    const setPts = (el: SVGPolygonElement | null, pts: string | null) => {
+      if (!el) return;
+      if (pts === null) { el.style.visibility = "hidden"; return; }
+      el.style.visibility = "";
+      el.setAttribute("points", pts);
+    };
+
+    const draw = () => {
+      const { cz, panX, zoom, target } = cam;
+      for (const s of solids) {
+        const d = s.zf - cz;
+        let o = hazeOf(d);
+        if (zoom > 0) {
+          /* Everything that is not the target dissolves into the paper first.
+             Once it is gone the static draw order stops mattering, which is
+             what lets panX leave the road without near geometry cutting
+             across the building being entered. */
+          o = s === target ? 1 : o * Math.max(0, 1 - zoom / 0.18);
+        }
+        if (!s.key && quality >= 1) o = 0;
+        if (o <= 0.02 || d < NEAR) {
+          if (s.shown) {
+            /* visibility, never opacity:0 — a focusable but invisible link is
+               the worst failure available here. */
+            s.el.style.visibility = "hidden";
+            s.shown = false;
+          }
+          continue;
+        }
+        if (!s.shown) { s.el.style.visibility = "visible"; s.shown = true; }
+        s.el.style.opacity = o.toFixed(3);
+
+        const R = s.ribs;
+        const rib = (k: "flank" | "base") => {
+          const a = R[k];
+          setPts(s.poly[k], ribPoints(a[0], a[1], a[2], a[3], a[4], a[5], cz, panX, F));
+        };
+        rib("flank"); rib("base");
+
+        /* The shopfront. Detail is tiered by depth, and the tiers are tight:
+           full articulation costs ~25 rib rewrites per building, and letting
+           three buildings hold it at once took a throttled phone from 0.7ms a
+           frame to 8.5. At 22 units a window is already small; at 40 it is a
+           couple of pixels. The quality guard drops a tier again under load,
+           so a struggling device sheds ornament before it sheds frames. */
+        const near = quality >= 1 ? 14 : 22;
+        const mid = quality >= 1 ? 26 : 40;
+        const tier = d < near ? 2 : d < mid ? 1 : 0;
+        const xi = KERB * s.side;
+        for (let mi = 0; mi < s.marks.length; mi++) {
+          const g = s.marksGeom[mi];
+          if (!g || g.lod > tier) { s.marks[mi].style.visibility = "hidden"; continue; }
+          const pts = ribPoints(xi, g.y0, xi, g.y1, g.z0, g.z1, cz, panX, F);
+          if (pts === null) { s.marks[mi].style.visibility = "hidden"; continue; }
+          s.marks[mi].style.visibility = "";
+          s.marks[mi].setAttribute("points", pts);
+        }
+        if (s.sign) {
+          /* Beyond about 40 units the plate is a few pixels of grey with
+             illegible type in it — six of those down the street is litter,
+             not signage. */
+          const t2 = d < 34 ? cardTransform(xi, 3.62, s.zf + 1.5, cz, panX, F) : null;
+          if (t2) { s.sign.style.visibility = ""; s.sign.style.transform = t2; }
+          else s.sign.style.visibility = "hidden";
+        }
+
+        /* going through the door: the shell of the target falls away so the
+           opening is what fills the frame */
+        if (zoom > 0 && s === target) {
+          const shell = Math.max(0, 1 - zoom / 0.5).toFixed(3);
+          for (const k of ["flank", "base"]) {
+            if (s.poly[k]) (s.poly[k] as SVGPolygonElement).style.opacity = shell;
+          }
+        } else if (zoom === 0) {
+          for (const k of ["flank", "base"]) {
+            if (s.poly[k]) (s.poly[k] as SVGPolygonElement).style.opacity = "";
+          }
+        }
+
+        const t = cardTransform(KERB * s.side, s.h, s.zf, cz, panX, F);
+        if (t && s.card) s.card.style.transform = t;
+
+        if (s.key) {
+          /* A target under 44px is not a tap target and must not swallow
+             taps meant for the road. The href is never removed. */
+          const live = zoom === 0 && widthOf(d, F, frameW, vbw) >= MIN_TAP;
+          if (live !== s.live) {
+            s.el.style.pointerEvents = live ? "auto" : "none";
+            s.live = live;
+          }
+        }
+      }
+
+      const lanes = quality >= 1 ? 12 : DASH_N;
+      for (let i = 0; i < dashes.length; i++) {
+        if (i >= lanes) { dashes[i].style.visibility = "hidden"; continue; }
+        const zA = dashZ(i, cz);
+        const pts = ribPoints(-DASH_HALF, 0, DASH_HALF, 0, zA, zA + DASH_LEN, cz, panX, F);
+        if (pts === null) { dashes[i].style.visibility = "hidden"; continue; }
+        dashes[i].style.visibility = "";
+        dashes[i].setAttribute("points", pts);
+        dashes[i].style.opacity = (paintHaze(zA - cz) * (zoom > 0 ? Math.max(0, 1 - zoom / 0.18) : 1)).toFixed(3);
+      }
+      frame.dataset.cz = cam.cz.toFixed(2);
+    };
+
+    const pOf = () => {
+      const span = track.offsetHeight - frame.offsetHeight;
+      if (span <= 0) return 0;
+      const top = track.getBoundingClientRect().top + window.scrollY;
+      const v = (window.scrollY - (top - PIN_TOP)) / span;
+      return v < 0 ? 0 : v > 1 ? 1 : v;
+    };
+
+    /* ---- frame pump ------------------------------------------------------ */
+    let raf = 0;
+    let tPrev = 0;
+    let parity = 0;
+    const times: number[] = [];
+    let mark = 0;
+
+    const budget = (now: number) => {
+      if (mark) {
+        times.push(now - mark);
+        if (times.length > 45) {
+          times.sort((a, b) => a - b);
+          const med = times[22];
+          times.length = 0;
+          if (med > 20 && quality < 2) quality += 1;
+          else if (med < 12 && quality > 0) quality -= 1;
+        }
+      }
+      mark = now;
+    };
+
+    const pump = (now: number) => {
+      raf = 0;
+      budget(now);
+      const dt = tPrev ? Math.min(0.05, (now - tPrev) / 1000) : 1 / 60;
+      tPrev = now;
+      if (quality >= 2 && (parity ^= 1)) { schedule(); return; }
+      if (cam.zoom !== 0) return;
+      const aim = czOf(pOf());
+      const gap = aim - cam.cz;
+      if (Math.abs(gap) > 0.004) {
+        /* frame-rate independent: the same glide on 120Hz and on 30 */
+        cam.cz += gap * (1 - Math.exp(-dt / FOLLOW));
+        draw();
+        schedule(); // keep pumping until it has settled
+      } else if (cam.cz !== aim) {
+        cam.cz = aim;
+        draw();
+      }
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(pump); };
+
+    addEventListener("scroll", schedule, { passive: true });
+    addEventListener("resize", () => { measure(); draw(); schedule(); }, { passive: true });
+
+    /* ---- the door -------------------------------------------------------- */
+    let anim = 0;
+    const tween = (ms: number, step: (t: number) => void, done?: () => void) => {
+      cancelAnimationFrame(anim);
+      const t0 = performance.now();
+      const run = (n: number) => {
+        const t = Math.min(1, (n - t0) / ms);
+        step(ease(t));
+        if (t < 1) anim = requestAnimationFrame(run);
+        else done?.();
+      };
+      anim = requestAnimationFrame(run);
+    };
+
+    const enter = (s: Solid) => {
+      if (!s.key) return;
+      const d = spaces.find((x) => x.id === `space-${s.key}`);
+      if (!d) return;
+      const cz0 = cam.cz, F0 = F, px0 = cam.panX;
+      const czE = s.zf - 3.2;
+      const pxE = Math.max(-6, Math.min(6, 5.4 * s.side));
+      cam.target = s;
+      let opened = false;
+      tween(760, (t) => {
+        cam.zoom = t;
+        cam.cz = cz0 + (czE - cz0) * t;
+        cam.panX = px0 + (pxE - px0) * t;
+        F = F0 + (1240 - F0) * t;
+        /* the street thins out under the incoming room instead of being cut
+           away beneath it — the two are the same place, a moment apart */
+        svg.style.opacity = t > 0.5 ? (1 - (t - 0.5) / 0.5).toFixed(3) : "1";
+        draw();
+        if (!opened && t >= 0.62) {
+          opened = true;
+          d.open = true;
+          d.querySelector<HTMLElement>("[data-back]")?.focus({ preventScroll: true });
+        }
+      }, () => {
+        svg.style.visibility = "hidden";
+        svg.style.opacity = "";
+      });
+    };
+
+    const leave = (d: HTMLDetailsElement) => {
+      svg.style.visibility = "";
+      svg.style.opacity = "0";
+      const cz0 = cam.cz, F0 = F, px0 = cam.panX, z0 = cam.zoom;
+      let closed = false;
+      tween(620, (t) => {
+        const k = 1 - t;
+        cam.zoom = z0 * k;
+        /* the live scroll position is the target, so if the page moved while
+           the room was open the camera lands where the scroll now says */
+        const czNow = czOf(pOf());
+        cam.cz = czNow + (cz0 - czNow) * k;
+        cam.panX = px0 * k;
+        F = solveF(vbw) + (F0 - solveF(vbw)) * k;
+        if (!closed && k < 0.55) { closed = true; d.open = false; }
+        svg.style.opacity = k < 0.5 ? "1" : (1 - (k - 0.5) / 0.5).toFixed(3);
+        draw();
+      }, () => {
+        cam.zoom = 0;
+        cam.target = null;
+        F = solveF(vbw);
+        svg.style.opacity = "";
+        draw();
+        schedule();
+      });
+    };
+
+    svg.addEventListener("click", (e) => {
+      const a = (e.target as Element).closest<SVGGraphicsElement>("[data-b]");
+      if (!a) return;
+      e.preventDefault();
+      const s = named.find((x) => x.el === a);
+      if (s) enter(s);
+    });
+
+    section.addEventListener("click", (e) => {
+      const back = (e.target as HTMLElement).closest("[data-back]");
+      if (!back) return;
+      e.preventDefault();
+      const d = back.closest("details") as HTMLDetailsElement | null;
+      if (!d) return;
+      leave(d);
+      /* back to that category's own chip — never a facade, which may be
+         hidden or already passed */
+      d.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
+    });
+
+    skip?.addEventListener("click", () => {
+      const top = track.getBoundingClientRect().top + window.scrollY;
+      const span = track.offsetHeight - frame.offsetHeight;
+      scrollTo({ top: top - PIN_TOP + span, behavior: "smooth" });
+    });
+
+    measure();
+    draw();
+    schedule();
+  }
+  if (document.readyState !== "loading") initDistrict();
+  else document.addEventListener("DOMContentLoaded", initDistrict);
+</script>

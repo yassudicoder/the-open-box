@@ -2,6 +2,9 @@
 import BoxMark from "./BoxMark.astro";
 import { site } from "../data/site.ts";
 
+// The hire link points at a route, so it can be the current page.
+const onBuild = Astro.url.pathname.replace(/\/$/, "") === "/build";
+
 const nav = [
   { id: "index", label: "CONTENTS", n: "01" },
   { id: "ledger", label: "LEDGER", n: "02" },
@@ -31,6 +34,14 @@ const nav = [
     </nav>
 
     <div class="mast__tools">
+      <!-- The commissioned side of the studio. A route, not a section anchor,
+           so it is reachable from every page — and marked as the one thing
+           here that is asking for something. -->
+      <a class="mast__hire mono" href="/build/" aria-current={onBuild ? "page" : undefined}>
+        <span class="mast__hire-long">BUILT TO ORDER</span>
+        <span class="mast__hire-short" aria-hidden="true">BUILD</span>
+        <span class="visually-hidden">— freelance web design and development</span>
+      </a>
       <button
         class="mast__cmd mono"
         data-palette-open
@@ -124,6 +135,37 @@ const nav = [
     gap: 0.5rem;
     flex: none;
   }
+  /* the one link on the masthead that is an offer rather than a destination */
+  .mast__hire {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.42em 0.7em;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    border: var(--hair-strong) solid var(--accent-text);
+    border-radius: 3px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    white-space: nowrap;
+    transition: background 0.16s var(--ease), color 0.16s var(--ease);
+  }
+  .mast__hire:hover {
+    background: transparent;
+    color: var(--accent-text);
+  }
+  /* on /build/ itself it is a marker, not an invitation */
+  .mast__hire[aria-current="page"] {
+    background: transparent;
+    color: var(--accent-text);
+  }
+  .mast__hire[aria-current="page"]:hover {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+  .mast__hire-long {
+    display: none;
+  }
   .mast__cmd {
     display: inline-flex;
     align-items: center;
@@ -197,10 +239,23 @@ const nav = [
     min-width: 10ch;
     text-align: right;
   }
-  @media (min-width: 880px) {
+  /* The row carries brand + nav + hire + ⌘K + depth + theme. Each piece
+     appears only at the width where the whole row still fits — the hire
+     button is the one that never drops, because it is the offer. */
+  @media (min-width: 1040px) {
     .mast__nav {
       display: flex;
     }
+  }
+  @media (min-width: 1200px) {
+    .mast__hire-long {
+      display: inline;
+    }
+    .mast__hire-short {
+      display: none;
+    }
+  }
+  @media (min-width: 1320px) {
     .mast__depthlabel {
       display: inline-block;
     }
