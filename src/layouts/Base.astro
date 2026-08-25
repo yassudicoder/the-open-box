@@ -77,7 +77,7 @@ const { title, description, path, type, ogImage, jsonld } = Astro.props;
     </main>
     <Footer />
 
-    {/* Mounts itself only if /api/chat reports a configured provider. */}
+    {/* Answers from /assistant.json — no model, no key, no endpoint. */}
     <Assistant />
     <CommandPalette />
 

@@ -10,7 +10,11 @@ export const SITE = "https://the-open-box.vercel.app";
 export default defineConfig({
   site: SITE,
   trailingSlash: "ignore",
-  integrations: [mdx(), sitemap()],
+  integrations: [
+    mdx(),
+    // /assistant.json is a data file for the assistant widget, not a page.
+    sitemap({ filter: (page) => !page.endsWith("/assistant.json") }),
+  ],
   build: {
     inlineStylesheets: "auto",
   },

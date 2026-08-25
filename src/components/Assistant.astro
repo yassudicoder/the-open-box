@@ -1,31 +1,34 @@
 ---
 /* =============================================================================
-   THE ASSISTANT — the studio's own, on the studio's own endpoint.
+   THE ASSISTANT — a guide to this site, not a chatbot.
 
-   Replaces the third-party widget that used to sit on this site. That one
-   needed apnaai.online in script-src, img-src and connect-src; this one needs
-   no CSP change at all, because /api/chat is same-origin.
+   NO MODEL, NO KEY, NO ENDPOINT, NO BILL. It answers from /assistant.json,
+   which is generated at build time from src/data — the same objects the pages
+   render. Everything runs in the browser: one same-origin fetch the first
+   time someone opens the panel, then nothing.
 
-   IT MOUNTS ONLY IF THE ENDPOINT IS CONFIGURED. On load the script asks
-   GET /api/chat; a 501 (no key set) leaves the launcher hidden and the markup
-   inert. A deploy without a key shows no chat button rather than a button
-   that fails when pressed.
+   THAT IS A FEATURE, NOT A COMPROMISE. The four questions this studio cannot
+   answer — price, timing, availability, past clients — are branches in the
+   corpus, not instructions in a prompt. A model can be argued out of a
+   system prompt. A branch cannot. It will never quote a figure, because it
+   has no figure and no capacity to invent one.
 
-   WHAT IT KNOWS is api/_knowledge.json, generated from src/data at build
-   time. It has no pricing, no availability and no client list because the
-   site claims none, and the system prompt tells it to say so rather than
-   guess. An assistant that invents a quote costs more than it earns.
+   IT SAYS WHAT IT IS. The opening turn tells the visitor it answers from the
+   site's own pages, and the footer repeats it. Calling a matcher "AI" would
+   be exactly the kind of small dishonesty the rest of this site avoids.
 
-   HOOK NAMES ARE NAMESPACED. `data-send` already means the brief form's
-   submit button and `data-open` already means the district's open frame; a
-   bare hook here would collide with them the moment anything queries the
-   document rather than this component's own root.
+   SUGGESTION CHIPS carry entry ids, not text to be re-matched, so a chip
+   always lands on the answer it names. They are how a scripted assistant
+   stays useful: the visitor never has to guess what it knows.
 
-   ACCESSIBILITY. A chat widget is an easy thing to get wrong: this one is a
-   real <dialog>-less panel with an explicit role, focus moved in on open and
-   restored on close, Escape to close, a polite live region for replies, and
-   a visible label on every control. The transcript is a list, so a screen
-   reader can walk it turn by turn.
+   HOOK NAMES ARE NAMESPACED. `data-send` is the brief form's submit button
+   and `data-open` is the district's open frame; a bare hook here collides
+   with both the moment anything queries the document rather than this root.
+
+   ACCESSIBILITY. Focus moves in on open and returns to whatever opened it,
+   Escape closes, replies land in a polite live region, the transcript is a
+   focusable named list so a keyboard can reach its scroll, and every control
+   has a visible or screen-reader label.
    ========================================================================== */
 ---
 
@@ -42,11 +45,11 @@
 
   <section class="as__panel" id="as-panel" role="region" aria-label="Ask about a project" hidden>
     <header class="as__bar mono">
-      <span>THE OPEN BOX — ASSISTANT</span>
+      <span>THE OPEN BOX — SITE GUIDE</span>
       {/* × (U+00D7), not ✕ (U+2715): the fonts are subset to Basic Latin +
           Latin-1 plus a named symbol list, and ✕ is outside it — it would
           render as tofu on every page. */}
-      <button class="as__x" type="button" data-as-close aria-label="Close the assistant">×</button>
+      <button class="as__x" type="button" data-as-close aria-label="Close the site guide">×</button>
     </header>
 
     {/* tabindex on the transcript: it scrolls, and a scrollable region that
@@ -55,9 +58,10 @@
     <ol class="as__log" data-as-log role="list" tabindex="0" aria-label="Conversation">
       <li class="as__turn as__turn--bot">
         <p>
-          Ask me what this studio builds, or describe your business and I'll
-          tell you what a site for it usually contains. I don't know prices or
-          timings — those come from Yash.
+          I answer from this site's own pages — I'm a guide, not a chatbot, so
+          I won't guess at anything that isn't written down. Tell me what your
+          business is and I'll say what a site for it usually carries, or pick
+          one of these.
         </p>
       </li>
     </ol>
@@ -65,6 +69,8 @@
     {/* Replies land here for assistive tech. Polite, not assertive: a reply
         arriving must not interrupt what someone is already reading. */}
     <p class="visually-hidden" data-as-live aria-live="polite" aria-atomic="true"></p>
+
+    <div class="as__chips" data-as-chips role="group" aria-label="Suggested questions"></div>
 
     <form class="as__form" data-as-form>
       <label class="visually-hidden" for="as-input">Your message</label>
@@ -74,15 +80,15 @@
         name="message"
         type="text"
         autocomplete="off"
-        maxlength="1200"
+        maxlength="300"
         placeholder="I run a dental clinic…"
         data-as-input
       />
-      <button class="as__send mono" type="submit" data-as-send>SEND</button>
+      <button class="as__send mono" type="submit" data-as-send>ASK</button>
     </form>
 
     <p class="as__foot mono">
-      ANSWERS COME FROM THIS SITE'S OWN PAGES. FOR ANYTHING ELSE —
+      NO AI. ANSWERS COME FROM THIS SITE.
       <a href="/build/#brief">SEND A BRIEF <span aria-hidden="true">▸</span></a>
     </p>
   </section>
@@ -126,7 +132,7 @@
 
   .as__panel {
     width: min(23rem, calc(100vw - 1.5rem));
-    max-height: min(30rem, calc(100dvh - 6rem));
+    max-height: min(31rem, calc(100dvh - 6rem));
     display: flex;
     flex-direction: column;
     background: var(--paper);
@@ -152,7 +158,7 @@
     border: 0;
     color: inherit;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     line-height: 1;
     padding: 0.2em 0.3em;
   }
@@ -173,8 +179,7 @@
   .as__form {
     display: flex;
     gap: 0.4rem;
-    padding: 0.6rem;
-    border-top: var(--hair) solid var(--line);
+    padding: 0 0.6rem 0.5rem;
   }
   .as__input {
     flex: 1;
@@ -197,7 +202,6 @@
     font-size: 0.6rem;
     letter-spacing: 0.12em;
   }
-  .as__send[disabled] { opacity: 0.5; cursor: default; }
 
   .as__foot {
     padding: 0 0.6rem 0.6rem;
@@ -217,14 +221,14 @@
   }
 </style>
 
-{/* Every turn after the first is built by the script with createElement, and
-    Astro scopes styles by stamping an attribute on elements IT renders — so a
-    created element matches none of the scoped rules and arrives unstyled. The
-    transcript's own styles therefore live in a global block. Names are all
-    .as__-prefixed, which exists nowhere else in this site. */}
+{/* Turns, chips and call-to-action links are all built by the script with
+    createElement, and Astro scopes styles by stamping an attribute on the
+    elements IT renders — so a created element matches none of the scoped
+    rules and arrives unstyled. Their styles therefore live in a global
+    block. Every name is .as__-prefixed, which exists nowhere else. */}
 <style is:global>
   .as__turn {
-    max-width: 88%;
+    max-width: 92%;
     padding: 0.5rem 0.65rem;
     border: var(--hair) solid var(--line);
     border-radius: 3px;
@@ -241,7 +245,36 @@
   }
   .as__turn--err { align-self: flex-start; border-style: dashed; color: var(--ink-2); }
 
-  /* the wait, as three settling dots */
+  /* the call to action under an answer */
+  .as__cta {
+    display: inline-block;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    color: inherit;
+  }
+
+  .as__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+    padding: 0 0.7rem 0.55rem;
+  }
+  .as__chips:empty { display: none; }
+  .as__chip {
+    background: none;
+    color: var(--ink);
+    border: var(--hair) solid var(--line-2);
+    border-radius: 999px;
+    padding: 0.4em 0.7em;
+    font: inherit;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    cursor: pointer;
+  }
+  .as__chip:hover { border-color: var(--ink); background: var(--shade); }
+
+  /* the wait — only ever shown while the corpus itself is loading */
   .as__dots { display: inline-flex; gap: 0.22em; }
   .as__dots i {
     width: 0.3em;
@@ -261,52 +294,138 @@
 </style>
 
 <script>
-  /* The assistant only exists if the endpoint does. Everything below is
-     enhancement: with JavaScript off, the markup is `hidden` and inert, and
-     the brief form is still the way to make contact. */
-  async function initAssistant() {
+  import { match, type Entry } from "../lib/assistant-match";
+
+  /* Said when nothing clears the matching threshold. It makes no claim about
+     the studio — it is the honest shape of "I don't know". */
+  const MISS =
+    "I don't have that one. I only know what's on this site's own pages, and " +
+    "I'd rather say so than guess — try one of these, or send a brief and ask " +
+    "Yash directly.";
+
+  function initAssistant() {
     const root = document.querySelector<HTMLElement>("[data-as]");
     if (!root) return;
 
     const launch = root.querySelector<HTMLButtonElement>("[data-as-open]")!;
-    const panel = root.querySelector<HTMLElement>("[data-as-close]")!.closest("section")!;
+    const panel = root.querySelector<HTMLElement>("#as-panel")!;
     const closeBtn = root.querySelector<HTMLButtonElement>("[data-as-close]")!;
     const log = root.querySelector<HTMLElement>("[data-as-log]")!;
     const live = root.querySelector<HTMLElement>("[data-as-live]")!;
+    const chips = root.querySelector<HTMLElement>("[data-as-chips]")!;
     const form = root.querySelector<HTMLFormElement>("[data-as-form]")!;
     const input = root.querySelector<HTMLInputElement>("[data-as-input]")!;
-    const send = root.querySelector<HTMLButtonElement>("[data-as-send]")!;
 
-    /* Ask the endpoint whether it is configured before showing anything. A
-       501 here is the normal state of a deploy with no key set. */
-    try {
-      const probe = await fetch("/api/chat", { method: "GET" });
-      if (!probe.ok) return;
-    } catch {
-      return;
-    }
+    /* With JavaScript off the markup stays hidden and inert, and the brief
+       form is still the way to make contact. Nothing below is required to
+       use the site. */
     root.hidden = false;
 
-    const history: { role: "user" | "assistant"; content: string }[] = [];
-    let busy = false;
+    let corpus: Entry[] | null = null;
+    let openers: string[] = [];
+    let loading: Promise<void> | null = null;
     let opener: HTMLElement | null = null;
 
-    const turn = (who: "me" | "bot" | "err", text: string) => {
+    const byId = (id: string) => corpus?.find((e) => e.id === id) ?? null;
+
+    /** One transcript turn. Text is set as text, never parsed as markup. */
+    function turn(who: "me" | "bot" | "err", text: string, link?: Entry["link"]) {
       const li = document.createElement("li");
       li.className = `as__turn as__turn--${who}`;
       const p = document.createElement("p");
       p.textContent = text;
       li.appendChild(p);
+      if (link) {
+        const a = document.createElement("a");
+        a.className = "as__cta";
+        a.href = link.href;
+        /* ▸ is inside the font subset; the label itself comes from the corpus. */
+        a.textContent = `${link.label} ▸`;
+        li.appendChild(a);
+      }
       log.appendChild(li);
       log.scrollTop = log.scrollHeight;
-      return p;
-    };
+      return li;
+    }
+
+    /* Four is two rows in the narrowest panel. More than that and the chip
+       row starts eating the transcript it is meant to support. */
+    const MAX_CHIPS = 4;
+
+    /** Offer follow-ups. Chips carry ids, so a chip cannot mis-match. */
+    function setChips(ids: string[], answered?: string) {
+      chips.replaceChildren();
+      const seen = new Set<string>();
+      if (answered) seen.add(answered); // never re-offer what was just answered
+      for (const id of ids) {
+        if (seen.has(id)) continue;
+        if (chips.childElementCount >= MAX_CHIPS) break;
+        const e = byId(id);
+        if (!e?.chip) continue;
+        seen.add(id);
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "as__chip";
+        b.textContent = e.chip;
+        b.addEventListener("click", () => ask(e.chip!, e));
+        chips.appendChild(b);
+      }
+    }
+
+    /** Answer one question. `known` short-circuits matching for a chip. */
+    function ask(text: string, known?: Entry) {
+      turn("me", text);
+      const found = known ? { hit: known, also: [] as Entry[] } : match(corpus!, text);
+
+      if (!found.hit) {
+        turn("err", MISS, { href: "/build/#brief", label: "Send a brief" });
+        live.textContent = MISS;
+        setChips(openers);
+        return;
+      }
+      turn("bot", found.hit.a, found.hit.link);
+      live.textContent = found.hit.a;
+      /* Follow-ups the entry names, then whatever else the question nearly
+         matched, then the openers as a floor so the row is never empty. */
+      setChips(
+        [...(found.hit.next ?? []), ...found.also.map((e) => e.id), ...openers],
+        found.hit.id,
+      );
+    }
+
+    /** Fetch the corpus once, on first open. Same-origin, static, cached. */
+    function loadCorpus() {
+      if (loading) return loading;
+      const waiting = turn("bot", "");
+      waiting.querySelector("p")!.innerHTML =
+        '<span class="as__dots"><i></i><i></i><i></i></span>';
+
+      loading = fetch("/assistant.json")
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        .then((data) => {
+          corpus = data.corpus as Entry[];
+          openers = (data.openers as string[]) ?? [];
+          waiting.remove();
+          setChips(openers);
+        })
+        .catch(() => {
+          waiting.remove();
+          const why =
+            "I couldn't load my answers just then. The brief form still works — " +
+            "it goes straight to Yash.";
+          turn("err", why, { href: "/build/#brief", label: "Send a brief" });
+          live.textContent = why;
+          loading = null; // let the next open retry
+        });
+      return loading;
+    }
 
     const open = () => {
       opener = document.activeElement as HTMLElement;
       panel.hidden = false;
       launch.setAttribute("aria-expanded", "true");
       input.focus();
+      if (!corpus) loadCorpus();
     };
     const close = () => {
       panel.hidden = true;
@@ -324,81 +443,14 @@
       }
     });
 
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
       const text = input.value.trim();
-      if (!text || busy) return;
-
-      busy = true;
-      send.disabled = true;
+      if (!text) return;
       input.value = "";
-      turn("me", text);
-      history.push({ role: "user", content: text });
-
-      const holder = turn("bot", "");
-      holder.innerHTML = '<span class="as__dots"><i></i><i></i><i></i></span>';
-      let reply = "";
-
-      try {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ messages: history.slice(-12) }),
-        });
-
-        if (!res.ok || !res.body) {
-          const why =
-            res.status === 429
-              ? "That's a lot of questions at once — give it a minute."
-              : "I couldn't reach the assistant just then. The brief form still works.";
-          holder.textContent = why;
-          holder.parentElement!.className = "as__turn as__turn--err";
-          live.textContent = why;
-        } else {
-          const reader = res.body.getReader();
-          const dec = new TextDecoder();
-          let buf = "";
-          for (;;) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += dec.decode(value, { stream: true });
-            const frames = buf.split("\n\n");
-            buf = frames.pop() ?? "";
-            for (const frame of frames) {
-              const line = frame.split("\n").find((l) => l.startsWith("data:"));
-              if (!line) continue;
-              const payload = line.slice(5).trim();
-              if (!payload || payload === "[DONE]") continue;
-              try {
-                const obj = JSON.parse(payload);
-                if (obj.t) {
-                  reply += obj.t;
-                  /* textContent, never innerHTML: the reply is model output
-                     and is treated as text, not markup. */
-                  holder.textContent = reply;
-                  log.scrollTop = log.scrollHeight;
-                }
-              } catch {
-                /* a partial frame is normal; the next chunk completes it */
-              }
-            }
-          }
-          if (reply) {
-            history.push({ role: "assistant", content: reply });
-            live.textContent = reply;
-          } else {
-            holder.textContent = "I didn't get an answer back. Try again?";
-            holder.parentElement!.className = "as__turn as__turn--err";
-          }
-        }
-      } catch {
-        holder.textContent = "Something went wrong reaching the assistant.";
-        holder.parentElement!.className = "as__turn as__turn--err";
-      } finally {
-        busy = false;
-        send.disabled = false;
-        input.focus();
-      }
+      /* Typed before the corpus arrived: answer as soon as it does. */
+      if (!corpus) loadCorpus()!.then(() => corpus && ask(text));
+      else ask(text);
     });
   }
 

@@ -7,13 +7,12 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && node scripts/build-knowledge.mjs && astro build",
+    "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && astro build",
     "installs": "node scripts/fetch-installs.mjs",
     "og": "node scripts/make-og.mjs",
     "fonts": "node scripts/subset-fonts.mjs",
     "preview": "astro preview",
-    "astro": "astro",
-    "knowledge": "node scripts/build-knowledge.mjs"
+    "astro": "astro"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.0",
