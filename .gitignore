@@ -13,9 +13,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# environment
-.env
-.env.production
+# environment — every .env variant, so a local key can never be committed.
+# Real values live in Vercel → Settings → Environment Variables, never in the repo.
+.env*
 
 # os
 .DS_Store
