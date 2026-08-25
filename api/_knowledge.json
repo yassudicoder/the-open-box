@@ -1,0 +1,257 @@
+{
+  "generated": "by scripts/build-knowledge.mjs — do not edit by hand",
+  "studio": {
+    "name": "The Open Box",
+    "maker": "Yash",
+    "tagline": "Small tools. Out of the box. Nothing hidden.",
+    "manifesto": "One maker, shipping small honest tools that run on your machine. No accounts. No servers. Nothing leaves your device.",
+    "email": "boxai5115@gmail.com",
+    "linkedin": "https://www.linkedin.com/in/yash-desai-1aa9b5310/",
+    "stack": [
+      "Astro",
+      "Vanilla CSS",
+      "CSS 3D transforms",
+      "Vercel",
+      "Google Analytics"
+    ],
+    "claims": [
+      "LOCAL-FIRST",
+      "NO ACCOUNTS",
+      "NO SERVERS",
+      "0 BYTES UPLOADED",
+      "KEYBOARD-FIRST",
+      "OPEN ABOUT EVERYTHING",
+      "WORKS OUT OF THE BOX",
+      "SHIP IN PUBLIC"
+    ]
+  },
+  "clientTypes": [
+    {
+      "key": "01",
+      "name": "Clinics & Practices",
+      "line": "For doctors, dentists, physios and clinics — the site a patient checks before they call.",
+      "typicalSections": [
+        "WHO YOU ARE",
+        "TREATMENTS",
+        "BOOK / CALL",
+        "HOURS · LOCATION"
+      ]
+    },
+    {
+      "key": "02",
+      "name": "Cafes & Restaurants",
+      "line": "Menu, hours and where you are — the three things people actually open your site to find.",
+      "typicalSections": [
+        "THE PLACE",
+        "MENU",
+        "HOURS · LOCATION",
+        "RESERVE / ORDER"
+      ]
+    },
+    {
+      "key": "03",
+      "name": "Salons & Studios",
+      "line": "Your service list, your work, and an easy way to book — presented like the room feels.",
+      "typicalSections": [
+        "THE SALON",
+        "SERVICES · RATES",
+        "APPOINTMENT",
+        "HOURS · LOCATION"
+      ]
+    },
+    {
+      "key": "04",
+      "name": "Pharmacies & Chemists",
+      "line": "For a chemist or medical store — what you stock, how to reach you, and whether you deliver.",
+      "typicalSections": [
+        "THE STORE",
+        "WHAT WE STOCK",
+        "PRESCRIPTION ENQUIRY",
+        "HOURS · LOCATION"
+      ]
+    },
+    {
+      "key": "05",
+      "name": "Independent Shops",
+      "line": "For local shops that live on walk-ins — a proper online presence, not a social profile.",
+      "typicalSections": [
+        "THE SHOP",
+        "WHAT WE SELL",
+        "HOURS · LOCATION",
+        "CALL / MESSAGE"
+      ]
+    },
+    {
+      "key": "06",
+      "name": "Startups & Portfolios",
+      "line": "Landing pages, product sites and portfolios — built to explain the thing and convert.",
+      "typicalSections": [
+        "THE PROPOSITION",
+        "HOW IT WORKS",
+        "PRICING / SIGN-UP",
+        "CONTACT"
+      ]
+    }
+  ],
+  "serviceLines": [
+    {
+      "code": "A",
+      "name": "Web Development",
+      "summary": "The working website — built responsive, fast, and on technology chosen to fit the job rather than a habit.",
+      "items": [
+        "Business websites",
+        "Landing pages",
+        "Web applications",
+        "Website redesigns",
+        "Deployment & hosting setup"
+      ],
+      "deliverables": [
+        "A live site on your own domain",
+        "Works on phone, tablet and desktop",
+        "The code, and the keys to it"
+      ]
+    },
+    {
+      "code": "B",
+      "name": "UI/UX Design",
+      "summary": "The design itself, in Figma — structured so it can be built, by me or by whoever you hand it to.",
+      "items": [
+        "Website & app UI design",
+        "UX structure and user flows",
+        "Wireframes",
+        "High-fidelity prototypes",
+        "Redesign of an existing site"
+      ],
+      "deliverables": [
+        "A Figma file you own, not a flattened image",
+        "Mobile, tablet and desktop layouts",
+        "A clickable prototype to try before it's built"
+      ]
+    }
+  ],
+  "pipeline": [
+    {
+      "n": "01",
+      "name": "Idea",
+      "what": "You describe the business and what the site has to do.",
+      "output": "A written brief we both agree on",
+      "track": "design"
+    },
+    {
+      "n": "02",
+      "name": "UX / Structure",
+      "what": "Pages, order, and the path a customer takes through them.",
+      "output": "Sitemap and user flows",
+      "track": "design"
+    },
+    {
+      "n": "03",
+      "name": "Figma Design",
+      "what": "The real design — every screen, every breakpoint.",
+      "output": "A Figma file and a clickable prototype",
+      "track": "design"
+    },
+    {
+      "n": "04",
+      "name": "Development",
+      "what": "The design becomes a working, responsive site.",
+      "output": "A working build you can visit",
+      "track": "build"
+    },
+    {
+      "n": "05",
+      "name": "Testing",
+      "what": "Responsiveness, speed, links, forms, real devices.",
+      "output": "A checked build, problems fixed",
+      "track": "build"
+    },
+    {
+      "n": "06",
+      "name": "Deployment",
+      "what": "Hosting, domain, SSL, analytics if you want it.",
+      "output": "Live on your own domain",
+      "track": "build"
+    },
+    {
+      "n": "07",
+      "name": "Live",
+      "what": "Handover, and a walkthrough of how to keep it updated.",
+      "output": "The site, and the keys to it",
+      "track": "build"
+    }
+  ],
+  "advantages": [
+    {
+      "title": "One person, start to finish",
+      "body": "The person drawing it in Figma is the person building it. Nothing gets lost in a handover, because there isn't one."
+    },
+    {
+      "title": "You talk to the person building it",
+      "body": "No account manager, no relay. Questions go straight to the person doing the work."
+    },
+    {
+      "title": "No features you don't need",
+      "body": "A login nobody asked for, a blog nobody will update — if it doesn't earn its place, it doesn't get built."
+    }
+  ],
+  "briefOptions": {
+    "businessTypes": [
+      "Clinic / medical practice",
+      "Cafe / restaurant",
+      "Salon / studio",
+      "Pharmacy / medical store",
+      "Shop / retail",
+      "Startup",
+      "Personal brand / portfolio",
+      "Something else"
+    ],
+    "needs": [
+      "Website (design + build)",
+      "UI/UX design only",
+      "Development only",
+      "Redesign of an existing site",
+      "Not sure yet"
+    ],
+    "timelines": [
+      "As soon as possible",
+      "Within a month",
+      "1–3 months",
+      "Just planning ahead"
+    ],
+    "budgets": [
+      "Not sure yet",
+      "Prefer to discuss",
+      "I have a budget in mind"
+    ]
+  },
+  "pages": [
+    {
+      "path": "/",
+      "what": "The studio's own tools, shipped off the shelf."
+    },
+    {
+      "path": "/build/",
+      "what": "Commissioned work — websites built to order."
+    },
+    {
+      "path": "/build/#who",
+      "what": "The kinds of business a commission is packed for."
+    },
+    {
+      "path": "/build/#services",
+      "what": "What a commission includes."
+    },
+    {
+      "path": "/build/#pipeline",
+      "what": "How a commission runs, from Figma to live."
+    },
+    {
+      "path": "/build/#brief",
+      "what": "The enquiry form. This is how someone starts a project."
+    },
+    {
+      "path": "/dispatches/",
+      "what": "Notes the studio has published."
+    }
+  ]
+}

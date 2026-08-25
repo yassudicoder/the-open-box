@@ -3,16 +3,17 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "The Open Box — umbrella studio site for small, honest, local-first tools.",
+  "description": "The Open Box \u2014 umbrella studio site for small, honest, local-first tools.",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && astro build",
+    "build": "node scripts/fetch-installs.mjs && node scripts/make-og.mjs && node scripts/build-knowledge.mjs && astro build",
     "installs": "node scripts/fetch-installs.mjs",
     "og": "node scripts/make-og.mjs",
     "fonts": "node scripts/subset-fonts.mjs",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "knowledge": "node scripts/build-knowledge.mjs"
   },
   "dependencies": {
     "@astrojs/mdx": "^4.3.0",
