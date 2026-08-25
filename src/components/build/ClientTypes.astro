@@ -700,9 +700,6 @@ const pharmacyRoom = () =>
          [0.78, 1.48].map((z) =>
            [0, 1, 2, 3, 4].map((k) =>
              pg(frontFace(RM, bx + 0.1 + k * 0.29, 1.0, z, 0.19, 0.28 + (k % 3) * 0.06), T(38 + (k % 4) * 8))).join("")).join(""))),
-    I({ x: 3.2, y: 0, z: 2.45, w: 0.6, d: 0, h: 0.4 },
-      (() => { const [rx, ry] = iso(RM, 3.5, 0, 2.6);
-        return `<text x="${rx.toFixed(1)}" y="${ry.toFixed(1)}" text-anchor="middle" fill="${T(38)}" font-size="17" font-family="var(--font-mono)" font-weight="700">Rx</text>`; })()),
     clockY(1.15, 2.95),
     on(wallX(0.4, 1.4, 1.2, 1.2, T(5), ` stroke="${T(28)}" stroke-width="0.8"`),
        panX(0.55, 2.25, 0.9, 0.06, T(26)),

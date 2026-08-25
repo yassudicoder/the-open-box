@@ -150,7 +150,12 @@ const jsonld = [
   <CreaseDivider variant="fold" />
   <Pipeline />
   <CreaseDivider variant="flap" />
-  <WhyMe />
-  <CreaseDivider variant="fold" />
+  {/* The brief follows the pipeline directly: someone who has just read how
+      the work runs is at the point of asking for it, and making them scroll
+      past a page of reasons first is asking them to cool off. WHY WORK WITH
+      ME closes the page — it answers the objection of anyone who did not
+      fill the form in. */}
   <ProjectBrief />
+  <CreaseDivider variant="fold" />
+  <WhyMe />
 </Base>
