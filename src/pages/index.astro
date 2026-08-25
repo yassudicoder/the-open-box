@@ -6,6 +6,7 @@ import Contents from "../components/Contents.astro";
 import TheLedger from "../components/TheLedger.astro";
 import TheDoctrine from "../components/TheDoctrine.astro";
 import InTheLab from "../components/InTheLab.astro";
+import TheBuild from "../components/TheBuild.astro";
 import Dispatches from "../components/Dispatches.astro";
 import Colophon from "../components/Colophon.astro";
 import CreaseDivider from "../components/CreaseDivider.astro";
@@ -24,7 +25,9 @@ import { site } from "../data/site.ts";
   <CreaseDivider variant="flap" />
   <InTheLab />
   <CreaseDivider variant="fold" />
-  <Dispatches />
+  <TheBuild />
   <CreaseDivider variant="flap" />
+  <Dispatches />
+  <CreaseDivider variant="fold" />
   <Colophon />
 </Base>
