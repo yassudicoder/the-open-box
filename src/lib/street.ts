@@ -105,17 +105,26 @@ export const DRAW_ORDER = [...SLOTS, ...FILLERS].sort((a, b) => b.zb - a.zb);
    Six legs: approach a pair, dwell on it, approach the next. Depth to the
    target facade is interpolated GEOMETRICALLY on approach legs, because
    perceived speed goes as d'/d — interpolating cz linearly makes the street
-   appear to accelerate into your face at the end of every leg. */
+   appear to accelerate into your face at the end of every leg.
+
+   The drive starts already in the street, 21 units off the first pair rather
+   than 34. Further back the buildings render at about a third of the size
+   they reach at a stop, and the opening frame is mostly bare paper — the
+   first thing a visitor sees should be the street, not the space above it. */
 
 type Leg = { p0: number; p1: number; z0: number; z1: number; zt?: number };
 
 const LEGS: Leg[] = [
-  { p0: 0.0, p1: 0.24, z0: -8, z1: 13, zt: 26 },
-  { p0: 0.24, p1: 0.38, z0: 13, z1: 15 },
-  { p0: 0.38, p1: 0.59, z0: 15, z1: 39, zt: 52 },
-  { p0: 0.59, p1: 0.73, z0: 39, z1: 41 },
-  { p0: 0.73, p1: 0.9, z0: 41, z1: 65, zt: 78 },
-  { p0: 0.9, p1: 1.0, z0: 65, z1: 68 },
+  /* The first leg is SHORT in scroll as well as in distance. Starting in the
+     street leaves only 4 units to cover before the first pair, and spending a
+     quarter of the drive on them made the opening feel stuck. The travel
+     belongs on legs two and three, which cover 24 units each. */
+  { p0: 0.0, p1: 0.12, z0: 9, z1: 13, zt: 26 },
+  { p0: 0.12, p1: 0.3, z0: 13, z1: 15 },
+  { p0: 0.3, p1: 0.56, z0: 15, z1: 39, zt: 52 },
+  { p0: 0.56, p1: 0.72, z0: 39, z1: 41 },
+  { p0: 0.72, p1: 0.92, z0: 41, z1: 65, zt: 78 },
+  { p0: 0.92, p1: 1.0, z0: 65, z1: 68 },
 ];
 
 export const czOf = (p: number): number => {
@@ -134,7 +143,7 @@ export const czOf = (p: number): number => {
 };
 
 /** The three dwell midpoints, for tests and for the no-scroll pager. */
-export const DWELLS = [0.31, 0.66, 0.95];
+export const DWELLS = [0.21, 0.64, 0.96];
 
 /* ---- projection of the two element forms -------------------------------- */
 
